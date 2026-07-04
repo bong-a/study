@@ -1,0 +1,862 @@
+<meta charset="UTF-8">
+<title>LangGraph Agentic RAG</title>
+<meta name="description" content="LangGraph를 활용한 에이전트 기반 RAG 시스템 — 검색 판단, 문서 품질 평가, 질문 재작성을 아우르는 완전한 구현 가이드">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0C0F1A;
+    --surface:  #131829;
+    --surface2: #1A2035;
+    --border:   #222840;
+    --border2:  #2C3554;
+    --text:     #E2E6F3;
+    --muted:    #7A84A8;
+    --dim:      #4A5270;
+    --accent:   #38BDF8;
+    --green:    #34D399;
+    --orange:   #FB923C;
+    --red:      #F87171;
+    --yellow:   #FCD34D;
+    --code-bg:  #0A0D17;
+  }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.7;
+    padding: 0 1.25rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 820px; margin: 0 auto; }
+
+  /* ── Header ── */
+  header {
+    padding: 3.5rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2.5rem;
+  }
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+  }
+  h1 {
+    font-size: clamp(1.75rem, 4vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    text-wrap: balance;
+    color: var(--text);
+    margin-bottom: 1rem;
+  }
+  .lead {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 600px;
+    text-wrap: balance;
+  }
+
+  /* ── Sections ── */
+  section { margin-bottom: 3rem; }
+  h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  h2::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 1.1em;
+    background: var(--accent);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  h3 {
+    font-size: 0.88rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+  p { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.8rem; }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Flow Diagram ── */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2.5rem 1.5rem;
+    margin-bottom: 2rem;
+    overflow-x: auto;
+  }
+
+  .flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    min-width: 560px;
+    position: relative;
+  }
+
+  .node {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-family: 'SF Mono', Cascadia Code, Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.55rem 1.1rem;
+    min-width: 120px;
+    position: relative;
+    z-index: 1;
+  }
+  .node-start {
+    background: var(--border2);
+    color: var(--dim);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    min-width: 80px;
+  }
+  .node-agent  { background: #1A2A50; border: 1.5px solid var(--accent);  color: var(--accent); }
+  .node-retr   { background: #1A2A50; border: 1.5px solid var(--accent);  color: var(--accent); }
+  .node-gen    { background: #0E2A1E; border: 1.5px solid var(--green);   color: var(--green);  }
+  .node-rew    { background: #2A1E0A; border: 1.5px solid var(--orange);  color: var(--orange); }
+  .node-end    {
+    background: var(--border2);
+    color: var(--dim);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 1rem;
+    min-width: 80px;
+  }
+
+  .arrow {
+    width: 2px;
+    height: 24px;
+    background: var(--border2);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--border2);
+  }
+  .arrow.green { background: var(--green); }
+  .arrow.green::after { border-top-color: var(--green); }
+  .arrow.orange { background: var(--orange); }
+  .arrow.orange::after { border-top-color: var(--orange); }
+  .arrow.blue { background: var(--accent); }
+  .arrow.blue::after { border-top-color: var(--accent); }
+
+  .label-tag {
+    font-size: 0.68rem;
+    font-family: 'SF Mono', Consolas, monospace;
+    font-weight: 600;
+    padding: 0.18rem 0.5rem;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    letter-spacing: 0.03em;
+  }
+  .tag-blue   { background: #1A2A50; color: var(--accent); }
+  .tag-green  { background: #0E2A1E; color: var(--green); }
+  .tag-orange { background: #2A1E0A; color: var(--orange); }
+  .tag-grey   { background: var(--surface2); color: var(--muted); }
+
+  /* branch row */
+  .branch-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 3rem;
+    width: 100%;
+  }
+  .branch-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* horizontal connector */
+  .h-line {
+    height: 2px;
+    background: var(--border2);
+    position: absolute;
+    top: 0;
+  }
+
+  .branch-container {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* grade decision box */
+  .decision {
+    background: var(--surface2);
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.72rem;
+    font-family: 'SF Mono', Consolas, monospace;
+    color: var(--dim);
+    letter-spacing: 0.03em;
+    margin: 4px 0;
+  }
+
+  /* ── Code blocks ── */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-family: 'SF Mono', Consolas, monospace;
+    color: var(--dim);
+    letter-spacing: 0.04em;
+  }
+  .code-dots { display: flex; gap: 5px; }
+  .code-dots span {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border2);
+  }
+  pre {
+    padding: 1rem 1.25rem;
+    font-family: 'SF Mono', Cascadia Code, 'Fira Code', Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    white-space: pre;
+    color: #C9D1E8;
+    margin: 0;
+  }
+  /* syntax colors */
+  .k { color: #CB8BF5; }   /* keyword */
+  .s { color: #A8D8A8; }   /* string */
+  .c { color: #4A5270; }   /* comment */
+  .f { color: #38BDF8; }   /* function */
+  .n { color: #FB923C; }   /* name/var */
+  .p { color: #E2E6F3; }   /* punctuation */
+
+  /* ── Component Cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+  }
+  .card-title {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+  .card-desc {
+    font-size: 0.83rem;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .card-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.45rem;
+    border-radius: 3px;
+    margin-bottom: 0.5rem;
+  }
+  .ct-blue   { background: #1A2A50; color: var(--accent); }
+  .ct-green  { background: #0E2A1E; color: var(--green); }
+  .ct-orange { background: #2A1E0A; color: var(--orange); }
+  .ct-grey   { background: var(--surface2); color: var(--muted); }
+
+  /* ── Execution examples ── */
+  .example-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .example-q {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .q-label {
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--dim);
+    flex-shrink: 0;
+  }
+  .flow-trace {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .trace-node {
+    font-family: 'SF Mono', Consolas, monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: 5px;
+  }
+  .tn-blue   { background: #1A2A50; color: var(--accent); }
+  .tn-green  { background: #0E2A1E; color: var(--green); }
+  .tn-orange { background: #2A1E0A; color: var(--orange); }
+  .tn-grey   { background: var(--surface2); color: var(--muted); }
+  .trace-arrow { color: var(--dim); font-size: 0.85rem; }
+
+  .outcome {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .outcome-ok   { background: #0A1E14; border-left: 3px solid var(--green);  color: #A7F3D0; }
+  .outcome-skip { background: #0A0D17; border-left: 3px solid var(--muted);  color: var(--muted); }
+  .outcome-err  { background: #1E0A0A; border-left: 3px solid var(--red);    color: #FCA5A5; }
+
+  /* ── Divider ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* ── Warning box ── */
+  .warn-box {
+    background: #1E0A0A;
+    border: 1px solid #5A1A1A;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    font-size: 0.85rem;
+    color: #FCA5A5;
+    line-height: 1.6;
+  }
+  .warn-box strong { color: var(--red); }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <div class="eyebrow">LangGraph · Tutorial 06</div>
+    <h1>Agentic RAG</h1>
+    <p class="lead">
+      LLM이 검색 도구 사용 여부를 스스로 판단하고, 검색 결과의 품질을 평가한 뒤
+      필요하면 질문을 재작성해 재시도하는 완전한 에이전트 RAG 구현.
+    </p>
+  </header>
+
+  <!-- Architecture -->
+  <section>
+    <h2>아키텍처 — 그래프 상태 머신</h2>
+
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 560 448" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;max-width:540px;margin:0 auto;">
+        <defs>
+          <marker id="ah-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#38BDF8"/>
+          </marker>
+          <marker id="ah-g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#34D399"/>
+          </marker>
+          <marker id="ah-o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#FB923C"/>
+          </marker>
+          <marker id="ah-d" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4A5270"/>
+          </marker>
+        </defs>
+
+        <!-- START → agent -->
+        <line x1="270" y1="46" x2="270" y2="61" stroke="#38BDF8" stroke-width="1.5" marker-end="url(#ah-b)"/>
+
+        <!-- agent → fork1 (dashed = decision) -->
+        <line x1="270" y1="102" x2="270" y2="138" stroke="#4A5270" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+        <!-- fork1 horizontal bar -->
+        <line x1="135" y1="138" x2="415" y2="138" stroke="#4A5270" stroke-width="1.5"/>
+
+        <!-- fork1 left branch → retrieve -->
+        <line x1="135" y1="138" x2="135" y2="173" stroke="#38BDF8" stroke-width="1.5" marker-end="url(#ah-b)"/>
+
+        <!-- fork1 right branch → END-skip -->
+        <line x1="415" y1="138" x2="415" y2="175" stroke="#4A5270" stroke-width="1.5" marker-end="url(#ah-d)"/>
+
+        <!-- retrieve → fork2 (dashed = decision) -->
+        <line x1="135" y1="213" x2="135" y2="249" stroke="#4A5270" stroke-width="1.5" stroke-dasharray="3,2"/>
+
+        <!-- fork2 horizontal bar -->
+        <line x1="70" y1="249" x2="210" y2="249" stroke="#4A5270" stroke-width="1.5"/>
+
+        <!-- fork2 left branch → generate -->
+        <line x1="70" y1="249" x2="70" y2="293" stroke="#34D399" stroke-width="1.5" marker-end="url(#ah-g)"/>
+
+        <!-- fork2 right branch → rewrite -->
+        <line x1="210" y1="249" x2="210" y2="293" stroke="#FB923C" stroke-width="1.5" marker-end="url(#ah-o)"/>
+
+        <!-- generate → END -->
+        <line x1="70" y1="333" x2="70" y2="385" stroke="#34D399" stroke-width="1.5" marker-end="url(#ah-g)"/>
+
+        <!-- rewrite → agent (루프, 오른쪽 우회) -->
+        <polyline points="270,313 505,313 505,82 350,82" stroke="#FB923C" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#ah-o)" fill="none"/>
+
+        <!-- ── Nodes ── -->
+
+        <!-- START -->
+        <rect x="222" y="14" width="96" height="30" rx="15" fill="#131829" stroke="#2C3554" stroke-width="1.5"/>
+        <text x="270" y="33" text-anchor="middle" fill="#4A5270" font-size="10" font-family="'SF Mono',Consolas,monospace" font-weight="700" letter-spacing="1">START</text>
+
+        <!-- agent -->
+        <rect x="190" y="62" width="160" height="40" rx="8" fill="#1A2A50" stroke="#38BDF8" stroke-width="1.5"/>
+        <text x="270" y="87" text-anchor="middle" fill="#38BDF8" font-size="14" font-family="'SF Mono',Consolas,monospace" font-weight="700">agent</text>
+
+        <!-- fork1 junction dot -->
+        <circle cx="270" cy="138" r="3.5" fill="#1A2035" stroke="#4A5270" stroke-width="1.5"/>
+
+        <!-- retrieve -->
+        <rect x="60" y="173" width="150" height="40" rx="8" fill="#1A2A50" stroke="#38BDF8" stroke-width="1.5"/>
+        <text x="135" y="198" text-anchor="middle" fill="#38BDF8" font-size="14" font-family="'SF Mono',Consolas,monospace" font-weight="700">retrieve</text>
+
+        <!-- END-skip (검색 불필요) -->
+        <rect x="365" y="175" width="100" height="30" rx="15" fill="#131829" stroke="#2C3554" stroke-width="1.5"/>
+        <text x="415" y="194" text-anchor="middle" fill="#4A5270" font-size="10" font-family="'SF Mono',Consolas,monospace" font-weight="700" letter-spacing="1">END</text>
+
+        <!-- fork2 junction dot -->
+        <circle cx="135" cy="249" r="3.5" fill="#1A2035" stroke="#4A5270" stroke-width="1.5"/>
+
+        <!-- generate -->
+        <rect x="10" y="293" width="120" height="40" rx="8" fill="#0E2A1E" stroke="#34D399" stroke-width="1.5"/>
+        <text x="70" y="318" text-anchor="middle" fill="#34D399" font-size="14" font-family="'SF Mono',Consolas,monospace" font-weight="700">generate</text>
+
+        <!-- rewrite -->
+        <rect x="150" y="293" width="120" height="40" rx="8" fill="#2A1E0A" stroke="#FB923C" stroke-width="1.5"/>
+        <text x="210" y="318" text-anchor="middle" fill="#FB923C" font-size="14" font-family="'SF Mono',Consolas,monospace" font-weight="700">rewrite</text>
+
+        <!-- END-final -->
+        <rect x="25" y="385" width="90" height="30" rx="15" fill="#131829" stroke="#2C3554" stroke-width="1.5"/>
+        <text x="70" y="404" text-anchor="middle" fill="#4A5270" font-size="10" font-family="'SF Mono',Consolas,monospace" font-weight="700" letter-spacing="1">END</text>
+
+        <!-- ── Decision labels ── -->
+        <text x="270" y="127" text-anchor="middle" fill="#4A5270" font-size="9" font-family="'SF Mono',Consolas,monospace">tools_condition</text>
+        <text x="135" y="238" text-anchor="middle" fill="#4A5270" font-size="9" font-family="'SF Mono',Consolas,monospace">grade_documents</text>
+
+        <!-- ── Branch labels ── -->
+        <text x="142" y="158" fill="#38BDF8" font-size="8.5" font-family="-apple-system,BlinkMacSystemFont,sans-serif">검색 필요</text>
+        <text x="422" y="156" fill="#5A6485" font-size="8.5" font-family="-apple-system,BlinkMacSystemFont,sans-serif">검색 불필요</text>
+        <text x="77" y="268" fill="#34D399" font-size="8.5" font-family="-apple-system,BlinkMacSystemFont,sans-serif">관련 ✓</text>
+        <text x="217" y="268" fill="#FB923C" font-size="8.5" font-family="-apple-system,BlinkMacSystemFont,sans-serif">무관련 ✗</text>
+        <text x="426" y="74" text-anchor="middle" fill="#FB923C" font-size="8.5" font-family="-apple-system,BlinkMacSystemFont,sans-serif">↩ 재시도 루프</text>
+
+        <!-- ── Legend ── -->
+        <g transform="translate(14, 428)">
+          <rect x="0" y="0" width="10" height="10" rx="2" fill="#1A2A50" stroke="#38BDF8" stroke-width="1"/>
+          <text x="14" y="9" fill="#4A5270" font-size="9" font-family="-apple-system,BlinkMacSystemFont,sans-serif">LLM 호출</text>
+          <rect x="82" y="0" width="10" height="10" rx="2" fill="#0E2A1E" stroke="#34D399" stroke-width="1"/>
+          <text x="96" y="9" fill="#4A5270" font-size="9" font-family="-apple-system,BlinkMacSystemFont,sans-serif">응답 생성</text>
+          <rect x="160" y="0" width="10" height="10" rx="2" fill="#2A1E0A" stroke="#FB923C" stroke-width="1"/>
+          <text x="174" y="9" fill="#4A5270" font-size="9" font-family="-apple-system,BlinkMacSystemFont,sans-serif">질문 재작성</text>
+          <line x1="265" y1="5" x2="290" y2="5" stroke="#4A5270" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <text x="294" y="9" fill="#4A5270" font-size="9" font-family="-apple-system,BlinkMacSystemFont,sans-serif">조건 분기</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-tag ct-blue">State</div>
+        <div class="card-title">AgentState</div>
+        <p class="card-desc"><code style="font-size:0.78rem;color:var(--accent);">messages: Annotated[Sequence[BaseMessage], add_messages]</code> — 그래프 전체를 관통하는 단일 메시지 리스트. 각 노드가 여기에 메시지를 추가한다.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag ct-grey">Tool</div>
+        <div class="card-title">retriever_tool</div>
+        <p class="card-desc">PDF Retriever를 <code style="font-size:0.78rem;color:var(--accent);">create_retriever_tool</code>로 래핑. 에이전트가 도구 호출을 결정하면 LangGraph의 <code style="font-size:0.78rem;color:var(--accent);">ToolNode</code>가 실행한다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Setup -->
+  <section>
+    <h2>환경 설정</h2>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>setup.py</span>
+      </div>
+      <pre><span class="k">from</span> dotenv <span class="k">import</span> load_dotenv
+<span class="k">from</span> langchain_teddynote <span class="k">import</span> logging
+
+load_dotenv()
+logging.<span class="f">langsmith</span>(<span class="s">"CH17-LangGraph-Structures"</span>)</pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>retriever_tool.py</span>
+      </div>
+      <pre><span class="k">from</span> rag.pdf <span class="k">import</span> PDFRetrievalChain
+<span class="k">from</span> langchain_core.tools.retriever <span class="k">import</span> create_retriever_tool
+<span class="k">from</span> langchain_core.prompts <span class="k">import</span> PromptTemplate
+
+<span class="c"># PDF 로드 → retriever / chain 분리</span>
+pdf = PDFRetrievalChain([<span class="s">"data/SPRI_AI_Brief_2023년12월호_F.pdf"</span>]).<span class="f">create_chain</span>()
+pdf_retriever = pdf.retriever
+
+retriever_tool = <span class="f">create_retriever_tool</span>(
+    pdf_retriever,
+    <span class="s">"pdf_retriever"</span>,
+    <span class="s">"Search and return information about SPRI AI Brief PDF file. "</span>
+    <span class="s">"It contains useful information on recent AI trends. Dec 2023."</span>,
+    document_prompt=PromptTemplate.<span class="f">from_template</span>(
+        <span class="s">"&lt;document&gt;&lt;context&gt;{page_content}&lt;/context&gt;"</span>
+        <span class="s">"&lt;metadata&gt;&lt;source&gt;{source}&lt;/source&gt;"</span>
+        <span class="s">"&lt;page&gt;{page}&lt;/page&gt;&lt;/metadata&gt;&lt;/document&gt;"</span>
+    ),
+)
+tools = [retriever_tool]</pre>
+    </div>
+  </section>
+
+  <!-- Nodes -->
+  <section>
+    <h2>노드 구현</h2>
+
+    <h3>Agent State</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>state.py</span>
+      </div>
+      <pre><span class="k">from</span> typing <span class="k">import</span> Annotated, Sequence, TypedDict
+<span class="k">from</span> langchain_core.messages <span class="k">import</span> BaseMessage
+<span class="k">from</span> langgraph.graph.message <span class="k">import</span> add_messages
+
+<span class="k">class</span> <span class="n">AgentState</span>(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], add_messages]</pre>
+    </div>
+
+    <h3 style="margin-top:1.5rem;">grade_documents — 조건부 라우팅 함수</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>grade_documents.py</span>
+      </div>
+      <pre><span class="k">from</span> typing <span class="k">import</span> Literal
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel, Field
+<span class="k">from</span> langchain_openai <span class="k">import</span> ChatOpenAI
+
+<span class="k">class</span> <span class="n">grade</span>(BaseModel):
+    binary_score: str = Field(description=<span class="s">"'yes' or 'no'"</span>)
+
+<span class="k">def</span> <span class="f">grade_documents</span>(state) -> Literal[<span class="s">"generate"</span>, <span class="s">"rewrite"</span>]:
+    model = ChatOpenAI(temperature=<span class="n">0</span>, model=MODEL_NAME, streaming=<span class="k">True</span>)
+    llm_with_tool = model.<span class="f">with_structured_output</span>(grade)
+
+    prompt = PromptTemplate(
+        template=<span class="s">"""You are a grader assessing relevance of a retrieved document
+to a user question. Retrieved document: {context}
+User question: {question}
+Give binary score 'yes' or 'no'."""</span>,
+        input_variables=[<span class="s">"context"</span>, <span class="s">"question"</span>],
+    )
+    chain = prompt | llm_with_tool
+
+    messages  = state[<span class="s">"messages"</span>]
+    question  = messages[<span class="n">0</span>].content          <span class="c"># 첫 번째 = 원래 질문</span>
+    docs      = messages[<span class="n">-1</span>].content          <span class="c"># 마지막 = 검색 결과</span>
+    scored    = chain.<span class="f">invoke</span>({<span class="s">"question"</span>: question, <span class="s">"context"</span>: docs})
+
+    <span class="k">if</span> scored.binary_score == <span class="s">"yes"</span>:
+        <span class="k">return</span> <span class="s">"generate"</span>
+    <span class="k">return</span> <span class="s">"rewrite"</span></pre>
+    </div>
+
+    <h3 style="margin-top:1.5rem;">agent · rewrite · generate</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>nodes.py</span>
+      </div>
+      <pre><span class="k">def</span> <span class="f">agent</span>(state):
+    <span class="c"># 도구가 바인딩된 LLM — tool call 여부를 스스로 결정</span>
+    model = ChatOpenAI(temperature=<span class="n">0</span>, streaming=<span class="k">True</span>, model=MODEL_NAME)
+    model = model.<span class="f">bind_tools</span>(tools)
+    response = model.<span class="f">invoke</span>(state[<span class="s">"messages"</span>])
+    <span class="k">return</span> {<span class="s">"messages"</span>: [response]}
+
+
+<span class="k">def</span> <span class="f">rewrite</span>(state):
+    <span class="c"># 검색 결과가 무관련할 때 — 질문의 의미를 개선하여 재시도</span>
+    question = state[<span class="s">"messages"</span>][<span class="n">0</span>].content
+    msg = [HumanMessage(content=<span class="s">f"""
+Look at the input and try to reason about the underlying semantic intent.
+Initial question: {question}
+Formulate an improved question:"""</span>)]
+    model = ChatOpenAI(temperature=<span class="n">0</span>, model=MODEL_NAME, streaming=<span class="k">True</span>)
+    response = model.<span class="f">invoke</span>(msg)
+    <span class="k">return</span> {<span class="s">"messages"</span>: [response]}
+
+
+<span class="k">def</span> <span class="f">generate</span>(state):
+    <span class="c"># 관련 문서 확인 후 최종 답변 생성</span>
+    question = state[<span class="s">"messages"</span>][<span class="n">0</span>].content
+    docs     = state[<span class="s">"messages"</span>][<span class="n">-1</span>].content
+    prompt   = hub.<span class="f">pull</span>(<span class="s">"teddynote/rag-prompt"</span>)
+    llm      = ChatOpenAI(model_name=MODEL_NAME, temperature=<span class="n">0</span>, streaming=<span class="k">True</span>)
+    rag_chain = prompt | llm | StrOutputParser()
+    response  = rag_chain.<span class="f">invoke</span>({<span class="s">"context"</span>: docs, <span class="s">"question"</span>: question})
+    <span class="k">return</span> {<span class="s">"messages"</span>: [response]}</pre>
+    </div>
+  </section>
+
+  <!-- Graph construction -->
+  <section>
+    <h2>그래프 구성 및 컴파일</h2>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>graph.py</span>
+      </div>
+      <pre><span class="k">from</span> langgraph.graph <span class="k">import</span> END, StateGraph, START
+<span class="k">from</span> langgraph.prebuilt <span class="k">import</span> ToolNode, tools_condition
+<span class="k">from</span> langgraph.checkpoint.memory <span class="k">import</span> MemorySaver
+
+workflow = StateGraph(AgentState)
+
+<span class="c"># 노드 등록</span>
+workflow.<span class="f">add_node</span>(<span class="s">"agent"</span>,    agent)
+workflow.<span class="f">add_node</span>(<span class="s">"retrieve"</span>, ToolNode([retriever_tool]))
+workflow.<span class="f">add_node</span>(<span class="s">"rewrite"</span>,  rewrite)
+workflow.<span class="f">add_node</span>(<span class="s">"generate"</span>, generate)
+
+<span class="c"># 엣지: START → agent</span>
+workflow.<span class="f">add_edge</span>(START, <span class="s">"agent"</span>)
+
+<span class="c"># 조건부 엣지: agent → retrieve | END</span>
+workflow.<span class="f">add_conditional_edges</span>(
+    <span class="s">"agent"</span>,
+    tools_condition,                <span class="c"># tool call 여부 판단</span>
+    {<span class="s">"tools"</span>: <span class="s">"retrieve"</span>, END: END},
+)
+
+<span class="c"># 조건부 엣지: retrieve → generate | rewrite</span>
+workflow.<span class="f">add_conditional_edges</span>(<span class="s">"retrieve"</span>, grade_documents)
+
+workflow.<span class="f">add_edge</span>(<span class="s">"generate"</span>, END)
+workflow.<span class="f">add_edge</span>(<span class="s">"rewrite"</span>,  <span class="s">"agent"</span>)   <span class="c"># 재작성 후 재시도</span>
+
+graph = workflow.<span class="f">compile</span>(checkpointer=MemorySaver())</pre>
+    </div>
+  </section>
+
+  <!-- Execution -->
+  <section>
+    <h2>실행 예시</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>run.py</span>
+      </div>
+      <pre><span class="k">from</span> langchain_core.runnables <span class="k">import</span> RunnableConfig
+<span class="k">from</span> langchain_teddynote.messages <span class="k">import</span> stream_graph, invoke_graph, random_uuid
+
+config = RunnableConfig(
+    recursion_limit=<span class="n">10</span>,
+    configurable={<span class="s">"thread_id"</span>: <span class="f">random_uuid</span>()}
+)</pre>
+    </div>
+
+    <div class="example-block">
+      <div class="example-q">
+        <span class="q-label">Q1</span>
+        <span>"삼성전자가 개발한 생성형 AI 의 이름은?"</span>
+      </div>
+      <div class="flow-trace">
+        <span class="trace-node tn-blue">agent</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-blue">retrieve</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-green">generate</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-grey">END</span>
+      </div>
+      <div class="outcome outcome-ok">
+        문서에서 관련 내용 검색 성공 → <strong>DOCS RELEVANT</strong> → 답변 생성
+      </div>
+    </div>
+
+    <div class="example-block">
+      <div class="example-q">
+        <span class="q-label">Q2</span>
+        <span>"대한민국의 수도는?"</span>
+      </div>
+      <div class="flow-trace">
+        <span class="trace-node tn-blue">agent</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-grey">END</span>
+      </div>
+      <div class="outcome outcome-skip">
+        LLM이 문서 검색 없이도 답할 수 있다고 판단 → 도구 호출 없이 즉시 종료
+      </div>
+    </div>
+
+    <div class="example-block">
+      <div class="example-q">
+        <span class="q-label">Q3</span>
+        <span>"테디노트의 랭체인 튜토리얼에 대해서 알려줘"</span>
+      </div>
+      <div class="flow-trace">
+        <span class="trace-node tn-blue">agent</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-blue">retrieve</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-orange">rewrite</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-blue">agent</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-blue">retrieve</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-orange">rewrite</span>
+        <span class="trace-arrow">→</span>
+        <span class="trace-node tn-grey">…</span>
+      </div>
+      <div class="outcome outcome-err">
+        PDF에 존재하지 않는 주제 → <strong>DOCS NOT RELEVANT</strong> 반복 → rewrite 루프가
+        <code style="font-size:0.8rem;">recursion_limit=10</code> 초과시 <strong>GraphRecursionError</strong> 발생
+      </div>
+    </div>
+
+    <div class="code-block" style="margin-top:1rem;">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span>recursion_guard.py</span>
+      </div>
+      <pre><span class="k">from</span> langgraph.errors <span class="k">import</span> GraphRecursionError
+
+<span class="k">try</span>:
+    <span class="f">stream_graph</span>(graph, inputs, config, [<span class="s">"agent"</span>, <span class="s">"rewrite"</span>, <span class="s">"generate"</span>])
+<span class="k">except</span> GraphRecursionError <span class="k">as</span> e:
+    <span class="f">print</span>(<span class="s">f"GraphRecursionError: {e}"</span>)</pre>
+    </div>
+
+    <div class="warn-box" style="margin-top:1rem;">
+      <strong>재귀 한계 초과</strong> — 문서에 없는 주제를 질문하면 <code>rewrite → agent → retrieve → rewrite</code>
+      루프가 무한 반복됩니다. 다음 튜토리얼에서 이를 해결하는 방법(최대 재시도 횟수 제한 등)을 다룹니다.
+    </div>
+  </section>
+
+  <hr>
+
+  <!-- Summary cards -->
+  <section>
+    <h2>핵심 정리</h2>
+    <div class="card-grid">
+      <div class="card">
+        <div class="card-tag ct-blue">LangGraph 패턴</div>
+        <div class="card-title">tools_condition</div>
+        <p class="card-desc">prebuilt 헬퍼. 마지막 메시지가 <code style="font-size:0.78rem;color:var(--accent);">AIMessage</code>에 tool_calls를 포함하면 <code>"tools"</code>, 없으면 <code>END</code>로 라우팅.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag ct-blue">LangGraph 패턴</div>
+        <div class="card-title">ToolNode</div>
+        <p class="card-desc">tool_calls 목록을 받아 도구를 실행하고 결과를 <code style="font-size:0.78rem;color:var(--accent);">ToolMessage</code>로 상태에 추가하는 prebuilt 노드.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag ct-green">평가 전략</div>
+        <div class="card-title">Binary Grader</div>
+        <p class="card-desc"><code style="font-size:0.78rem;color:var(--green);">with_structured_output(grade)</code>로 구조화된 yes/no 판단. 프롬프트 기반 채점으로 검색 품질을 제어.</p>
+      </div>
+      <div class="card">
+        <div class="card-tag ct-orange">루프 제어</div>
+        <div class="card-title">recursion_limit</div>
+        <p class="card-desc">RunnableConfig에서 설정. 무한 루프 방지용 안전망. 초과 시 <code style="font-size:0.78rem;color:var(--orange);">GraphRecursionError</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>LangGraph Agentic RAG · CH17-06</span>
+    <span>SPRI AI Brief 2023년 12월호 기반</span>
+  </footer>
+
+</div>

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph CRAG (Corrective RAG) 정리</title>
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --surface-2: #e9edf2;
+    --ink: #16202b;
+    --ink-muted: #5a6674;
+    --line: #d6dde5;
+    --accent: #2c6fb3;          /* 검색·평가 – 스틸 블루 */
+    --accent-soft: #d9e7f5;
+    --good: #2f9e6f;            /* 관련 있음·생성 – 그린 */
+    --good-soft: #d6f0e4;
+    --warn: #c07a12;            /* 보정(재작성·웹검색) – 앰버 */
+    --warn-soft: #f6e7cc;
+    --bad: #c0455c;             /* 'no' 채점 – 로즈 */
+    --bad-soft: #f6dde2;
+    --code-bg: #16202b;
+    --code-ink: #dbe2ea;
+    --code-key: #8ec2ff;
+    --code-str: #7bd9ac;
+    --code-com: #6b7787;
+    --shadow: 0 1px 2px rgba(22, 32, 43, 0.05), 0 6px 20px rgba(22, 32, 43, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f151c;
+    --surface: #18212c;
+    --surface-2: #212c38;
+    --ink: #e6edf3;
+    --ink-muted: #9aa7b4;
+    --line: #2b3743;
+    --accent: #6ea8dd;
+    --accent-soft: #17293b;
+    --good: #52c797;
+    --good-soft: #16352a;
+    --warn: #e0a94e;
+    --warn-soft: #3a2c16;
+    --bad: #e08199;
+    --bad-soft: #3a2028;
+    --code-bg: #0b1219;
+    --code-ink: #dbe2ea;
+    --code-key: #8ec2ff;
+    --code-str: #7bd9ac;
+    --code-com: #6b7787;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151c;
+      --surface: #18212c;
+      --surface-2: #212c38;
+      --ink: #e6edf3;
+      --ink-muted: #9aa7b4;
+      --line: #2b3743;
+      --accent: #6ea8dd;
+      --accent-soft: #17293b;
+      --good: #52c797;
+      --good-soft: #16352a;
+      --warn: #e0a94e;
+      --warn-soft: #3a2c16;
+      --bad: #e08199;
+      --bad-soft: #3a2028;
+      --code-bg: #0b1219;
+      --code-ink: #dbe2ea;
+      --code-key: #8ec2ff;
+      --code-str: #7bd9ac;
+      --code-com: #6b7787;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 780px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+
+  .subhead {
+    font-size: 16.5px;
+    color: var(--ink-muted);
+    margin: 0 0 22px;
+    max-width: 64ch;
+    text-wrap: balance;
+  }
+
+  .source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 10px 5px 9px;
+    margin-bottom: 44px;
+  }
+
+  h2 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+    font-weight: 700;
+  }
+  h2 .num {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 9px;
+    font-size: 18px;
+  }
+
+  .section { margin-top: 56px; }
+  .section-lede {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 22px;
+    max-width: 66ch;
+  }
+
+  p { margin: 0 0 14px; }
+  strong { font-weight: 650; }
+  code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .callout code { background: var(--accent-soft); }
+
+  /* ---------- Diagram ---------- */
+  .diagram-scroll { overflow-x: auto; margin: 28px 0 12px; padding: 4px; }
+  .flow { position: relative; width: 680px; height: 752px; margin: 0 auto; }
+  .flow svg { position: absolute; inset: 0; width: 680px; height: 752px; overflow: visible; }
+
+  .fnode {
+    position: absolute;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 8px 14px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .fnode .t { font-weight: 700; font-size: 14px; }
+  .fnode .s {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-muted);
+    line-height: 1.35;
+  }
+
+  .fnode.start    { top: 0px;   left: 268px; width: 144px; height: 44px; background: var(--surface-2); }
+  .fnode.retrieve { top: 82px;  left: 220px; width: 240px; height: 60px; border-color: var(--accent); }
+  .fnode.retrieve .t { color: var(--accent); }
+  .fnode.grade    { top: 180px; left: 205px; width: 270px; height: 66px; border-color: var(--accent); }
+  .fnode.grade .t { color: var(--accent); }
+  .fnode.decide {
+    top: 286px; left: 215px; width: 250px; height: 56px;
+    border-radius: 10px; border-style: dashed;
+  }
+  .fnode.rewrite   { top: 392px; left: 24px; width: 190px; height: 64px; border-color: var(--warn); background: var(--warn-soft); }
+  .fnode.rewrite .t { color: var(--warn); }
+  .fnode.websearch { top: 500px; left: 24px; width: 190px; height: 64px; border-color: var(--warn); background: var(--warn-soft); }
+  .fnode.websearch .t { color: var(--warn); }
+  .fnode.generate  { top: 600px; left: 230px; width: 220px; height: 64px; border-color: var(--good); }
+  .fnode.generate .t { color: var(--good); }
+  .fnode.end       { top: 700px; left: 280px; width: 120px; height: 44px; background: var(--surface-2); }
+
+  .flabel {
+    position: absolute;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .flabel.br-good { top: 470px; left: 352px; color: var(--good); }
+  .flabel.br-warn { top: 348px; left: 96px;  color: var(--warn); }
+  .flabel.correct { top: 456px; left: 232px; color: var(--warn); }
+
+  .legend {
+    display: flex;
+    gap: 8px 20px;
+    justify-content: center;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- Cards grid ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card .ch {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; margin-bottom: 6px;
+  }
+  .card .ch .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .card .d { font-size: 13.8px; color: var(--ink); margin: 0; }
+  .card .fn {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* ---------- Schema cards ---------- */
+  .schema { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .fld {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .fld .k {
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; color: var(--accent);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .fld .ty { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
+  .fld .d { font-size: 13.5px; color: var(--ink); margin-top: 6px; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 18px 0 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); background: var(--surface-2); font-weight: 700;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace; font-size: 13px; }
+  .tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  }
+  .tag.blue { background: var(--accent-soft); color: var(--accent); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.bad  { background: var(--bad-soft); color: var(--bad); }
+
+  /* ---------- Compare table emphasis ---------- */
+  td .naive { color: var(--ink-muted); }
+  td .crag { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Run cards (examples) ---------- */
+  .runcard {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .runcard .rbar {
+    padding: 12px 18px;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+    border-bottom: 1px solid var(--line);
+  }
+  .runcard.happy .rbar { background: var(--good-soft); color: var(--good); }
+  .runcard.correct .rbar { background: var(--warn-soft); color: var(--warn); }
+  .runcard .rbar .pill {
+    font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; background: var(--surface); margin-left: auto;
+  }
+  .runcard.happy .rbar .pill { color: var(--good); }
+  .runcard.correct .rbar .pill { color: var(--warn); }
+  .runcard .rbody { padding: 16px 18px; }
+  .runcard .q {
+    font-size: 14.5px; margin: 0 0 14px;
+  }
+  .runcard .q b { color: var(--ink); }
+
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
+  .steps .st {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .steps .st.blue { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .steps .st.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+  .steps .st.good { border-color: var(--good); color: var(--good); background: var(--good-soft); }
+  .steps .arw { color: var(--ink-muted); font-size: 13px; }
+  .runcard .res {
+    font-size: 13.8px; margin: 0;
+    padding: 11px 14px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .runcard .res b { color: var(--ink); }
+
+  /* ---------- Code panel ---------- */
+  .code-panel {
+    background: var(--code-bg);
+    border-radius: 9px;
+    margin: 14px 0 4px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .code-panel .bar {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 11px; color: #7f8b98; padding: 8px 14px 0;
+  }
+  .code-panel pre { margin: 0; padding: 10px 14px 14px; overflow-x: auto; }
+  .code-panel code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.8px; color: var(--code-ink); line-height: 1.6; white-space: pre;
+    background: none; padding: 0;
+  }
+  .code-panel .k { color: var(--code-key); }
+  .code-panel .s { color: var(--code-str); }
+  .code-panel .c { color: var(--code-com); }
+
+  /* ---------- Recap ---------- */
+  .recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .recap li {
+    display: flex; gap: 12px; font-size: 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .recap li::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+  hr.divider { border: none; border-top: 1px solid var(--line); margin: 56px 0 0; }
+
+  footer { margin-top: 40px; font-size: 12.5px; color: var(--ink-muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 26px; }
+    .page { padding: 40px 16px 72px; }
+    .cards, .schema { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <p class="eyebrow">LangGraph · 03-Use-Cases · 03</p>
+  <h1>검색 결과를 스스로 채점하고, 부족하면 웹에서 보완하는 RAG</h1>
+  <p class="subhead">
+    <strong>CRAG (Corrective RAG)</strong> — 검색해 온 문서가 질문에 정말 맞는지 LLM이 직접 채점하고,
+    쓸 만한 문서가 하나도 없으면 질문을 고쳐 <strong>웹 검색</strong>으로 보완한 뒤 답을 만드는
+    <strong>자기 교정형(self-corrective)</strong> RAG 파이프라인입니다.
+  </p>
+  <span class="source-tag">📓 03-LangGraph-CRAG.ipynb</span>
+
+  <!-- 개요 -->
+  <div class="section">
+    <div class="callout">
+      <span class="label">한눈에 보기</span>
+      <p>
+        일반적인 RAG(Naive RAG)는 <strong>검색된 문서를 그대로 믿고</strong> 바로 답을 만듭니다.
+        문서가 엉뚱해도 그 위에서 답을 지어내니 환각(hallucination) 위험이 있죠.
+      </p>
+      <p>
+        CRAG는 답을 만들기 <strong>전에 한 단계를 더 끼워 넣습니다</strong> — 검색된 각 문서가
+        질문과 관련 있는지 <code>yes/no</code>로 채점하고, 관련 문서가 <strong>하나도 없으면</strong>
+        질문을 다듬어 <code>웹 검색</code>으로 부족한 지식을 보강합니다. 이 "검수 → 보정" 루프가 CRAG의 핵심입니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- 1. CRAG란 -->
+  <div class="section">
+    <h2><span class="num">01</span>Naive RAG vs Corrective RAG</h2>
+    <p class="section-lede">
+      두 방식의 가장 큰 차이는 "검색 결과를 얼마나 믿느냐"입니다. CRAG는 검색 결과를 일단 의심하고 검수합니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:26%">비교 항목</th><th>Naive RAG</th><th>Corrective RAG</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>검색 문서 신뢰</td>
+            <td><span class="naive">검색된 문서를 그대로 사용</span></td>
+            <td><span class="crag">관련성을 채점해 선별 후 사용</span></td>
+          </tr>
+          <tr>
+            <td>관련 문서가 없을 때</td>
+            <td><span class="naive">그대로 생성 (환각 위험)</span></td>
+            <td><span class="crag">웹 검색으로 지식 보강</span></td>
+          </tr>
+          <tr>
+            <td>질문 처리</td>
+            <td><span class="naive">원본 질문 그대로 검색</span></td>
+            <td><span class="crag">필요 시 질문 재작성 후 검색</span></td>
+          </tr>
+          <tr>
+            <td>자기 점검</td>
+            <td><span class="naive">없음</span></td>
+            <td><span class="crag">self-evaluation 단계 포함</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-lede" style="margin-top:22px">
+      원 논문(<em>Corrective Retrieval Augmented Generation</em>)은 문서를 "knowledge strips"로 잘게 나눠
+      정제하는 단계까지 제안하지만, 이 튜토리얼은 <strong>지식 정제 단계는 생략</strong>하고
+      "<strong>관련 문서가 0개면 웹 검색으로 보강</strong>"이라는 핵심 아이디어만 LangGraph로 구현합니다.
+    </p>
+  </div>
+
+  <!-- 2. 전체 흐름 -->
+  <div class="section">
+    <h2><span class="num">02</span>전체 흐름 — 두 갈래 길</h2>
+    <p class="section-lede">
+      <code>retrieve → grade_documents</code>로 문서를 검색·채점한 뒤,
+      <code>decide_to_generate</code>가 <strong>정상 경로</strong>(초록)와 <strong>보정 경로</strong>(주황) 중 하나를 고릅니다.
+    </p>
+
+    <div class="diagram-scroll">
+      <div class="flow">
+        <svg viewBox="0 0 680 752" aria-hidden="true">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted)"></path>
+            </marker>
+            <marker id="a-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path>
+            </marker>
+            <marker id="a-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"></path>
+            </marker>
+          </defs>
+
+          <!-- START -> retrieve -->
+          <path d="M 340 44 L 340 82" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- retrieve -> grade -->
+          <path d="M 340 142 L 340 180" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- grade -> decide -->
+          <path d="M 340 246 L 340 286" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- decide -> generate (happy path, straight down) -->
+          <path d="M 340 342 L 340 600" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+          <!-- decide -> query_rewrite (correction, curve left-down) -->
+          <path d="M 250 342 C 160 362, 119 366, 119 392" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- query_rewrite -> web_search -->
+          <path d="M 119 456 L 119 500" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- web_search -> generate (curve right, merge) -->
+          <path d="M 119 564 C 119 612, 190 632, 230 632" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- generate -> END -->
+          <path d="M 340 664 L 340 700" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+        </svg>
+
+        <div class="fnode start"><div class="t">START</div></div>
+
+        <div class="fnode retrieve">
+          <div class="t">retrieve</div>
+          <div class="s">PDF Retriever로 문서 검색</div>
+        </div>
+
+        <div class="fnode grade">
+          <div class="t">grade_documents</div>
+          <div class="s">문서별 yes/no 채점 → 관련 문서만 남김</div>
+        </div>
+
+        <div class="fnode decide">
+          <div class="t">decide_to_generate</div>
+          <div class="s">web_search 값으로 분기</div>
+        </div>
+
+        <div class="fnode rewrite">
+          <div class="t">query_rewrite</div>
+          <div class="s">질문 재작성<br>(웹 검색용 최적화)</div>
+        </div>
+
+        <div class="fnode websearch">
+          <div class="t">web_search_node</div>
+          <div class="s">Tavily 웹 검색<br>문서에 결과 추가</div>
+        </div>
+
+        <div class="fnode generate">
+          <div class="t">generate</div>
+          <div class="s">RAG 체인으로 최종 답변 생성</div>
+        </div>
+
+        <div class="fnode end"><div class="t">END</div></div>
+
+        <div class="flabel br-good">No · 관련 문서 있음</div>
+        <div class="flabel br-warn">Yes · 관련 문서 없음</div>
+        <div class="flabel correct">보정 후 합류</div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>검색 · 채점</span>
+      <span><i style="background:var(--warn)"></i>보정 경로 (재작성 · 웹검색)</span>
+      <span><i style="background:var(--good)"></i>답변 생성</span>
+      <span><i style="background:var(--surface-2);border:1px solid var(--line)"></i>시작 / 종료</span>
+    </div>
+  </div>
+
+  <!-- 3. 구성요소 -->
+  <div class="section">
+    <h2><span class="num">03</span>파이프라인 4가지 부품</h2>
+    <p class="section-lede">
+      그래프의 노드들은 아래 4개의 LangChain 체인·도구를 각각 감싼 것입니다.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>Retrieval Grader</div>
+        <p class="d">검색된 문서 <strong>한 개씩</strong> 질문과의 관련성을 <code>yes</code>/<code>no</code> 이진 점수로 채점. 구조화 출력(<code>GradeDocuments</code>)으로 형식을 강제.</p>
+        <span class="fn">with_structured_output(GradeDocuments)</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--good)"></span>Generate</div>
+        <p class="d">선별된 문서(+웹 결과)를 컨텍스트로 답을 만드는 <strong>일반 RAG 체인</strong>. Hub의 <code>teddynote/rag-prompt</code> 사용.</p>
+        <span class="fn">prompt | llm | StrOutputParser()</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--warn)"></span>Question Re-writer</div>
+        <p class="d">원본 질문의 <strong>숨은 의도</strong>를 파악해 웹 검색에 더 잘 맞는 형태로 다시 씀. 보정 경로에서만 동작.</p>
+        <span class="fn">re_write_prompt | llm | StrOutputParser()</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--warn)"></span>Web Search Tool</div>
+        <p class="d">부족한 지식을 외부에서 채우는 <strong>Tavily 검색</strong>(최대 3건). 결과를 <code>Document</code>로 묶어 문서 목록에 추가.</p>
+        <span class="fn">TavilySearch(max_results=3)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 상태 -->
+  <div class="section">
+    <h2><span class="num">04</span>상태(State) — 노드끼리 주고받는 값</h2>
+    <p class="section-lede">
+      모든 노드는 이 <code>GraphState</code> 딕셔너리를 읽고 일부 키만 갱신해 반환합니다.
+      특히 <code>web_search</code>가 경로를 가르는 <strong>스위치</strong> 역할을 합니다.
+    </p>
+    <div class="schema">
+      <div class="fld">
+        <div class="k">question <span class="ty">str</span></div>
+        <div class="d">사용자 질문. <strong>재작성되면 이 값이 교체</strong>된다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">generation <span class="ty">str</span></div>
+        <div class="d">LLM이 만든 <strong>최종 답변</strong>.</div>
+      </div>
+      <div class="fld">
+        <div class="k">web_search <span class="ty">str</span></div>
+        <div class="d"><code>"Yes"</code>/<code>"No"</code> — 웹 검색이 필요한지. <strong>분기의 기준.</strong></div>
+      </div>
+      <div class="fld">
+        <div class="k">documents <span class="ty">List[str]</span></div>
+        <div class="d">검색·선별된 문서 목록. 웹 결과도 여기에 <strong>덧붙는다</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 노드 -->
+  <div class="section">
+    <h2><span class="num">05</span>노드 구성</h2>
+    <p class="section-lede">각 노드가 무엇을 하고 상태의 어떤 키를 갱신하는지 정리했습니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>노드</th><th>하는 일</th><th>갱신하는 키</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag blue">retrieve</span></td>
+            <td>PDF Retriever로 질문에 맞는 문서를 검색</td>
+            <td class="mono">documents</td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">grade_documents</span></td>
+            <td>문서별로 관련성 채점, 관련된 것만 남김.<br>관련 문서 0개면 <code>web_search="Yes"</code></td>
+            <td class="mono">documents,<br>web_search</td>
+          </tr>
+          <tr>
+            <td><span class="tag warn">query_rewrite</span></td>
+            <td>웹 검색에 맞게 질문을 재작성</td>
+            <td class="mono">question</td>
+          </tr>
+          <tr>
+            <td><span class="tag warn">web_search_node</span></td>
+            <td>Tavily로 웹 검색 후 결과를 문서에 추가</td>
+            <td class="mono">documents</td>
+          </tr>
+          <tr>
+            <td><span class="tag good">generate</span></td>
+            <td>선별된 문서로 RAG 답변 생성</td>
+            <td class="mono">generation</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. 분기 -->
+  <div class="section">
+    <h2><span class="num">06</span>분기의 핵심 — <code>decide_to_generate</code></h2>
+    <p class="section-lede">
+      <code>grade_documents</code> 뒤에 붙는 조건부 엣지. 채점이 정한 <code>web_search</code> 값만 보고
+      다음 노드를 고릅니다. 규칙은 단 두 줄입니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>web_search 값</th><th>이동</th><th>의미</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">"No"</td>
+            <td><span class="tag good">generate</span></td>
+            <td>관련 문서가 하나라도 있음 → 바로 답변 생성 (정상 경로)</td>
+          </tr>
+          <tr>
+            <td class="mono">"Yes"</td>
+            <td><span class="tag warn">query_rewrite</span></td>
+            <td>관련 문서가 0개 → 질문 재작성 후 웹 검색으로 보정</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="code-panel">
+      <div class="bar">decide_to_generate() · 조건부 라우팅</div>
+      <pre><code><span class="k">def</span> decide_to_generate(state):
+    <span class="k">if</span> state[<span class="s">"web_search"</span>] == <span class="s">"Yes"</span>:
+        <span class="c"># 관련 문서 없음 → 보정 경로</span>
+        <span class="k">return</span> <span class="s">"query_rewrite"</span>
+    <span class="k">else</span>:
+        <span class="c"># 관련 문서 있음 → 바로 생성</span>
+        <span class="k">return</span> <span class="s">"generate"</span></code></pre>
+    </div>
+  </div>
+
+  <!-- 7. 실행 예시 -->
+  <div class="section">
+    <h2><span class="num">07</span>실행 예시 — 두 경로 비교</h2>
+    <p class="section-lede">
+      같은 그래프라도 질문에 따라 다른 길을 탑니다. 실습 PDF는
+      <em>SPRi AI Brief 2023년 12월호</em>라는 점이 열쇠입니다.
+    </p>
+
+    <div class="runcard happy">
+      <div class="rbar">
+        정상 경로 — 문서에 답이 있는 경우
+        <span class="pill">web_search = No</span>
+      </div>
+      <div class="rbody">
+        <p class="q">질문: <b>"삼성전자가 개발한 생성형 AI 의 이름은?"</b></p>
+        <div class="steps">
+          <span class="st blue">retrieve</span>
+          <span class="arw">→</span>
+          <span class="st blue">grade_documents</span>
+          <span class="arw">→</span>
+          <span class="st good">generate</span>
+          <span class="arw">→</span>
+          <span class="st">END</span>
+        </div>
+        <p class="res">
+          PDF 안에 관련 내용이 있어 채점을 통과한 문서가 남습니다.
+          웹 검색 없이 곧바로 생성 단계로 넘어가 <b>"삼성 가우스"</b>라는 답을 만들어 냅니다.
+        </p>
+      </div>
+    </div>
+
+    <div class="runcard correct">
+      <div class="rbar">
+        보정 경로 — 문서에 답이 없는 경우
+        <span class="pill">web_search = Yes</span>
+      </div>
+      <div class="rbody">
+        <p class="q">질문: <b>"2024년 노벨문학상 수상자의 이름은?"</b></p>
+        <div class="steps">
+          <span class="st blue">retrieve</span>
+          <span class="arw">→</span>
+          <span class="st blue">grade_documents</span>
+          <span class="arw">→</span>
+          <span class="st warn">query_rewrite</span>
+          <span class="arw">→</span>
+          <span class="st warn">web_search_node</span>
+          <span class="arw">→</span>
+          <span class="st good">generate</span>
+          <span class="arw">→</span>
+          <span class="st">END</span>
+        </div>
+        <p class="res">
+          PDF는 2023년 자료라 노벨문학상 정보가 없습니다. 모든 문서가 채점에서 탈락(관련 문서 0개)해
+          <b>web_search="Yes"</b>가 되고, 질문을 재작성한 뒤 <b>웹 검색으로 최신 정보를 보강</b>해 답을 만듭니다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 그래프 조립 -->
+  <div class="section">
+    <h2><span class="num">08</span>그래프 조립 코드</h2>
+    <p class="section-lede">
+      노드와 엣지를 연결하면 앞의 다이어그램이 그대로 코드가 됩니다.
+      핵심은 <code>grade_documents</code>에 건 <strong>조건부 엣지</strong> 하나입니다.
+    </p>
+    <div class="code-panel">
+      <div class="bar">workflow 구성 · StateGraph</div>
+      <pre><code>workflow.add_edge(START, <span class="s">"retrieve"</span>)
+workflow.add_edge(<span class="s">"retrieve"</span>, <span class="s">"grade_documents"</span>)
+
+<span class="c"># 채점 결과에 따라 두 갈래로 분기</span>
+workflow.add_conditional_edges(
+    <span class="s">"grade_documents"</span>,
+    decide_to_generate,
+    {
+        <span class="s">"query_rewrite"</span>: <span class="s">"query_rewrite"</span>,  <span class="c"># 보정 경로</span>
+        <span class="s">"generate"</span>: <span class="s">"generate"</span>,            <span class="c"># 정상 경로</span>
+    },
+)
+
+<span class="c"># 보정 경로: 재작성 → 웹 검색 → 생성으로 합류</span>
+workflow.add_edge(<span class="s">"query_rewrite"</span>, <span class="s">"web_search_node"</span>)
+workflow.add_edge(<span class="s">"web_search_node"</span>, <span class="s">"generate"</span>)
+workflow.add_edge(<span class="s">"generate"</span>, END)
+
+app = workflow.compile()</code></pre>
+    </div>
+  </div>
+
+  <!-- Recap -->
+  <div class="section">
+    <h2><span class="num">09</span>핵심 정리</h2>
+    <ul class="recap">
+      <li>CRAG는 <strong>답을 만들기 전에 검색 결과를 채점</strong>하는 "검수 단계"를 추가한 RAG다.</li>
+      <li>채점은 문서 <strong>하나씩</strong> <code>yes/no</code> 이진 점수로, 관련된 것만 남긴다.</li>
+      <li>관련 문서가 <strong>0개면</strong> <code>web_search="Yes"</code> → 질문 재작성 → 웹 검색으로 보강한다.</li>
+      <li>분기 <code>decide_to_generate</code>는 오직 <code>web_search</code> 값 하나로 경로를 정한다.</li>
+      <li>정상 경로와 보정 경로는 모두 <strong><code>generate</code>에서 합류</strong>해 최종 답을 만든다.</li>
+      <li>이 튜토리얼은 원 논문의 <strong>지식 정제 단계는 생략</strong>한 간소화 버전이다.</li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+  <footer>
+    LangGraph 03-Use-Cases · CRAG (Corrective RAG) 학습 정리 · 03-LangGraph-CRAG.ipynb
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Notes</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666666;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --card-bg: #f7f7f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151a;
+      --fg: #e8e8ea;
+      --muted: #9a9aa2;
+      --border: #2a2b32;
+      --accent: #6ea8fe;
+      --card-bg: #1c1d24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2.5rem 1.25rem 4rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 0.4rem;
+  }
+  p.subtitle {
+    color: var(--muted);
+    margin: 0 0 2.5rem;
+    font-size: 0.95rem;
+  }
+  h2 {
+    font-size: 1.05rem;
+    margin: 2.2rem 0 0.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  li a {
+    display: block;
+    padding: 0.7rem 0.9rem;
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.92rem;
+    border: 1px solid var(--border);
+    transition: border-color 0.15s ease;
+  }
+  li a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Study Notes</h1>
+  <p class="subtitle">저장소 내 HTML 문서 목차</p>
+
+  <h2>LangGraph / Structures</h2>
+  <ul>
+    <li><a href="17-LangGraph/02-Structures/06-LangGraph-Agentic-RAG.html">LangGraph Agentic RAG</a></li>
+    <li><a href="17-LangGraph/02-Structures/07-LangGraph-Adaptive-RAG.html">LangGraph Adaptive RAG</a></li>
+    <li><a href="17-LangGraph/02-Structures/agent.html">Agent</a></li>
+  </ul>
+
+  <h2>LangGraph / Use Cases</h2>
+  <ul>
+    <li><a href="17-LangGraph/03-Use-Cases/01-LangGraph-Agent-Simulation.html">LangGraph Agent Simulation</a></li>
+    <li><a href="17-LangGraph/03-Use-Cases/02-LangGraph-Prompt-Generation.html">LangGraph Prompt Generation</a></li>
+    <li><a href="17-LangGraph/03-Use-Cases/03-LangGraph-CRAG.html">LangGraph CRAG</a></li>
+    <li><a href="17-LangGraph/03-Use-Cases/Meta-Prompting-Deep-Dive.html">Meta Prompting Deep Dive</a></li>
+    <li><a href="17-LangGraph/03-Use-Cases/Meta-Prompting-Guide.html">Meta Prompting Guide</a></li>
+  </ul>
+</main>
+</body>
+</html>

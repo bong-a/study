@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>메타 프롬프트 엔지니어링 · 쉽게 이해하기</title>
+<style>
+  /* ---------- Tokens ---------- */
+  :root {
+    --bg: #F5F6F9;
+    --surface: #FFFFFF;
+    --surface-2: #EFF1F5;
+    --ink: #191C22;
+    --muted: #5B6472;
+    --faint: #868E9C;
+    --accent: #26695E;        /* deep teal */
+    --accent-soft: #DCEBE7;
+    --accent-2: #B96E22;      /* warm ochre */
+    --accent-2-soft: #F5E6D2;
+    --border: #E1E5EB;
+    --border-strong: #CBD1DA;
+    --code-bg: #1C2128;
+    --code-ink: #E6E9EE;
+    --code-comment: #E0A05A;
+    --shadow: 0 1px 2px rgba(20,24,32,.05), 0 8px 24px -12px rgba(20,24,32,.12);
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151A;
+      --surface: #1A1E25;
+      --surface-2: #21262E;
+      --ink: #E7EAEF;
+      --muted: #9BA4B1;
+      --faint: #737C8A;
+      --accent: #5FBFB0;
+      --accent-soft: #17332E;
+      --accent-2: #E0A05A;
+      --accent-2-soft: #37291A;
+      --border: #2A303A;
+      --border-strong: #3A414D;
+      --code-bg: #0E1116;
+      --code-ink: #E6E9EE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F6F9; --surface: #FFFFFF; --surface-2: #EFF1F5;
+    --ink: #191C22; --muted: #5B6472; --faint: #868E9C;
+    --accent: #26695E; --accent-soft: #DCEBE7; --accent-2: #B96E22; --accent-2-soft: #F5E6D2;
+    --border: #E1E5EB; --border-strong: #CBD1DA;
+    --code-bg: #1C2128; --code-ink: #E6E9EE;
+    --shadow: 0 1px 2px rgba(20,24,32,.05), 0 8px 24px -12px rgba(20,24,32,.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151A; --surface: #1A1E25; --surface-2: #21262E;
+    --ink: #E7EAEF; --muted: #9BA4B1; --faint: #737C8A;
+    --accent: #5FBFB0; --accent-soft: #17332E; --accent-2: #E0A05A; --accent-2-soft: #37291A;
+    --border: #2A303A; --border-strong: #3A414D;
+    --code-bg: #0E1116; --code-ink: #E6E9EE;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.5);
+  }
+
+  /* ---------- Base ---------- */
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.7;
+    letter-spacing: -0.003em;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+  section { margin: 0 auto; }
+
+  ::selection { background: var(--accent-soft); color: var(--ink); }
+
+  /* ---------- Header ---------- */
+  header.top {
+    position: sticky; top: 0; z-index: 20;
+    backdrop-filter: saturate(1.4) blur(10px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--border);
+  }
+  .top-inner {
+    max-width: 820px; margin: 0 auto; padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .brand {
+    font-family: var(--mono);
+    font-size: 12.5px; letter-spacing: .04em;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand b { color: var(--accent); font-weight: 600; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .theme-btn {
+    margin-left: auto;
+    font-family: var(--mono); font-size: 12px;
+    color: var(--muted); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer; transition: border-color .15s, color .15s;
+  }
+  .theme-btn:hover { border-color: var(--border-strong); color: var(--ink); }
+  .theme-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- Hero ---------- */
+  .hero { padding: 68px 0 40px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent);
+    display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  }
+  .eyebrow::before { content: ""; width: 22px; height: 1px; background: var(--accent); display: inline-block; }
+  h1 {
+    font-size: clamp(2.1rem, 5.4vw, 3.15rem);
+    line-height: 1.08; letter-spacing: -0.025em; font-weight: 700;
+    margin: 0 0 18px; text-wrap: balance;
+  }
+  h1 .hl { color: var(--accent); }
+  .lede {
+    font-size: 1.16rem; color: var(--muted); max-width: 60ch;
+    line-height: 1.62; margin: 0;
+  }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Nested hero diagram ---------- */
+  .nest { margin: 44px 0 8px; }
+  .layer {
+    border: 1.5px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 18px 18px 20px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .layer + .layer { }
+  .layer .tag {
+    position: absolute; top: -11px; left: 16px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em;
+    padding: 2px 10px; border-radius: 999px;
+    background: var(--surface); border: 1.5px solid var(--border-strong);
+    color: var(--muted);
+  }
+  .layer .role { font-size: 14.5px; color: var(--muted); padding: 4px 2px 14px; }
+  .layer .role b { color: var(--ink); }
+  .layer.l1 { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong)); }
+  .layer.l1 > .tag { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong)); color: var(--accent); }
+  .layer.l2 { border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border-strong)); background: var(--surface-2); }
+  .layer.l2 > .tag { border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border-strong)); background: var(--surface-2); color: var(--accent-2); }
+  .layer.l3 { background: var(--bg); }
+  .layer.l3 > .tag { background: var(--bg); }
+  .nest-caption { font-family: var(--mono); font-size: 12.5px; color: var(--faint); text-align: center; margin-top: 22px; }
+
+  /* ---------- Section scaffolding ---------- */
+  .block { padding: 46px 0; border-top: 1px solid var(--border); }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--faint); margin: 0 0 10px;
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  .kicker .num { color: var(--accent); font-weight: 600; }
+  h2 { font-size: 1.62rem; line-height: 1.2; letter-spacing: -0.02em; margin: 0 0 16px; font-weight: 680; text-wrap: balance; }
+  h3 { font-size: 1.12rem; margin: 30px 0 10px; letter-spacing: -0.01em; }
+  p { margin: 0 0 15px; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  strong { font-weight: 640; }
+  .em { color: var(--accent); font-weight: 600; }
+
+  /* ---------- Tables ---------- */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 460px; background: var(--surface); }
+  thead th {
+    text-align: left; font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--muted); font-weight: 600; padding: 12px 16px; background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 13px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody td:first-child { font-weight: 600; white-space: nowrap; }
+  td code, p code, li code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); padding: 1.5px 6px; border-radius: 5px; border: 1px solid var(--border); }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--accent-2-soft);
+    border: 1px solid color-mix(in srgb, var(--accent-2) 35%, var(--border));
+    border-left: 3px solid var(--accent-2);
+    border-radius: 12px; padding: 16px 18px; margin: 22px 0; font-size: 15.5px;
+  }
+  .callout .ci { font-family: var(--mono); font-weight: 700; color: var(--accent-2); font-size: 13px; letter-spacing: .04em; flex: none; padding-top: 2px; }
+  .callout p { margin: 0; }
+  .callout b { color: var(--ink); }
+
+  .note {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-left: 3px solid var(--accent);
+    border-radius: 12px; padding: 16px 18px; margin: 22px 0; font-size: 15.5px;
+  }
+  .note b { color: var(--ink); }
+
+  /* ---------- Two-column compare ---------- */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 8px 0; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; box-shadow: var(--shadow);
+  }
+  .card.good { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  .card h4 { margin: 0 0 6px; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+  .card .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+  .card.good .lbl { color: var(--accent); }
+  .flow { font-family: var(--mono); font-size: 13px; line-height: 1.9; color: var(--muted); margin-top: 12px; }
+  .flow .step { color: var(--ink); }
+  .flow .arrow { color: var(--accent); }
+  .card .verdict { margin-top: 14px; font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- Stepper ---------- */
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 8px 0 4px; counter-reset: step; }
+  .step-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 14px; position: relative; box-shadow: var(--shadow);
+  }
+  .step-box .n {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent);
+    background: var(--accent-soft); width: 26px; height: 26px; border-radius: 8px;
+    display: grid; place-items: center; margin-bottom: 12px;
+  }
+  .step-box .st { font-size: 14.5px; font-weight: 640; margin-bottom: 4px; }
+  .step-box .sd { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .step-box::after {
+    content: "→"; position: absolute; right: -10px; top: 50%; transform: translateY(-50%);
+    color: var(--border-strong); font-size: 15px; z-index: 2;
+  }
+  .step-box:last-child::after { display: none; }
+
+  /* ---------- Code ---------- */
+  .code {
+    background: var(--code-bg); border-radius: 12px; overflow: hidden;
+    margin: 18px 0; border: 1px solid var(--border-strong); box-shadow: var(--shadow);
+  }
+  .code-head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    font-family: var(--mono); font-size: 12px; color: #98A2B3;
+  }
+  .code-head .fname { margin-left: auto; opacity: .8; }
+  .code-head .b { width: 11px; height: 11px; border-radius: 50%; background: #414B58; }
+  pre { margin: 0; overflow-x: auto; padding: 16px 18px; }
+  pre code { font-family: var(--mono); font-size: 13.5px; line-height: 1.7; color: var(--code-ink); white-space: pre; }
+  pre .cm { color: var(--code-comment); }
+  pre .kw { color: #7FB8FF; }
+  pre .str { color: #8DD6A6; }
+  pre .fn { color: #E6C07B; }
+
+  /* ---------- Diagram (schema dilemma) ---------- */
+  .dgm { font-family: var(--mono); font-size: 13px; line-height: 1.9; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; overflow-x: auto; box-shadow: var(--shadow); }
+  .dgm .lo { color: var(--faint); }
+  .dgm .hi { color: var(--accent-2); font-weight: 600; }
+  .dgm .ok { color: var(--accent); font-weight: 600; }
+
+  /* ---------- Takeaway ---------- */
+  .final {
+    background: var(--surface); border: 1.5px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 16px; padding: 28px; box-shadow: var(--shadow); margin: 8px 0;
+  }
+  .final .big { font-size: 1.2rem; line-height: 1.6; margin: 0 0 4px; font-weight: 600; text-wrap: balance; }
+  .takeaways { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 14px; }
+  .takeaways li { display: flex; gap: 14px; align-items: flex-start; }
+  .takeaways .tnum {
+    font-family: var(--mono); font-weight: 700; color: var(--accent); flex: none;
+    width: 28px; height: 28px; border-radius: 8px; background: var(--accent-soft);
+    display: grid; place-items: center; font-size: 13px;
+  }
+  .takeaways .tt { font-size: 15.5px; }
+  .takeaways .tt b { color: var(--ink); }
+
+  /* ---------- Footer ---------- */
+  footer { border-top: 1px solid var(--border); padding: 30px 0 60px; color: var(--faint); font-size: 13px; }
+  footer .fmono { font-family: var(--mono); font-size: 12px; }
+  footer a { color: var(--muted); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    .steps { grid-template-columns: 1fr 1fr; }
+    .step-box::after { display: none; }
+    .compare { grid-template-columns: 1fr; }
+    .hero { padding: 48px 0 32px; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { opacity: 0; transform: translateY(12px); animation: rise .6s ease forwards; }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <span class="brand"><span class="dot"></span> <b>meta-prompting</b> · 학습 노트</span>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="테마 전환">◐ theme</button>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap reveal">
+      <span class="eyebrow">OpenAI · Prompt Generation</span>
+      <h1>프롬프트를 직접 쓰지 말고,<br><span class="hl">프롬프트를 써주는 프롬프트</span>에게 시켜라</h1>
+      <p class="lede">이것이 <b>메타 프롬프트 엔지니어링</b>입니다. 당신은 <b>"하고 싶은 일"</b>만 설명하면, 프롬프트 엔지니어링 모범 사례가 모두 반영된 <b>완성된 프롬프트</b>가 자동으로 만들어집니다.</p>
+
+      <!-- nested diagram -->
+      <div class="nest">
+        <div class="layer l1">
+          <span class="tag">META-PROMPT · 셰프</span>
+          <div class="role">"좋은 프롬프트를 만들어라"고 <b>모델에게 지시하는 상위 프롬프트</b></div>
+          <div class="layer l2">
+            <span class="tag">PROMPT · 레시피</span>
+            <div class="role">모델에게 주는 <b>실제 지시문</b> (자동 생성됨)</div>
+            <div class="layer l3">
+              <span class="tag">OUTPUT · 요리</span>
+              <div class="role" style="padding-bottom:4px">모델의 <b>최종 응답</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="nest-caption">"meta-" = ~에 대한 ~ &nbsp;·&nbsp; 프롬프트를 만들기 위한 프롬프트</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. 핵심 개념 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">01</span> 핵심 개념</p>
+      <h2>먼저 세 단어만 구분하면 끝</h2>
+      <p>모든 혼란은 이 세 가지를 헷갈리는 데서 시작합니다. "메타(meta-)"는 <span class="em">"~에 대한 ~"</span>라는 뜻 — 즉 <strong>프롬프트를 만들기 위한 프롬프트</strong>, <strong>스키마를 만들기 위한 스키마</strong>입니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>용어</th><th>정체</th><th>비유</th></tr></thead>
+          <tbody>
+            <tr><td>프롬프트<br>Prompt</td><td>모델에게 주는 실제 지시문</td><td>🍳 요리 레시피</td></tr>
+            <tr><td>메타 프롬프트<br>Meta-Prompt</td><td>"좋은 프롬프트를 만들어라"고 모델에게 지시하는 상위 프롬프트</td><td>👨‍🍳 레시피를 써주는 셰프</td></tr>
+            <tr><td>메타 스키마<br>Meta-Schema</td><td>"좋은 JSON 스키마를 만들어라"고 지시하는, 자기 자신을 설명하는 JSON</td><td>📋 양식을 만들어주는 양식</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 일반 vs 메타 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">02</span> 왜 필요한가</p>
+      <h2>노하우를 몰라도, 전문가 수준 프롬프트를 얻는다</h2>
+      <p>기존 방식은 사람이 프롬프트 엔지니어링 모범 사례를 직접 알아야 했습니다. 메타 방식은 그 노하우를 <span class="em">모델 안에 내장</span>시켜버립니다.</p>
+      <div class="compare">
+        <div class="card">
+          <span class="lbl">기존 방식</span>
+          <h4>사람이 직접 작성</h4>
+          <div class="flow">
+            <span class="step">사람</span> <span class="arrow">→</span> <span class="step">프롬프트 직접 작성</span> <span class="arrow">→</span> <span class="step">모델</span>
+          </div>
+          <div class="verdict">모범 사례를 스스로 알고 있어야 하고, 손이 많이 감</div>
+        </div>
+        <div class="card good">
+          <span class="lbl">메타 방식</span>
+          <h4>할 일만 설명</h4>
+          <div class="flow">
+            <span class="step">사람</span> <span class="arrow">→</span> <span class="step">할 일 설명만</span> <span class="arrow">→</span> <span class="step">[메타 프롬프트 + 모델]</span> <span class="arrow">→</span> <span class="step">완성된 프롬프트</span>
+          </div>
+          <div class="verdict">모범 사례가 <b style="color:var(--accent)">자동 반영</b>됨</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. 워크플로우 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">03</span> 동작 원리</p>
+      <h2>5단계 워크플로우</h2>
+      <p>입력부터 전달까지, 시스템 내부는 이렇게 흘러갑니다.</p>
+      <div class="steps">
+        <div class="step-box"><div class="n">1</div><div class="st">입력</div><div class="sd">"할 일" 또는 기존 프롬프트를 설명</div></div>
+        <div class="step-box"><div class="n">2</div><div class="st">메타 프롬프트 적용</div><div class="sd">출력 타입(텍스트/오디오/스키마)에 맞는 메타 프롬프트 선택</div></div>
+        <div class="step-box"><div class="n">3</div><div class="st">생성</div><div class="sd">모델이 아래 원칙을 지키며 결과물 생성</div></div>
+        <div class="step-box"><div class="n">4</div><div class="st">검증</div><div class="sd">스키마인 경우 strict 모드 준수하도록 변환·정리</div></div>
+        <div class="step-box"><div class="n">5</div><div class="st">전달</div><div class="sd">최종 프롬프트/스키마 반환</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 원칙 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">04</span> 생성 규칙</p>
+      <h2>생성된 프롬프트가 반드시 지키는 원칙</h2>
+      <p>③ 생성 단계에서 메타 프롬프트는 결과물이 다음 규칙을 따르도록 강제합니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>원칙</th><th>내용</th><th>왜?</th></tr></thead>
+          <tbody>
+            <tr><td>추론 먼저,<br>결론 나중</td><td>이유를 먼저 설명하게 하고, 결론·분류·결과는 <strong>항상 맨 마지막</strong>에</td><td>답부터 성급히 내면 정확도↓ (Chain-of-Thought)</td></tr>
+            <tr><td>예시 포함</td><td>1~3개의 고품질 예시 제공</td><td>원하는 형식을 모델이 흉내 내게 함</td></tr>
+            <tr><td>플레이스홀더</td><td>복잡한 부분은 <code>[대괄호]</code>로 표시</td><td>예시를 재사용 가능한 템플릿으로</td></tr>
+            <tr><td>출력 형식 명시</td><td>원하는 결과 포맷을 상세히 지정</td><td>일관된 결과 보장</td></tr>
+            <tr><td>구조화된 섹션</td><td>예시·단계·주의사항·출력형식을 구획으로 분리</td><td>지시가 명확해짐</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="ci">KEY</span>
+        <p><b>가장 중요한 규칙 — "결론은 항상 마지막에".</b> 모델이 답을 내기 전에 <b>생각할 시간(추론 토큰)</b>을 주는 것이 메타 프롬프트의 핵심 철학입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 스키마 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">05</span> 구조화 출력</p>
+      <h2>스키마 생성과 재미있는 딜레마</h2>
+      <p>JSON 형태의 정형 출력을 만들 때는 <span class="em">메타 스키마</span>를 씁니다. 생성된 스키마는 다음 제약을 지켜야 합니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>규칙</th><th>값</th></tr></thead>
+          <tbody>
+            <tr><td>모든 필드</td><td><code>required</code> (필수)로 지정</td></tr>
+            <tr><td><code>additionalProperties</code></td><td><code>false</code> — 정의 안 된 필드 금지</td></tr>
+            <tr><td>객체(object)</td><td>반드시 <code>properties</code>를 가져야 함</td></tr>
+            <tr><td>필드 순서</td><td>추론 → 결론 순서 유지</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>⚠️ "닭이 먼저냐 달걀이 먼저냐" 딜레마</h3>
+      <p>메타 스키마는 동적으로 키를 생성해야 해서 <code>additionalProperties</code>에 의존하는데, 이건 OpenAI의 <strong>strict 모드에서는 금지</strong>된 기능입니다.</p>
+      <div class="dgm">
+<span class="hi">[모순]</span> <span class="lo">strict 모드로 스키마를 만들고 싶다</span>
+        <span class="lo">↓</span>
+<span class="lo">그런데 스키마를 "만드는 과정"은 strict 모드가 지원 안 하는 기능이 필요하다</span>
+        <span class="lo">↓</span>
+<span class="ok">[해결]</span> "유사 메타 스키마(pseudo-meta-schema)" 사용
+        <span class="lo">↓</span>
+<span class="lo">생성은 non-strict로 → 생성 후 ④검증 단계에서 strict 모드에 맞게 자동 정리(cleaning)</span>
+      </div>
+      <div class="note"><b>한 줄 요약:</b> "만들 때는 느슨하게, 다 만든 뒤 엄격하게 정리"하는 방식으로 우회합니다.</div>
+    </div>
+  </section>
+
+  <!-- 6. 코드 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">06</span> 코드 패턴</p>
+      <h2>실제 호출은 이 두 가지</h2>
+      <p>두 예제의 패턴은 동일합니다 — <code>system</code>에 <strong>메타 프롬프트/메타 스키마</strong>를 넣고, <code>user</code>에 <strong>"내가 하고 싶은 일"</strong>만 설명합니다.</p>
+
+      <div class="code">
+        <div class="code-head"><span class="b"></span><span class="b"></span><span class="b"></span><span class="fname">① 텍스트 프롬프트 생성.py</span></div>
+        <pre><code><span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+client = <span class="fn">OpenAI</span>()
+
+<span class="kw">def</span> <span class="fn">generate_prompt</span>(task_or_prompt: str):
+    completion = client.chat.completions.<span class="fn">create</span>(
+        model=<span class="str">"gpt-5.5"</span>,
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: META_PROMPT},          <span class="cm"># ← 핵심: 메타 프롬프트를 system 역할로</span>
+            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"Task, Goal, or Current Prompt:\n"</span> + task_or_prompt},
+        ],
+    )
+    <span class="kw">return</span> completion.choices[0].message.content</code></pre>
+      </div>
+
+      <div class="code">
+        <div class="code-head"><span class="b"></span><span class="b"></span><span class="b"></span><span class="fname">② 스키마 생성.py</span></div>
+        <pre><code><span class="kw">def</span> <span class="fn">generate_schema</span>(description: str):
+    completion = client.chat.completions.<span class="fn">create</span>(
+        model=<span class="str">"gpt-5.4-mini"</span>,
+        response_format={<span class="str">"type"</span>: <span class="str">"json_schema"</span>, <span class="str">"json_schema"</span>: META_SCHEMA},  <span class="cm"># ← 메타 스키마 지정</span>
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: META_PROMPT},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"Description:\n"</span> + description},
+        ],
+    )
+    <span class="kw">return</span> json.<span class="fn">loads</span>(completion.choices[0].message.content)</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. 편집 모드 & 오디오 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">07</span> 두 가지 특수 모드</p>
+      <h2>기존 프롬프트 "개선" & 오디오 출력</h2>
+
+      <h3>✏️ 기존 프롬프트 개선 모드</h3>
+      <p>새로 만드는 것뿐 아니라 기존 프롬프트를 다듬을 수도 있습니다. 이때는 모델이 <strong>"어디를 왜 고칠지" 먼저 스스로 진단</strong>한 뒤 개선안을 내놓습니다.</p>
+      <div class="dgm">
+<span class="hi">&lt;reasoning&gt;</span>
+   <span class="lo">- 변경이 간단한가?</span>
+   <span class="lo">- 추론(Chain-of-Thought) 순서가 올바른가?</span>
+   <span class="lo">- 구조가 좋은가?</span>
+   <span class="lo">- 예시가 대표성이 있는가?</span>
+   <span class="lo">- 복잡도는 적절한가?</span>
+<span class="hi">&lt;/reasoning&gt;</span>
+        <span class="lo">↓</span>
+<span class="ok">최종 개선된 프롬프트 출력</span>
+      </div>
+
+      <h3>🔊 오디오 출력용 특수 규칙</h3>
+      <p>음성으로 답하는 모델용 프롬프트에는 별도 제약이 추가됩니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>항목</th><th>규칙</th></tr></thead>
+          <tbody>
+            <tr><td>길이</td><td>짧고 대화체로 (문장당 <strong>5~20 단어</strong> 정도)</td></tr>
+            <tr><td>톤</td><td>감정 있고 친근하게 (emotive &amp; friendly)</td></tr>
+            <tr><td>예시</td><td>여러 턴의 자연스러운 대화 흐름 포함</td></tr>
+            <tr><td>속도</td><td>사용자를 기다리게 하지 않도록 빠른 응답</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. 정리 -->
+  <section class="block">
+    <div class="wrap">
+      <p class="kicker"><span class="num">08</span> 정리</p>
+      <h2>이 문서가 말하는 것</h2>
+      <div class="final">
+        <p class="big">"프롬프트 엔지니어링 노하우"를 모델 안에 내장시켜서 —<br>사용자는 노하우를 몰라도, <span class="em">할 일만 말하면 전문가 수준 프롬프트를 얻는다.</span></p>
+        <ul class="takeaways">
+          <li><span class="tnum">1</span><span class="tt"><b>한 단계 위에서 생각하기.</b> 프롬프트를 직접 쓰지 말고, 프롬프트를 써주는 프롬프트를 쓴다.</span></li>
+          <li><span class="tnum">2</span><span class="tt"><b>모범 사례의 자동화.</b> "추론 먼저·결론 나중", "예시 포함", "형식 명시" 같은 규칙이 자동 적용된다.</span></li>
+          <li><span class="tnum">3</span><span class="tt"><b>생성 후 검증.</b> 특히 스키마는 느슨하게 생성 → strict 모드로 정리하는 2단계 안전장치를 둔다.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="fmono">출처 · OpenAI Developer Docs — Prompt Generation</p>
+    <p><a href="https://developers.openai.com/api/docs/guides/prompt-generation">developers.openai.com/api/docs/guides/prompt-generation</a></p>
+    <p style="margin-top:14px">※ 원문의 <code>META_PROMPT</code> / <code>META_SCHEMA</code> 전체 텍스트는 코드 상수로만 참조되어 이 요약에는 포함되지 않았습니다.</p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var btn = document.getElementById('themeBtn');
+    var root = document.documentElement;
+    btn.addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme');
+      var isDark = cur ? cur === 'dark'
+        : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    });
+  })();
+</script>
+</body>
+</html>

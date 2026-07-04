@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>META_PROMPT &amp; META_SCHEMA 해부 · 심화</title>
+<style>
+  :root {
+    --bg: #F5F6F9; --surface: #FFFFFF; --surface-2: #EFF1F5;
+    --ink: #191C22; --muted: #5B6472; --faint: #868E9C;
+    --accent: #26695E; --accent-soft: #DCEBE7; --accent-2: #B96E22; --accent-2-soft: #F5E6D2;
+    --danger: #B4472E; --danger-soft: #F6E1DB;
+    --border: #E1E5EB; --border-strong: #CBD1DA;
+    --code-bg: #1C2128; --code-ink: #E6E9EE;
+    --code-comment: #E0A05A; --code-str: #8DD6A6; --code-kw: #7FB8FF; --code-key: #E6C07B;
+    --shadow: 0 1px 2px rgba(20,24,32,.05), 0 8px 24px -12px rgba(20,24,32,.12);
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151A; --surface: #1A1E25; --surface-2: #21262E;
+      --ink: #E7EAEF; --muted: #9BA4B1; --faint: #737C8A;
+      --accent: #5FBFB0; --accent-soft: #17332E; --accent-2: #E0A05A; --accent-2-soft: #37291A;
+      --danger: #E08267; --danger-soft: #3A211A;
+      --border: #2A303A; --border-strong: #3A414D;
+      --code-bg: #0E1116; --code-ink: #E6E9EE;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F5F6F9;--surface:#FFFFFF;--surface-2:#EFF1F5;--ink:#191C22;--muted:#5B6472;--faint:#868E9C;
+    --accent:#26695E;--accent-soft:#DCEBE7;--accent-2:#B96E22;--accent-2-soft:#F5E6D2;--danger:#B4472E;--danger-soft:#F6E1DB;
+    --border:#E1E5EB;--border-strong:#CBD1DA;--code-bg:#1C2128;--code-ink:#E6E9EE;
+    --shadow:0 1px 2px rgba(20,24,32,.05),0 8px 24px -12px rgba(20,24,32,.12);
+  }
+  :root[data-theme="dark"] {
+    --bg:#12151A;--surface:#1A1E25;--surface-2:#21262E;--ink:#E7EAEF;--muted:#9BA4B1;--faint:#737C8A;
+    --accent:#5FBFB0;--accent-soft:#17332E;--accent-2:#E0A05A;--accent-2-soft:#37291A;--danger:#E08267;--danger-soft:#3A211A;
+    --border:#2A303A;--border-strong:#3A414D;--code-bg:#0E1116;--code-ink:#E6E9EE;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.5);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+    font-size:17px; line-height:1.7; letter-spacing:-0.003em; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:840px; margin:0 auto; padding:0 24px; }
+  ::selection { background:var(--accent-soft); color:var(--ink); }
+
+  header.top { position:sticky; top:0; z-index:20; backdrop-filter:saturate(1.4) blur(10px);
+    background:color-mix(in srgb, var(--bg) 82%, transparent); border-bottom:1px solid var(--border); }
+  .top-inner { max-width:840px; margin:0 auto; padding:12px 24px; display:flex; align-items:center; gap:12px; }
+  .brand { font-family:var(--mono); font-size:12.5px; letter-spacing:.04em; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .brand b { color:var(--accent); font-weight:600; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .top-actions { margin-left:auto; display:flex; gap:8px; }
+  .pill { font-family:var(--mono); font-size:12px; color:var(--muted); background:var(--surface);
+    border:1px solid var(--border); border-radius:999px; padding:5px 12px; cursor:pointer;
+    text-decoration:none; transition:border-color .15s,color .15s; }
+  .pill:hover { border-color:var(--border-strong); color:var(--ink); }
+  .pill:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .hero { padding:60px 0 34px; }
+  .eyebrow { font-family:var(--mono); font-size:12.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--accent); display:inline-flex; align-items:center; gap:8px; margin-bottom:20px; }
+  .eyebrow::before { content:""; width:22px; height:1px; background:var(--accent); display:inline-block; }
+  h1 { font-size:clamp(2rem,5vw,2.9rem); line-height:1.1; letter-spacing:-0.025em; font-weight:700; margin:0 0 18px; text-wrap:balance; }
+  h1 code { font-family:var(--mono); font-size:.72em; color:var(--accent); background:none; padding:0; border:0; letter-spacing:-0.01em; }
+  .lede { font-size:1.14rem; color:var(--muted); max-width:62ch; margin:0; }
+  .lede b { color:var(--ink); font-weight:600; }
+
+  .block { padding:44px 0; border-top:1px solid var(--border); }
+  .part-label { font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--faint); margin:0 0 8px; }
+  .part-label .p { color:var(--accent); font-weight:600; }
+  h2 { font-size:1.6rem; line-height:1.2; letter-spacing:-0.02em; margin:0 0 14px; font-weight:680; text-wrap:balance; }
+  h3 { font-size:1.14rem; margin:34px 0 10px; letter-spacing:-0.01em; display:flex; align-items:center; gap:9px; }
+  h3 .hn { font-family:var(--mono); font-size:.72em; color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:6px; }
+  p { margin:0 0 15px; }
+  a { color:var(--accent); text-underline-offset:3px; }
+  .em { color:var(--accent); font-weight:600; }
+  .em2 { color:var(--accent-2); font-weight:600; }
+  code { font-family:var(--mono); font-size:.86em; background:var(--surface-2); padding:1.5px 6px; border-radius:5px; border:1px solid var(--border); }
+
+  /* code panel */
+  .code { background:var(--code-bg); border-radius:12px; overflow:hidden; margin:18px 0;
+    border:1px solid var(--border-strong); box-shadow:var(--shadow); }
+  .code-head { display:flex; align-items:center; gap:8px; padding:10px 14px;
+    border-bottom:1px solid rgba(255,255,255,.08); font-family:var(--mono); font-size:12px; color:#98A2B3; }
+  .code-head .b { width:11px; height:11px; border-radius:50%; background:#414B58; }
+  .code-head .fname { opacity:.85; }
+  .copy { margin-left:auto; font-family:var(--mono); font-size:11.5px; color:#98A2B3;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:7px;
+    padding:4px 10px; cursor:pointer; transition:background .15s,color .15s; }
+  .copy:hover { background:rgba(255,255,255,.14); color:#E6E9EE; }
+  .copy.done { color:#8DD6A6; border-color:rgba(141,214,166,.4); }
+  pre { margin:0; overflow-x:auto; padding:16px 18px; }
+  pre code { font-family:var(--mono); font-size:13px; line-height:1.72; color:var(--code-ink); background:none; border:0; padding:0; }
+  .code.prose pre code { white-space:pre-wrap; word-break:break-word; }
+  .code pre code .cm { color:var(--code-comment); }
+  .code pre code .kw { color:var(--code-kw); }
+  .code pre code .str { color:var(--code-str); }
+  .code pre code .key { color:var(--code-key); }
+  .code pre code .pun { color:#7C8797; }
+  .code pre code .hl { background:rgba(224,160,90,.16); border-radius:3px; padding:0 2px; }
+
+  /* tables */
+  .table-scroll { overflow-x:auto; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); margin:16px 0; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; min-width:520px; background:var(--surface); }
+  thead th { text-align:left; font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--muted); font-weight:600; padding:11px 15px; background:var(--surface-2); border-bottom:1px solid var(--border); }
+  tbody td { padding:12px 15px; border-bottom:1px solid var(--border); vertical-align:top; line-height:1.55; }
+  tbody tr:last-child td { border-bottom:none; }
+  td .g { font-family:var(--mono); font-size:12.5px; color:var(--accent); font-weight:600; white-space:nowrap; }
+  td.idx { font-family:var(--mono); color:var(--faint); font-weight:600; width:34px; }
+  td code { font-size:.85em; }
+
+  /* callouts */
+  .callout, .note, .danger { border-radius:12px; padding:16px 18px; margin:20px 0; font-size:15.5px; display:flex; gap:14px; align-items:flex-start; }
+  .callout { background:var(--accent-2-soft); border:1px solid color-mix(in srgb,var(--accent-2) 35%,var(--border)); border-left:3px solid var(--accent-2); }
+  .note { background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border)); border-left:3px solid var(--accent); }
+  .danger { background:var(--danger-soft); border:1px solid color-mix(in srgb,var(--danger) 35%,var(--border)); border-left:3px solid var(--danger); }
+  .callout .ci, .note .ci, .danger .ci { font-family:var(--mono); font-weight:700; font-size:12.5px; letter-spacing:.04em; flex:none; padding-top:2px; }
+  .callout .ci { color:var(--accent-2); } .note .ci { color:var(--accent); } .danger .ci { color:var(--danger); }
+  .callout p, .note p, .danger p { margin:0; }
+  .callout b, .note b, .danger b { color:var(--ink); }
+
+  /* diagram */
+  .dgm { font-family:var(--mono); font-size:12.5px; line-height:1.95; background:var(--surface);
+    border:1px solid var(--border); border-radius:12px; padding:18px 20px; overflow-x:auto; box-shadow:var(--shadow); margin:18px 0; }
+  .dgm .lo { color:var(--faint); } .dgm .hi { color:var(--accent-2); font-weight:600; }
+  .dgm .ok { color:var(--accent); font-weight:600; } .dgm .rec { color:var(--danger); font-weight:600; }
+  .dgm .k { color:var(--ink); font-weight:600; }
+
+  /* flow map (CSS diagram, alignment-safe) */
+  .flowmap { margin:22px 0 6px; }
+  .fm-start { background:var(--surface-2); border:1px solid var(--border-strong); border-radius:10px;
+    padding:12px 20px; text-align:center; font-weight:600; font-size:15px; max-width:300px; margin:0 auto; box-shadow:var(--shadow); }
+  .fm-start .mono { font-family:var(--mono); color:var(--accent); font-size:.9em; }
+  .fm-conn { width:2px; height:24px; background:var(--border-strong); margin:0 auto; }
+  .fm-branches { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .fm-branch { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow); }
+  .fm-branch .tag { display:inline-block; font-family:var(--mono); font-size:11.5px; letter-spacing:.04em;
+    padding:3px 11px; border-radius:999px; margin-bottom:12px; }
+  .fm-branch.text .tag { background:var(--accent-soft); color:var(--accent); }
+  .fm-branch.struct .tag { background:var(--accent-2-soft); color:var(--accent-2); }
+  .fm-step { display:flex; align-items:baseline; gap:9px; font-size:14px; line-height:1.55; margin:9px 0; }
+  .fm-step .ar { flex:none; font-family:var(--mono); font-weight:700; color:var(--accent); width:16px; }
+  .fm-branch.struct .fm-step .ar { color:var(--accent-2); }
+  .fm-step code { font-size:.82em; }
+  .fm-step b { color:var(--ink); }
+
+  /* structure tree (table + rules, alignment-safe) */
+  .tree-root { font-family:var(--mono); font-size:14px; font-weight:700; color:var(--ink); margin:18px 0 10px; }
+  .tree-root .tr-meta { font-weight:400; font-size:.8em; color:var(--faint); }
+  .tree-root .tr-meta b { color:var(--muted); }
+  table.tree-table td:nth-child(2) { font-family:var(--mono); font-size:12.5px; color:var(--accent); white-space:nowrap; }
+  .req { display:inline-block; font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.03em;
+    color:var(--accent); background:var(--accent-soft); border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border));
+    border-radius:5px; padding:1px 6px; margin-left:6px; vertical-align:middle; }
+  .rec-code { color:var(--danger) !important; }
+  .rules { display:grid; gap:10px; margin:18px 0 4px; }
+  .rule { display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:10px; padding:12px 14px; box-shadow:var(--shadow); }
+  .rule.rec { border-left-color:var(--danger); }
+  .rule .rk { flex:none; font-family:var(--mono); font-size:11.5px; font-weight:700; color:var(--accent);
+    background:var(--accent-soft); border-radius:6px; padding:3px 9px; white-space:nowrap; }
+  .rule.rec .rk { color:var(--danger); background:var(--danger-soft); }
+  .rule .rc { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .rule .rc code { font-size:.82em; align-self:flex-start; max-width:100%; overflow-x:auto; }
+  .rule .rd { font-size:14px; color:var(--muted); line-height:1.5; }
+  .rule .rd b { color:var(--ink); }
+
+  /* chips */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
+  .chip { font-family:var(--mono); font-size:12.5px; padding:5px 11px; border-radius:8px;
+    background:var(--danger-soft); color:var(--danger); border:1px solid color-mix(in srgb,var(--danger) 30%,var(--border)); }
+
+  footer { border-top:1px solid var(--border); padding:30px 0 60px; color:var(--faint); font-size:13px; }
+  footer .fmono { font-family:var(--mono); font-size:12px; }
+  footer a { color:var(--muted); }
+
+  @media (max-width:720px){ body{font-size:16px;} .hero{padding:44px 0 28px;} table{font-size:13.5px;} .fm-branches{grid-template-columns:1fr;} }
+  @media (prefers-reduced-motion:no-preference){
+    .reveal{opacity:0;transform:translateY(12px);animation:rise .55s ease forwards;}
+    @keyframes rise{to{opacity:1;transform:none;}}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <span class="brand"><span class="dot"></span> <b>meta-prompting</b> · 심화 해부</span>
+    <div class="top-actions">
+      <a class="pill" href="Meta-Prompting-Guide.html">← 개념 가이드</a>
+      <button class="pill" id="themeBtn" type="button" aria-label="테마 전환">◐ theme</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap reveal">
+      <span class="eyebrow">Deep Dive · 실제 상수 해부</span>
+      <h1>OpenAI가 공개한 <code>META_PROMPT</code>과 <code>META_SCHEMA</code>를 한 줄씩 뜯어보기</h1>
+      <p class="lede">이 두 상수는 <b>실제로 OpenAI Playground의 "Generate" 버튼 뒤에서 도는 텍스트</b>입니다. 문서에 <b>전문이 그대로 공개</b>되어 있어 그대로 복사해 쓸 수 있습니다. 여기서는 각 규칙이 <b>무슨 뜻이고 왜 있는지</b>를 붙여 읽습니다.</p>
+    </div>
+  </section>
+
+  <!-- ============ PART A : META_PROMPT ============ -->
+  <section class="block">
+    <div class="wrap">
+      <p class="part-label"><span class="p">PART A</span> — 텍스트 프롬프트 생성기</p>
+      <h2>META_PROMPT 전문 &amp; 해부</h2>
+      <p>먼저 원문 그대로입니다. 우측 <code>copy</code> 버튼으로 복사해 바로 <code>system</code> 메시지에 넣어 쓸 수 있습니다.</p>
+
+      <div class="code prose">
+        <div class="code-head"><span class="b"></span><span class="b"></span><span class="b"></span>
+          <span class="fname">META_PROMPT (verbatim)</span>
+          <button class="copy" type="button" data-copy>copy</button>
+        </div>
+<pre><code>Given a task description or existing prompt, produce a detailed system prompt to guide a language model in completing the task effectively.
+
+# Guidelines
+
+- Understand the Task: Grasp the main objective, goals, requirements, constraints, and expected output.
+- Minimal Changes: If an existing prompt is provided, improve it only if it's simple. For complex prompts, enhance clarity and add missing elements without altering the original structure.
+- Reasoning Before Conclusions**: Encourage reasoning steps before any conclusions are reached. ATTENTION! If the user provides examples where the reasoning happens afterward, REVERSE the order! NEVER START EXAMPLES WITH CONCLUSIONS!
+    - Reasoning Order: Call out reasoning portions of the prompt and conclusion parts (specific fields by name). For each, determine the ORDER in which this is done, and whether it needs to be reversed.
+    - Conclusion, classifications, or results should ALWAYS appear last.
+- Examples: Include high-quality examples if helpful, using placeholders [in brackets] for complex elements.
+   - What kinds of examples may need to be included, how many, and whether they are complex enough to benefit from placeholders.
+- Clarity and Conciseness: Use clear, specific language. Avoid unnecessary instructions or bland statements.
+- Formatting: Use markdown features for readability. DO NOT USE ``` CODE BLOCKS UNLESS SPECIFICALLY REQUESTED.
+- Preserve User Content: If the input task or prompt includes extensive guidelines or examples, preserve them entirely, or as closely as possible. If they are vague, consider breaking down into sub-steps. Keep any details, guidelines, examples, variables, or placeholders provided by the user.
+- Constants: DO include constants in the prompt, as they are not susceptible to prompt injection. Such as guides, rubrics, and examples.
+- Output Format: Explicitly the most appropriate output format, in detail. This should include length and syntax (e.g. short sentence, paragraph, JSON, etc.)
+    - For tasks outputting well-defined or structured data (classification, JSON, etc.) bias toward outputting a JSON.
+    - JSON should never be wrapped in code blocks (```) unless explicitly requested.
+
+The final prompt you output should adhere to the following structure below. Do not include any additional commentary, only output the completed system prompt. SPECIFICALLY, do not include any additional messages at the start or end of the prompt. (e.g. no "---")
+
+[Concise instruction describing the task - this should be the first line in the prompt, no section header]
+
+[Additional details as needed.]
+
+[Optional sections with headings or bullet points for detailed steps.]
+
+# Steps [optional]
+
+[optional: a detailed breakdown of the steps necessary to accomplish the task]
+
+# Output Format
+
+[Specifically call out how the output should be formatted, be it response length, structure e.g. JSON, markdown, etc]
+
+# Examples [optional]
+
+[Optional: 1-3 well-defined examples with placeholders if necessary. Clearly mark where examples start and end, and what the input and output are. User placeholders as necessary.]
+[If the examples are shorter than what a realistic example is expected to be, make a reference with () explaining how real examples should be longer / shorter / different. AND USE PLACEHOLDERS! ]
+
+# Notes [optional]
+
+[optional: edge cases, details, and an area to call or repeat out specific important considerations]</code></pre>
+      </div>
+
+      <h3><span class="hn"># Guidelines</span> 9개 지침 해부</h3>
+      <p>이 프롬프트의 심장부입니다. 각 지침을 <b>무슨 뜻 / 왜</b>로 풀면:</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th></th><th>지침 (원문)</th><th>무슨 뜻 · 왜</th></tr></thead>
+          <tbody>
+            <tr><td class="idx">01</td><td><span class="g">Understand the Task</span></td><td>주 목표·요구사항·제약·기대 출력을 먼저 파악. → 프롬프트를 짜기 전에 "무엇을 시키는가"부터 정의.</td></tr>
+            <tr><td class="idx">02</td><td><span class="g">Minimal Changes</span></td><td>기존 프롬프트가 있으면 <b>단순할 때만</b> 개선. 복잡하면 원래 구조를 건드리지 말고 명확성·누락 요소만 보강. → 잘 돌던 걸 망치지 않기.</td></tr>
+            <tr><td class="idx">03</td><td><span class="g">Reasoning Before Conclusions</span></td><td><b>결론 전에 추론</b>. 사용자 예시가 "결론 먼저" 구조면 <b>순서를 뒤집으라</b>고까지 강제(REVERSE!). 결론·분류·결과는 <span class="em2">항상 마지막</span>. → 메타 프롬프트 전체 철학의 핵심.</td></tr>
+            <tr><td class="idx">04</td><td><span class="g">Examples</span></td><td>도움되면 고품질 예시 포함, 복잡한 부분은 <code>[대괄호]</code> 플레이스홀더로. 몇 개·얼마나 복잡한지 판단.</td></tr>
+            <tr><td class="idx">05</td><td><span class="g">Clarity &amp; Conciseness</span></td><td>명확·구체적 언어. 불필요한 지시나 밋밋한 문장 금지.</td></tr>
+            <tr><td class="idx">06</td><td><span class="g">Formatting</span></td><td>가독성 위해 마크다운 사용. 단, <b>명시 요청 없으면 <code>```</code> 코드블록 쓰지 말 것</b>.</td></tr>
+            <tr><td class="idx">07</td><td><span class="g">Preserve User Content</span></td><td>사용자가 준 방대한 가이드라인·예시는 <b>최대한 그대로 보존</b>. 모호하면 하위 단계로 분해. 변수·플레이스홀더도 유지.</td></tr>
+            <tr><td class="idx">08</td><td><span class="g">Constants</span></td><td>가이드·루브릭·예시 같은 <b>상수는 포함하라</b> — 상수는 <b>프롬프트 인젝션에 안전</b>하기 때문.</td></tr>
+            <tr><td class="idx">09</td><td><span class="g">Output Format</span></td><td>가장 적절한 출력 형식을 <b>상세히</b> 명시(길이·구문). 구조화 데이터는 <b>JSON 편향</b>. JSON은 명시 요청 없으면 코드블록으로 감싸지 말 것.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <span class="ci">TIP</span>
+        <p><b>03번의 "REVERSE the order!"가 백미입니다.</b> 사용자가 무심코 "정답 → 이유" 순서의 예시를 넣어도, 메타 프롬프트가 이를 감지해 <b>"이유 → 정답" 순서로 강제 교정</b>합니다. 사용자의 실수까지 방어하는 설계.</p>
+      </div>
+
+      <h3><span class="hn">structure</span> 출력 구조 템플릿 해부</h3>
+      <p># Guidelines 아래는 "이 형식으로 뱉어라"는 <b>출력 골격</b>입니다.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>블록</th><th>역할</th></tr></thead>
+          <tbody>
+            <tr><td><span class="g">첫 줄 (헤더 없음)</span></td><td>작업을 설명하는 간결한 지시문. 반드시 첫 줄, 섹션 제목 없이.</td></tr>
+            <tr><td><span class="g"># Steps</span> <em>(옵션)</em></td><td>작업 수행에 필요한 단계별 분해.</td></tr>
+            <tr><td><span class="g"># Output Format</span></td><td>출력 형식을 콕 집어 명시(길이·구조·JSON/마크다운 등).</td></tr>
+            <tr><td><span class="g"># Examples</span> <em>(옵션)</em></td><td>1~3개 예시 + 플레이스홀더. 실제보다 짧으면 <code>()</code>로 "실전은 더 길다"고 표기.</td></tr>
+            <tr><td><span class="g"># Notes</span> <em>(옵션)</em></td><td>엣지 케이스·중요 고려사항 반복 강조.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="note">
+        <span class="ci">META</span>
+        <p><b>재귀의 묘미:</b> META_PROMPT 자신이 자기 규칙을 그대로 지킵니다 — 지침(추론)을 먼저 두고 출력 구조(결론)를 마지막에 배치하고, 상수(가이드라인)를 본문에 박아뒀죠. <b>"프롬프트 잘 쓰는 법"을 스스로 시연</b>하는 프롬프트입니다.</p>
+      </div>
+      <div class="danger">
+        <span class="ci">주의</span>
+        <p>원문에는 <code>Reasoning Before Conclusions**</code>처럼 <b>다듬어지지 않은 마크다운 흔적(<code>**</code>)</b>이나 <code>User placeholders</code>(→ <code>Use</code> 오타로 보임) 같은 자국이 그대로 있습니다. 완벽한 문서가 아니라 <b>실사용 상수를 그대로 노출</b>한 것이므로, 복사해 쓸 때 참고하세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART B : META_SCHEMA ============ -->
+  <section class="block">
+    <div class="wrap">
+      <p class="part-label"><span class="p">PART B</span> — 구조화 출력 스키마 생성기</p>
+      <h2>META_SCHEMA 전문 &amp; 해부</h2>
+      <p>이건 프롬프트가 아니라 <b>JSON 스키마</b>입니다. 정확히는 <span class="em">"스키마가 어떻게 생겨야 하는지를 설명하는 스키마"</span> — 그래서 meta-schema죠.</p>
+
+      <div class="code">
+        <div class="code-head"><span class="b"></span><span class="b"></span><span class="b"></span>
+          <span class="fname">META_SCHEMA (verbatim)</span>
+          <button class="copy" type="button" data-copy>copy</button>
+        </div>
+<pre><code><span class="pun">{</span>
+  <span class="key">"name"</span><span class="pun">:</span> <span class="str">"metaschema"</span><span class="pun">,</span>
+  <span class="key">"schema"</span><span class="pun">:</span> <span class="pun">{</span>
+    <span class="key">"type"</span><span class="pun">:</span> <span class="str">"object"</span><span class="pun">,</span>
+    <span class="key">"properties"</span><span class="pun">:</span> <span class="pun">{</span>
+      <span class="key">"name"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"string"</span><span class="pun">,</span> <span class="key">"description"</span><span class="pun">:</span> <span class="str">"The name of the schema"</span> <span class="pun">},</span>
+      <span class="key">"type"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"string"</span><span class="pun">,</span> <span class="key">"enum"</span><span class="pun">:</span> <span class="pun">[</span><span class="str">"object"</span><span class="pun">,</span> <span class="str">"array"</span><span class="pun">,</span> <span class="str">"string"</span><span class="pun">,</span> <span class="str">"number"</span><span class="pun">,</span> <span class="str">"boolean"</span><span class="pun">,</span> <span class="str">"null"</span><span class="pun">] },</span>
+      <span class="key">"properties"</span><span class="pun">:</span> <span class="pun">{</span>
+        <span class="key">"type"</span><span class="pun">:</span> <span class="str">"object"</span><span class="pun">,</span>
+        <span class="key">"additionalProperties"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"$ref"</span><span class="pun">:</span> <span class="str hl">"#/$defs/schema_definition"</span> <span class="pun">}</span>
+      <span class="pun">},</span>
+      <span class="key">"items"</span><span class="pun">:</span> <span class="pun">{</span>
+        <span class="key">"anyOf"</span><span class="pun">:</span> <span class="pun">[</span>
+          <span class="pun">{</span> <span class="key">"$ref"</span><span class="pun">:</span> <span class="str hl">"#/$defs/schema_definition"</span> <span class="pun">},</span>
+          <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"array"</span><span class="pun">,</span> <span class="key">"items"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"$ref"</span><span class="pun">:</span> <span class="str hl">"#/$defs/schema_definition"</span> <span class="pun">} }</span>
+        <span class="pun">]</span>
+      <span class="pun">},</span>
+      <span class="key">"required"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"array"</span><span class="pun">,</span> <span class="key">"items"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"string"</span> <span class="pun">} },</span>
+      <span class="key">"additionalProperties"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="str">"boolean"</span> <span class="pun">}</span>
+    <span class="pun">},</span>
+    <span class="key">"required"</span><span class="pun">:</span> <span class="pun">[</span><span class="str">"type"</span><span class="pun">],</span>
+    <span class="key">"additionalProperties"</span><span class="pun">:</span> <span class="kw">false</span><span class="pun">,</span>
+    <span class="key">"if"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"properties"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"const"</span><span class="pun">:</span> <span class="str">"object"</span> <span class="pun">} } },</span>
+    <span class="key">"then"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"required"</span><span class="pun">:</span> <span class="pun">[</span><span class="str">"properties"</span><span class="pun">] },</span>
+    <span class="key">"$defs"</span><span class="pun">:</span> <span class="pun">{</span>
+      <span class="key hl">"schema_definition"</span><span class="pun">:</span> <span class="pun">{</span>
+        <span class="cm">// ↑ 위 schema와 동일한 형태를 그대로 반복 — 이것이 "재귀 엔진"</span>
+        <span class="key">"type"</span><span class="pun">:</span> <span class="str">"object"</span><span class="pun">,</span>
+        <span class="key">"properties"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">,</span> <span class="key">"properties"</span><span class="pun">,</span> <span class="key">"items"</span><span class="pun">,</span> <span class="key">"required"</span><span class="pun">,</span> <span class="key">"additionalProperties"</span> <span class="pun">},</span>
+        <span class="key">"required"</span><span class="pun">:</span> <span class="pun">[</span><span class="str">"type"</span><span class="pun">],</span>
+        <span class="key">"additionalProperties"</span><span class="pun">:</span> <span class="kw">false</span><span class="pun">,</span>
+        <span class="key">"if"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"properties"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"type"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"const"</span><span class="pun">:</span> <span class="str">"object"</span> <span class="pun">} } },</span>
+        <span class="key">"then"</span><span class="pun">:</span> <span class="pun">{</span> <span class="key">"required"</span><span class="pun">:</span> <span class="pun">[</span><span class="str">"properties"</span><span class="pun">] }</span>
+      <span class="pun">}</span>
+    <span class="pun">}</span>
+  <span class="pun">}</span>
+<span class="pun">}</span></code></pre>
+      </div>
+      <p style="font-size:13px;color:var(--faint);margin-top:-6px"><code>$defs.schema_definition</code> 내부는 최상위 <code>schema</code>와 <b>완전히 동일한 구조</b>라 위에서 필드명만 축약했습니다. 전체 원문이 필요하면 <code>copy</code> 버튼으로 복사되는 텍스트는 두 블록 모두 완전한 형태입니다.</p>
+
+      <h3><span class="hn">structure</span> 한눈에 보는 구조</h3>
+      <div class="tree-root"><code>metaschema</code> <span class="tr-meta">object · additionalProperties: false <b>(닫힘)</b></span></div>
+      <div class="table-scroll">
+        <table class="tree-table">
+          <thead><tr><th>필드</th><th>타입</th><th>설명</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string</td><td>스키마 이름</td></tr>
+            <tr><td><code>type</code> <span class="req">필수</span></td><td>enum(6)</td><td><code>object</code> · <code>array</code> · <code>string</code> · <code>number</code> · <code>boolean</code> · <code>null</code></td></tr>
+            <tr><td><code>properties</code></td><td>map</td><td>각 필드의 값 = <code class="rec-code">$defs/schema_definition</code> <b>(재귀)</b></td></tr>
+            <tr><td><code>items</code></td><td>anyOf</td><td>단일 요소 또는 튜플(배열)의 요소 타입</td></tr>
+            <tr><td><code>required</code></td><td>string[]</td><td>필수 필드 목록</td></tr>
+            <tr><td><code>additionalProperties</code></td><td>boolean</td><td>정의 밖 필드 허용 여부</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="rk">규칙 1</span><div class="rc"><code>required: ["type"]</code><span class="rd">모든 노드는 <b>type</b>을 반드시 선언</span></div></div>
+        <div class="rule"><span class="rk">규칙 2</span><div class="rc"><code>if type == "object" → then "properties"</code><span class="rd">객체면 <b>properties</b> 필수</span></div></div>
+        <div class="rule rec"><span class="rk">재귀 엔진</span><div class="rc"><code>$defs/schema_definition</code><span class="rd">자기 자신과 같은 형태 → <b>무한 중첩</b> 표현 가능</span></div></div>
+      </div>
+      <div class="note">
+        <span class="ci">핵심</span>
+        <p><b><code>$defs/schema_definition</code>이 재귀의 열쇠</b>입니다. <code>properties</code>의 각 값도, <code>items</code>의 요소도 모두 자기 자신(<code>schema_definition</code>)을 <code>$ref</code>로 가리키죠. 덕분에 <b>객체 안의 객체 안의 배열…</b> 같은 임의 깊이의 중첩 스키마를 표현할 수 있습니다. <code>if/then</code>은 <b>"object라고 했으면 properties를 꼭 정의하라"</b>는 강제 규칙.</p>
+      </div>
+
+      <h3><span class="hn">why</span> 왜 이게 "유사(pseudo)" 메타 스키마인가</h3>
+      <p>개념 가이드에서 나온 <b>"닭이 먼저냐 달걀이 먼저냐" 딜레마</b>가 여기서 구체화됩니다. 이 META_SCHEMA는 <b>strict 모드 스키마를 만들어내지만</b>, 정작 <b>자기 자신은 strict 모드가 금지한 기능들을 씁니다:</b></p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>META_SCHEMA가 쓰는 기능</th><th>왜 strict 모드 위반인가</th></tr></thead>
+          <tbody>
+            <tr><td><code>additionalProperties: { $ref }</code></td><td>고정 키가 아닌 <b>임의 키의 맵(dictionary)</b>을 표현 — strict 모드는 <code>additionalProperties: false</code>만 허용.</td></tr>
+            <tr><td><code>anyOf</code> (items)</td><td>여러 형태 중 택일 — 최상위 스키마 조합에 제약.</td></tr>
+            <tr><td><code>if / then / const</code></td><td>조건부 검증 키워드 — strict 모드 미지원.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="danger">
+        <span class="ci">딜레마</span>
+        <p>즉 <b>"스키마를 만드는 도구(meta-schema)"는 non-strict로 굴리고, 그 결과물인 스키마는 생성 후 검증 단계에서 strict 모드에 맞게 정리(cleaning)</b>합니다. 그래서 이름이 <b>pseudo-meta-schema</b> — "만들 땐 느슨, 결과는 엄격".</p>
+      </div>
+
+      <h3><span class="hn">strict</span> 생성된 스키마가 피해야 할 키워드</h3>
+      <p>스키마 생성용 메타 프롬프트는 결과 스키마에서 아래 <b>미지원 키워드</b>를 쓰지 않도록 명시합니다.</p>
+      <div class="chips">
+        <span class="chip">unevaluatedProperties</span>
+        <span class="chip">propertyNames</span>
+        <span class="chip">minProperties</span>
+        <span class="chip">maxProperties</span>
+        <span class="chip">unevaluatedItems</span>
+        <span class="chip">contains</span>
+        <span class="chip">minContains</span>
+      </div>
+      <p style="margin-top:14px">그리고 결과 스키마는 반드시: <b>모든 필드 <code>required</code></b> · <b>모든 객체 <code>additionalProperties: false</code></b> · <b>모든 객체는 <code>properties</code> 정의</b> · <b>추론 필드가 결론 필드보다 먼저</b>. (META_PROMPT의 03번 원칙이 스키마 세계에서도 반복됩니다.)</p>
+      <div class="callout">
+        <span class="ci">예시</span>
+        <p>스키마 생성 메타 프롬프트에는 <b>3개의 데모 예시</b>가 들어 있습니다 — ① <b>수학 추론</b> 스키마(단계별 풀이 → 최종답), ② <b>연결 리스트(linked list)</b>의 재귀 표현, ③ <b>동적 생성 UI 컴포넌트</b> 스키마. 재귀·순서·동적 구조를 모두 보여주는 셈.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PART C : 관계 ============ -->
+  <section class="block">
+    <div class="wrap">
+      <p class="part-label"><span class="p">PART C</span> — 종합</p>
+      <h2>둘은 이렇게 맞물린다</h2>
+      <div class="flowmap">
+        <div class="fm-start">사용자 입력 <span class="mono">"설명"</span></div>
+        <div class="fm-conn"></div>
+        <div class="fm-branches">
+          <div class="fm-branch text">
+            <span class="tag">텍스트 필요</span>
+            <div class="fm-step"><span class="ar">▸</span><span><code>system = META_PROMPT</code></span></div>
+            <div class="fm-step"><span class="ar">→</span><span>완성된 <b>프롬프트(문자열)</b></span></div>
+          </div>
+          <div class="fm-branch struct">
+            <span class="tag">구조화 출력 필요</span>
+            <div class="fm-step"><span class="ar">▸</span><span><code>system = META_PROMPT</code></span></div>
+            <div class="fm-step"><span class="ar">▸</span><span><code>response_format = META_SCHEMA</code></span></div>
+            <div class="fm-step"><span class="ar">→</span><span><b>JSON 스키마</b> → strict 정리</span></div>
+          </div>
+        </div>
+      </div>
+      <ul style="padding-left:1.1em; margin:16px 0 0">
+        <li style="margin-bottom:8px"><b><code>META_PROMPT</code></b> = "좋은 프롬프트/스키마를 만드는 <em>방법론</em>"을 담은 지시문 (system 역할).</li>
+        <li style="margin-bottom:8px"><b><code>META_SCHEMA</code></b> = 스키마 생성 시 <em>결과물의 형태</em>를 강제하는 틀 (response_format 역할).</li>
+        <li>둘 다 관통하는 원칙 하나 — <span class="em">"추론 먼저, 결론은 항상 마지막"</span>.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="fmono">출처 · OpenAI Developer Docs — Prompt Generation (META_PROMPT / META_SCHEMA verbatim)</p>
+    <p><a href="https://developers.openai.com/api/docs/guides/prompt-generation">developers.openai.com/api/docs/guides/prompt-generation</a></p>
+    <p style="margin-top:12px"><a href="Meta-Prompting-Guide.html">← 개념 가이드로 돌아가기</a></p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    document.getElementById('themeBtn').addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme');
+      var isDark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    });
+    document.querySelectorAll('[data-copy]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var code = btn.closest('.code').querySelector('pre code');
+        var text = code ? code.innerText : '';
+        navigator.clipboard.writeText(text).then(function () {
+          var old = btn.textContent;
+          btn.textContent = '✓ 복사됨'; btn.classList.add('done');
+          setTimeout(function () { btn.textContent = old; btn.classList.remove('done'); }, 1600);
+        }).catch(function () { btn.textContent = '복사 실패'; });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,723 @@
+<meta charset="UTF-8">
+<title>LangChain Agent 완전 정리</title>
+<meta name="description" content="LangChain Agent의 개념, 주요 특징, 구성요소, 작동 방식, 코드 예시를 담은 시각적 학습 가이드">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+:root {
+  --bg: #0C0E1A;
+  --s1: #13162A;
+  --s2: #1A1E38;
+  --b: #252B47;
+  --teal: #2EFFD0;
+  --teal-dim: rgba(46,255,208,.10);
+  --violet: #7C73FF;
+  --violet-dim: rgba(124,115,255,.10);
+  --amber: #FFAA33;
+  --amber-dim: rgba(255,170,51,.10);
+  --green: #4AFF8C;
+  --red: #FF6B8A;
+  --text: #C8D3F5;
+  --sub: #8B9BC8;
+  --muted: #5B6696;
+  --mono: 'SF Mono','Fira Code','Consolas','Courier New',monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(12,14,26,.93);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--b);
+  padding: 0 28px;
+  display: flex; align-items: center; gap: 4px;
+  height: 50px; overflow-x: auto;
+}
+.nav-brand {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  color: var(--teal); margin-right: 16px; letter-spacing: .04em; white-space: nowrap;
+}
+nav a {
+  font-size: 11.5px; color: var(--muted); text-decoration: none;
+  padding: 5px 10px; border-radius: 5px; transition: color .15s, background .15s;
+  white-space: nowrap;
+}
+nav a:hover { color: var(--text); background: var(--s2); }
+
+main { max-width: 860px; margin: 0 auto; padding: 0 24px 100px; }
+section { padding-top: 64px; }
+
+.eyebrow {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .14em; text-transform: uppercase; color: var(--teal); margin-bottom: 12px;
+}
+h1 {
+  font-size: clamp(30px, 5vw, 46px); font-weight: 800;
+  line-height: 1.15; letter-spacing: -.025em; text-wrap: balance;
+}
+h2 {
+  font-size: 21px; font-weight: 700; line-height: 1.3; text-wrap: balance;
+  padding-left: 14px; border-left: 3px solid var(--teal); margin-bottom: 20px;
+}
+h3 { font-size: 14px; font-weight: 700; color: var(--text); }
+p { color: var(--sub); margin-bottom: 14px; }
+p:last-child { margin-bottom: 0; }
+strong { color: var(--text); font-weight: 600; }
+em { color: var(--teal); font-style: normal; }
+code {
+  font-family: var(--mono); font-size: .85em;
+  background: var(--s2); border: 1px solid var(--b);
+  border-radius: 4px; padding: 1px 5px; color: var(--teal);
+}
+
+/* HERO */
+#hero { padding-top: 56px; }
+.hero-sub { font-size: 16px; color: var(--sub); margin-top: 14px; max-width: 580px; line-height: 1.7; }
+.hero-def {
+  background: var(--s1); border: 1px solid var(--b);
+  border-left: 3px solid var(--teal); border-radius: 0 10px 10px 0;
+  padding: 20px 24px; margin-top: 28px; font-size: 15px; line-height: 1.8;
+}
+
+/* TRAITS */
+.traits-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px; margin-top: 22px;
+}
+.trait-card {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px;
+  padding: 18px 18px 16px; transition: border-color .2s, transform .2s;
+}
+.trait-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+.trait-icon { font-size: 20px; margin-bottom: 8px; display: block; }
+.trait-card h3 { font-size: 14px; margin-bottom: 6px; color: var(--teal); }
+.trait-card p { font-size: 12.5px; margin: 0; }
+
+/* COMPARE */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+.compare-card {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px; padding: 22px;
+}
+.compare-card.chain { border-top: 2px solid var(--muted); }
+.compare-card.agent { border-top: 2px solid var(--teal); }
+.compare-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.compare-card.agent .compare-label { color: var(--teal); }
+.compare-card h3 { font-size: 17px; margin-bottom: 14px; }
+.compare-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.compare-card li { font-size: 13px; color: var(--sub); padding-left: 16px; position: relative; }
+.compare-card li::before { content: '—'; position: absolute; left: 0; color: var(--muted); }
+
+/* COMPONENTS */
+.comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+.comp-card {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px;
+  padding: 22px; transition: border-color .2s;
+}
+.comp-card:hover { border-color: var(--teal); }
+.comp-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+.comp-card h3 { font-size: 15px; margin-bottom: 7px; color: var(--teal); }
+.comp-card p { font-size: 13px; }
+.comp-badge {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  background: var(--s2); border: 1px solid var(--b); border-radius: 4px;
+  padding: 2px 7px; color: var(--violet); margin-top: 10px;
+}
+
+/* WORKFLOW STEPS */
+.steps-wrap { margin-top: 22px; display: flex; flex-direction: column; gap: 0; }
+.step-item {
+  display: flex; gap: 0; align-items: stretch;
+}
+.step-left {
+  display: flex; flex-direction: column; align-items: center; width: 48px; flex-shrink: 0;
+}
+.step-num {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--s2); border: 2px solid var(--teal);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--teal);
+  flex-shrink: 0;
+}
+.step-line {
+  width: 2px; background: var(--b); flex: 1; margin: 4px 0;
+}
+.step-item:last-child .step-line { display: none; }
+.step-body {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 10px; flex: 1;
+}
+.step-body h3 { font-size: 14px; margin-bottom: 4px; color: var(--teal); }
+.step-body p { font-size: 13px; margin: 0; }
+
+/* DIAGRAM */
+.diagram-wrap {
+  background: var(--s1); border: 1px solid var(--b);
+  border-radius: 12px; padding: 28px 16px; margin-top: 22px; overflow-x: auto;
+}
+.diagram-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+
+/* TRACE */
+.trace-block {
+  border: 1px solid var(--b); border-radius: 10px; margin-top: 22px; overflow: hidden;
+}
+.trace-header {
+  background: var(--s2); border-bottom: 1px solid var(--b);
+  padding: 9px 16px; display: flex; align-items: center; gap: 6px;
+}
+.trace-dot { width: 10px; height: 10px; border-radius: 50%; }
+.trace-title { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
+.trace-body {
+  background: #07090F; padding: 20px 22px;
+  font-family: var(--mono); font-size: 12px; line-height: 1.9; overflow-x: auto;
+}
+.tl { color: var(--muted); }
+.tt { color: var(--teal); }
+.ta { color: var(--violet); }
+.ti { color: var(--sub); }
+.to { color: var(--amber); }
+.tf { color: var(--green); font-weight: 700; }
+.tc { color: #333B60; }
+
+/* CODE TABS */
+.code-tabs { margin-top: 22px; }
+.tab-bar { display: flex; border-bottom: 1px solid var(--b); }
+.tab-btn {
+  background: none; border: none; color: var(--muted);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
+  padding: 10px 18px; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: color .15s;
+}
+.tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.code-block {
+  background: #07090F; border: 1px solid var(--b); border-top: none;
+  border-radius: 0 0 10px 10px; padding: 20px 22px; overflow-x: auto;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.9; white-space: pre;
+}
+.kw { color: #7C73FF; }
+.fn { color: #2EFFD0; }
+.st { color: #FFAA33; }
+.cm { color: #3A4168; }
+.dc { color: #FF7EB6; }
+.cl { color: #E2B86A; }
+.nm { color: #FF9580; }
+.op { color: #4A5280; }
+
+/* USE CASES */
+.cases-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px; margin-top: 22px;
+}
+.case-card {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px;
+  padding: 18px; transition: border-color .2s;
+}
+.case-card:hover { border-color: var(--violet); }
+.case-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+.case-card h3 { font-size: 14px; margin-bottom: 6px; color: var(--violet); }
+.case-card p { font-size: 12.5px; margin: 0; }
+
+/* PROS CONS */
+.pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
+.pc-card {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px; padding: 22px;
+}
+.pc-card.pros { border-top: 2px solid var(--green); }
+.pc-card.cons { border-top: 2px solid var(--red); }
+.pc-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  text-transform: uppercase; margin-bottom: 14px;
+}
+.pc-card.pros .pc-label { color: var(--green); }
+.pc-card.cons .pc-label { color: var(--red); }
+.pc-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.pc-list li { font-size: 13px; color: var(--sub); padding-left: 20px; position: relative; }
+.pc-card.pros .pc-list li::before { content: '+'; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+.pc-card.cons .pc-list li::before { content: '−'; position: absolute; left: 0; color: var(--red); font-weight: 700; }
+
+/* SUMMARY */
+.summary-list { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+.summary-item {
+  display: flex; gap: 16px; align-items: flex-start;
+  background: var(--s1); border: 1px solid var(--b); border-radius: 10px;
+  padding: 15px 20px;
+}
+.snum {
+  font-family: var(--mono); font-size: 12px; color: var(--teal);
+  min-width: 22px; padding-top: 2px; font-weight: 700;
+}
+.summary-item p { font-size: 14px; margin: 0; }
+
+@media (max-width: 580px) {
+  .compare-grid, .comp-grid, .pc-grid { grid-template-columns: 1fr; }
+  nav a { font-size: 10.5px; padding: 5px 7px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trait-card { transition: none; }
+}
+</style>
+
+<nav>
+  <span class="nav-brand">langchain · agent</span>
+  <a href="#hero">개요</a>
+  <a href="#traits">특징</a>
+  <a href="#components">구성요소</a>
+  <a href="#workflow">작동 방식</a>
+  <a href="#react">ReAct 루프</a>
+  <a href="#code">코드</a>
+  <a href="#usecases">활용 사례</a>
+  <a href="#proscons">장단점</a>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section id="hero">
+  <span class="eyebrow">CH16 · LangChain 한국어 튜토리얼</span>
+  <h1>에이전트<br>(Agent)</h1>
+  <p class="hero-sub">인공지능 시스템이 더욱 <strong>자율적</strong>이고 <strong>목표 지향적</strong>으로 작업을 수행하게 해주는 컴포넌트</p>
+  <div class="hero-def">
+    Agent는 주어진 목표를 달성하기 위해 <strong>환경과 상호작용</strong>하며 의사 결정을 내리고 행동을 취하는 지능형 개체입니다.<br><br>
+    Chain이 <strong>미리 정해진 순서</strong>로 실행된다면, Agent는 <strong>LLM을 추론 엔진</strong>으로 사용해 어떤 도구를 어떤 순서로 쓸지 <strong>스스로 결정</strong>합니다.
+  </div>
+</section>
+
+<!-- TRAITS -->
+<section id="traits">
+  <span class="eyebrow">주요 특징</span>
+  <h2>Agent의 5가지 특징</h2>
+  <p>Agent를 일반 Chain과 구별 짓는 핵심 속성들입니다.</p>
+  <div class="traits-grid">
+    <div class="trait-card">
+      <span class="trait-icon">🧭</span>
+      <h3>자율성</h3>
+      <p>사전에 정의된 규칙이나 명시적인 프로그래밍 없이도 스스로 결정을 내리고 행동합니다.</p>
+    </div>
+    <div class="trait-card">
+      <span class="trait-icon">🎯</span>
+      <h3>목표 지향성</h3>
+      <p>특정 목표나 작업을 달성하기 위해 설계되어 있으며, 목표 달성에 최적화된 행동을 선택합니다.</p>
+    </div>
+    <div class="trait-card">
+      <span class="trait-icon">👀</span>
+      <h3>환경 인식</h3>
+      <p>주변 환경이나 상황을 인식하고, 변화하는 상황에 따라 전략을 적응시킬 수 있습니다.</p>
+    </div>
+    <div class="trait-card">
+      <span class="trait-icon">🔧</span>
+      <h3>도구 사용</h3>
+      <p>검색, 계산, API 호출 등 다양한 도구를 활용하여 LLM 단독으로는 불가능한 작업을 수행합니다.</p>
+    </div>
+    <div class="trait-card">
+      <span class="trait-icon">🔄</span>
+      <h3>연속성</h3>
+      <p>1회 수행이 아닌 <strong>반복 수행</strong>을 통해 목표 달성을 추구합니다. 목표가 달성될 때까지 루프를 계속합니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- COMPONENTS -->
+<section id="components">
+  <span class="eyebrow">구성</span>
+  <h2>LangChain Agent 구성요소</h2>
+  <p>LangChain에서 에이전트는 4가지 핵심 요소가 서로 협력해 동작합니다.</p>
+  <div class="comp-grid">
+    <div class="comp-card">
+      <span class="comp-icon">🧠</span>
+      <h3>Agent (에이전트 코어)</h3>
+      <p><strong>의사 결정을 담당하는 핵심 컴포넌트.</strong> LLM이 사용자 입력을 이해하고, 어떤 도구를 쓸지 추론하며, 최종 답변을 생성합니다.</p>
+      <span class="comp-badge">create_tool_calling_agent</span>
+    </div>
+    <div class="comp-card">
+      <span class="comp-icon">🔧</span>
+      <h3>Tools (도구)</h3>
+      <p><strong>에이전트가 사용할 수 있는 기능들의 집합.</strong> 검색, 계산, 날씨 조회, 코드 실행 등 LLM 외부의 능력을 부여합니다.</p>
+      <span class="comp-badge">@tool 데코레이터 · StructuredTool</span>
+    </div>
+    <div class="comp-card">
+      <span class="comp-icon">🧰</span>
+      <h3>Toolkits (툴킷)</h3>
+      <p><strong>관련된 도구들의 그룹.</strong> Gmail, GitHub, SQL 등 특정 서비스에 필요한 여러 도구를 묶어 패키지로 제공합니다.</p>
+      <span class="comp-badge">GmailToolkit · SQLDatabaseToolkit</span>
+    </div>
+    <div class="comp-card">
+      <span class="comp-icon">⚙️</span>
+      <h3>AgentExecutor</h3>
+      <p><strong>에이전트의 실행을 관리하는 컴포넌트.</strong> Think→Act→Observe 사이클을 최종 답변이 나올 때까지 반복합니다. 루프 관리와 오류 처리를 담당합니다.</p>
+      <span class="comp-badge">AgentExecutor(agent, tools, verbose)</span>
+    </div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<section id="workflow">
+  <span class="eyebrow">작동 방식</span>
+  <h2>에이전트의 6단계 작동 흐름</h2>
+  <p>에이전트가 사용자의 요청을 받아 최종 답변을 생성하기까지의 과정입니다.</p>
+  <div class="steps-wrap">
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>입력 수신</h3>
+        <p>사용자로부터 작업이나 질문을 받습니다. 이것이 에이전트가 달성해야 할 목표가 됩니다.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">2</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>계획 수립</h3>
+        <p>주어진 작업을 완료하기 위한 단계별 계획을 세웁니다. LLM이 어떤 순서로 무엇을 할지 추론합니다.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">3</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>도구 선택</h3>
+        <p>각 단계에 적합한 도구를 선택합니다. 도구의 docstring을 읽고 어떤 도구가 목적에 맞는지 판단합니다.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">4</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>실행</h3>
+        <p>선택한 도구를 실제로 호출하여 작업을 수행합니다. API 호출, 검색, 계산 등이 이 단계에서 일어납니다.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">5</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>결과 평가</h3>
+        <p>수행 결과를 평가하고 목표 달성 여부를 확인합니다. 필요시 계획을 조정하거나 다른 도구를 선택하여 2~4단계를 반복합니다.</p>
+      </div>
+    </div>
+    <div class="step-item">
+      <div class="step-left">
+        <div class="step-num">6</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-body">
+        <h3>출력 생성</h3>
+        <p>충분한 정보가 모이면 최종 결과나 답변을 사용자에게 제공합니다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REACT LOOP -->
+<section id="react">
+  <span class="eyebrow">핵심 패턴</span>
+  <h2>ReAct 루프</h2>
+  <p><strong>Re</strong>asoning + <strong>Act</strong>ing. 에이전트 내부에서 Think → Act → Observe 사이클이 반복되는 구체적인 메커니즘입니다.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 500 430" width="500" height="430" xmlns="http://www.w3.org/2000/svg"
+         font-family="-apple-system,'Apple SD Gothic Neo','Noto Sans KR',system-ui,sans-serif">
+      <defs>
+        <marker id="am" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#5B6696"/>
+        </marker>
+        <marker id="at" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#2EFFD0"/>
+        </marker>
+        <marker id="av" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#7C73FF"/>
+        </marker>
+        <marker id="aa" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#FFAA33"/>
+        </marker>
+        <marker id="ag" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4AFF8C"/>
+        </marker>
+      </defs>
+
+      <!-- INPUT -->
+      <rect x="160" y="10" width="180" height="46" rx="8" fill="#13162A" stroke="#252B47" stroke-width="1.5"/>
+      <text x="250" y="29" text-anchor="middle" fill="#5B6696" font-size="11">사용자 질문</text>
+      <text x="250" y="46" text-anchor="middle" fill="#C8D3F5" font-size="13" font-weight="600">📥 Input</text>
+
+      <line x1="250" y1="56" x2="250" y2="88" stroke="#5B6696" stroke-width="1.5" marker-end="url(#am)"/>
+
+      <!-- THINK -->
+      <rect x="120" y="88" width="260" height="62" rx="10" fill="#071A16" stroke="#2EFFD0" stroke-width="2"/>
+      <text x="250" y="112" text-anchor="middle" fill="#2EFFD0" font-size="15" font-weight="700">💭 Think (계획 수립 · 추론)</text>
+      <text x="250" y="132" text-anchor="middle" fill="#8B9BC8" font-size="11">어떤 도구가 필요한가? 충분한 정보가 있는가?</text>
+
+      <!-- Think → Act -->
+      <line x1="195" y1="150" x2="118" y2="205" stroke="#2EFFD0" stroke-width="1.5" marker-end="url(#at)"/>
+      <text x="145" y="183" text-anchor="middle" fill="#2EFFD0" font-size="10">도구 필요</text>
+
+      <!-- Think → Final -->
+      <line x1="305" y1="150" x2="382" y2="205" stroke="#4AFF8C" stroke-width="1.5" marker-end="url(#ag)"/>
+      <text x="357" y="183" text-anchor="middle" fill="#4AFF8C" font-size="10">답변 가능</text>
+
+      <!-- ACT -->
+      <rect x="30" y="205" width="185" height="62" rx="10" fill="#100E26" stroke="#7C73FF" stroke-width="2"/>
+      <text x="122" y="229" text-anchor="middle" fill="#7C73FF" font-size="14" font-weight="700">⚡ Act (도구 선택 · 실행)</text>
+      <text x="122" y="249" text-anchor="middle" fill="#8B9BC8" font-size="11">API 호출, 검색, 계산 등</text>
+
+      <!-- FINAL ANSWER -->
+      <rect x="285" y="205" width="185" height="62" rx="10" fill="#071A10" stroke="#4AFF8C" stroke-width="2"/>
+      <text x="377" y="226" text-anchor="middle" fill="#4AFF8C" font-size="13" font-weight="700">✅ Final Answer</text>
+      <text x="377" y="246" text-anchor="middle" fill="#8B9BC8" font-size="11">최종 답변 반환</text>
+
+      <line x1="122" y1="267" x2="122" y2="315" stroke="#7C73FF" stroke-width="1.5" marker-end="url(#av)"/>
+
+      <!-- OBSERVE -->
+      <rect x="30" y="315" width="185" height="62" rx="10" fill="#1A1200" stroke="#FFAA33" stroke-width="2"/>
+      <text x="122" y="339" text-anchor="middle" fill="#FFAA33" font-size="14" font-weight="700">👁 Observe (결과 평가)</text>
+      <text x="122" y="359" text-anchor="middle" fill="#8B9BC8" font-size="11">결과 확인 → 컨텍스트에 추가</text>
+
+      <!-- Observe → Think (loop) -->
+      <path d="M 30,346 C 2,346 2,119 120,119" stroke="#FFAA33" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#aa)" fill="none"/>
+      <text x="16" y="232" text-anchor="middle" fill="#FFAA33" font-size="10" transform="rotate(-90,16,232)">반복 수행</text>
+
+      <text x="250" y="414" text-anchor="middle" fill="#3A4168" font-size="11">AgentExecutor가 최종 답변이 나올 때까지 루프를 관리 (max_iterations로 제한)</text>
+    </svg>
+  </div>
+
+  <div class="trace-block">
+    <div class="trace-header">
+      <div class="trace-dot" style="background:#FF5F57"></div>
+      <div class="trace-dot" style="background:#FEBC2E"></div>
+      <div class="trace-dot" style="background:#28C840"></div>
+      <span class="trace-title">실제 실행 추적 예시 (verbose=True)</span>
+    </div>
+    <div class="trace-body"><span class="tc">&gt; Entering new AgentExecutor chain...</span>
+
+<span class="tl">Thought: </span><span class="tt">서울 날씨와 나눗셈 계산이 필요하다. 먼저 날씨 도구를 호출하겠다.</span>
+<span class="tl">Action:  </span><span class="ta">get_weather</span>
+<span class="tl">Input:   </span><span class="ti">"서울"</span>
+<span class="tl">Observe: </span><span class="to">서울의 현재 날씨는 맑음, 23°C입니다.</span>
+
+<span class="tl">Thought: </span><span class="tt">날씨 정보를 얻었다. 이제 계산 도구를 사용하겠다.</span>
+<span class="tl">Action:  </span><span class="ta">calculate</span>
+<span class="tl">Input:   </span><span class="ti">"23 / 7"</span>
+<span class="tl">Observe: </span><span class="to">3.2857142857142856</span>
+
+<span class="tl">Thought: </span><span class="tt">두 정보를 모두 얻었다. 최종 답변을 생성할 수 있다.</span>
+<span class="tf">Final Answer: 서울은 현재 맑고 23°C입니다. 23 ÷ 7 ≈ 3.286입니다.</span>
+
+<span class="tc">&gt; Finished chain.</span></div>
+  </div>
+</section>
+
+<!-- CODE -->
+<section id="code">
+  <span class="eyebrow">구현</span>
+  <h2>코드 예시</h2>
+  <p><strong>도구 정의 → 에이전트 생성 → 실행</strong>, 세 단계로 완성됩니다.</p>
+
+  <div class="code-tabs">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="tab1">01 · Tools 정의</button>
+      <button class="tab-btn" data-tab="tab2">02 · Agent 생성</button>
+      <button class="tab-btn" data-tab="tab3">03 · 실행</button>
+    </div>
+
+    <div id="tab1" class="tab-panel active">
+      <div class="code-block"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> <span class="fn">tool</span>
+
+<span class="cm"># @tool 데코레이터로 일반 함수를 에이전트 도구로 변환</span>
+<span class="cm"># docstring이 LLM에게 도구 사용 방법을 알려주므로 정확히 작성해야 함</span>
+<span class="dc">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cl">str</span>) -> <span class="cl">str</span>:
+    <span class="st">"""도시의 현재 날씨를 조회합니다. city에 도시명을 입력하세요."""</span>
+    <span class="kw">return</span> <span class="st">f"</span>{city}<span class="st">의 날씨: 맑음, 23°C"</span>
+
+<span class="dc">@tool</span>
+<span class="kw">def</span> <span class="fn">calculate</span>(expression: <span class="cl">str</span>) -> <span class="cl">str</span>:
+    <span class="st">"""수학 표현식을 계산합니다. 예: '23 / 7', '100 * 0.05'"""</span>
+    <span class="kw">return</span> <span class="cl">str</span>(<span class="fn">eval</span>(expression))
+
+<span class="cm"># 툴킷(Toolkit)을 사용하는 경우 — 관련 도구들의 묶음</span>
+<span class="cm"># from langchain_community.agent_toolkits import SQLDatabaseToolkit</span>
+<span class="cm"># toolkit = SQLDatabaseToolkit(db=db, llm=llm)</span>
+<span class="cm"># tools = toolkit.get_tools()</span>
+
+tools = [<span class="fn">get_weather</span>, <span class="fn">calculate</span>]</div>
+    </div>
+
+    <div id="tab2" class="tab-panel">
+      <div class="code-block"><span class="kw">from</span> langchain.agents <span class="kw">import</span> <span class="fn">create_tool_calling_agent</span>, <span class="cl">AgentExecutor</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> <span class="cl">ChatOpenAI</span>
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> <span class="cl">ChatPromptTemplate</span>
+
+<span class="cm"># 1. LLM — tool calling 지원 모델 필요 (GPT-4o, Claude 3 등)</span>
+llm = <span class="cl">ChatOpenAI</span>(model=<span class="st">"gpt-4o"</span>)
+
+<span class="cm"># 2. 프롬프트 — {agent_scratchpad} 플레이스홀더 필수!</span>
+<span class="cm">#    agent_scratchpad: Thought/Action/Observation 이력이 누적되는 공간</span>
+prompt = <span class="cl">ChatPromptTemplate</span>.<span class="fn">from_messages</span>([
+    (<span class="st">"system"</span>, <span class="st">"당신은 유용한 AI 어시스턴트입니다. 필요한 도구를 적극 활용하세요."</span>),
+    (<span class="st">"human"</span>, <span class="st">"{input}"</span>),
+    (<span class="st">"placeholder"</span>, <span class="st">"{agent_scratchpad}"</span>),  <span class="cm"># ← 반드시 포함</span>
+])
+
+<span class="cm"># 3. 에이전트 생성 — LLM + 도구 + 프롬프트 결합</span>
+agent = <span class="fn">create_tool_calling_agent</span>(llm, tools, prompt)
+
+<span class="cm"># 4. AgentExecutor — 실행 루프 관리</span>
+agent_executor = <span class="cl">AgentExecutor</span>(
+    agent=agent,
+    tools=tools,
+    verbose=<span class="kw">True</span>,              <span class="cm"># 실행 과정 출력</span>
+    max_iterations=<span class="nm">10</span>,         <span class="cm"># 연속성: 목표 달성까지 최대 10회 반복</span>
+    handle_parsing_errors=<span class="kw">True</span>  <span class="cm"># 오류 발생 시 재시도</span>
+)</div>
+    </div>
+
+    <div id="tab3" class="tab-panel">
+      <div class="code-block"><span class="cm"># 단일 질문 — invoke</span>
+result = agent_executor.<span class="fn">invoke</span>({
+    <span class="st">"input"</span>: <span class="st">"서울 날씨를 알려주고, 23을 7로 나눈 값도 계산해줘"</span>
+})
+<span class="fn">print</span>(result[<span class="st">"output"</span>])
+<span class="cm"># → 서울은 현재 맑고 23°C입니다. 23 ÷ 7 ≈ 3.286입니다.</span>
+
+
+<span class="cm"># 스트리밍 — 실시간으로 진행 상황 확인</span>
+<span class="kw">for</span> chunk <span class="kw">in</span> agent_executor.<span class="fn">stream</span>({
+    <span class="st">"input"</span>: <span class="st">"부산 날씨 알려줘"</span>
+}):
+    <span class="fn">print</span>(chunk)
+
+
+<span class="cm"># 비동기 — FastAPI 등 async 환경</span>
+result = <span class="kw">await</span> agent_executor.<span class="fn">ainvoke</span>({
+    <span class="st">"input"</span>: <span class="st">"제주도 날씨는?"</span>
+})</div>
+    </div>
+  </div>
+</section>
+
+<!-- USE CASES -->
+<section id="usecases">
+  <span class="eyebrow">활용 사례</span>
+  <h2>에이전트를 활용할 수 있는 분야</h2>
+  <p>에이전트의 자율성과 도구 사용 능력이 빛을 발하는 실제 사용 시나리오들입니다.</p>
+  <div class="cases-grid">
+    <div class="case-card">
+      <span class="case-icon">🔍</span>
+      <h3>정보 검색 및 분석</h3>
+      <p>웹 검색, 데이터베이스 쿼리 등을 수행하며 여러 소스를 종합해 답변을 생성합니다.</p>
+    </div>
+    <div class="case-card">
+      <span class="case-icon">⚡</span>
+      <h3>작업 자동화</h3>
+      <p>이메일 작성, 파일 처리, 데이터 변환 등 복잡한 워크플로우를 자동으로 처리합니다.</p>
+    </div>
+    <div class="case-card">
+      <span class="case-icon">💬</span>
+      <h3>고객 서비스</h3>
+      <p>질문에 답변하고, 주문 조회, 환불 처리 등 다양한 고객 문제를 해결합니다.</p>
+    </div>
+    <div class="case-card">
+      <span class="case-icon">📊</span>
+      <h3>의사 결정 지원</h3>
+      <p>데이터를 수집·분석하고 인사이트와 권장 사항을 제공해 의사결정을 돕습니다.</p>
+    </div>
+    <div class="case-card">
+      <span class="case-icon">✍️</span>
+      <h3>창의적 작업</h3>
+      <p>글쓰기, 코드 생성, 이미지 생성 지시 등 창의적이고 복합적인 작업을 수행합니다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROS CONS -->
+<section id="proscons">
+  <span class="eyebrow">평가</span>
+  <h2>장점과 한계</h2>
+  <p>에이전트를 도입하기 전 알아야 할 트레이드오프입니다.</p>
+  <div class="pc-grid">
+    <div class="pc-card pros">
+      <div class="pc-label">장점</div>
+      <ul class="pc-list">
+        <li>복잡한 멀티스텝 작업의 자동화</li>
+        <li>유연성과 적응성 — 예상치 못한 상황에도 대처</li>
+        <li>다양한 도구 및 외부 API와의 통합</li>
+        <li>반복 수행을 통한 점진적 목표 달성</li>
+      </ul>
+    </div>
+    <div class="pc-card cons">
+      <div class="pc-label">한계</div>
+      <ul class="pc-list">
+        <li>제어와 예측 가능성의 어려움</li>
+        <li>높은 계산 비용과 리소스 요구사항</li>
+        <li>무한 루프나 잘못된 도구 선택 가능성</li>
+        <li>디버깅이 Chain보다 복잡함</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SUMMARY -->
+<section id="summary" style="padding-bottom: 0;">
+  <span class="eyebrow">요약</span>
+  <h2>핵심 정리</h2>
+  <div class="summary-list" style="margin-bottom: 0;">
+    <div class="summary-item">
+      <span class="snum">01</span>
+      <p>Agent는 LLM을 <strong>추론 엔진</strong>으로, Tools를 <strong>실행 수단</strong>으로 사용해 스스로 계획하고 목표를 달성합니다.</p>
+    </div>
+    <div class="summary-item">
+      <span class="snum">02</span>
+      <p>5가지 특징: <strong>자율성 · 목표지향성 · 환경인식 · 도구사용 · 연속성</strong>이 Agent를 Chain과 구별 짓습니다.</p>
+    </div>
+    <div class="summary-item">
+      <span class="snum">03</span>
+      <p>내부 루프는 <strong>Think → Act → Observe</strong>. 최종 답변이 나올 때까지 반복하며 이를 ReAct 패턴이라 합니다.</p>
+    </div>
+    <div class="summary-item">
+      <span class="snum">04</span>
+      <p>프롬프트에 <strong><code>{agent_scratchpad}</code></strong>가 없으면 이전 추론 이력을 기억 못해 동작하지 않습니다.</p>
+    </div>
+    <div class="summary-item">
+      <span class="snum">05</span>
+      <p><code>verbose=True</code>로 Thought/Action/Observation 추적, <code>max_iterations</code>로 무한 루프를 방지합니다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tab).classList.add('active');
+  });
+});
+</script>
