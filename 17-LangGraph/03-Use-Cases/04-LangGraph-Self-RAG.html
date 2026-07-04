@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph Self-RAG 정리</title>
+<style>
+  :root {
+    --bg: #f4f4f8;
+    --surface: #ffffff;
+    --surface-2: #eceaf4;
+    --ink: #1a1730;
+    --ink-muted: #625d78;
+    --line: #dcd9e8;
+    --accent: #5a54c9;          /* 검색·채점기 – 인디고 */
+    --accent-soft: #e5e3f9;
+    --good: #2f9e6f;            /* 통과·생성·종료 – 그린 */
+    --good-soft: #d6f0e4;
+    --warn: #c07a12;            /* 재작성 루프(재검색) – 앰버 */
+    --warn-soft: #f6e7cc;
+    --bad: #c0455c;             /* 환각 → 재생성 – 로즈 */
+    --bad-soft: #f6dde2;
+    --code-bg: #191631;
+    --code-ink: #e0dcf0;
+    --code-key: #b0a8ff;
+    --code-str: #7bd9ac;
+    --code-com: #7a7597;
+    --shadow: 0 1px 2px rgba(26, 23, 48, 0.05), 0 6px 20px rgba(26, 23, 48, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #100e1c;
+    --surface: #1a1730;
+    --surface-2: #241f3d;
+    --ink: #ece9f7;
+    --ink-muted: #a49fbe;
+    --line: #322c4c;
+    --accent: #948ff0;
+    --accent-soft: #221f3f;
+    --good: #52c797;
+    --good-soft: #16352a;
+    --warn: #e0a94e;
+    --warn-soft: #3a2c16;
+    --bad: #e08199;
+    --bad-soft: #3a2028;
+    --code-bg: #0c0a18;
+    --code-ink: #e0dcf0;
+    --code-key: #b0a8ff;
+    --code-str: #7bd9ac;
+    --code-com: #7a7597;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #100e1c;
+      --surface: #1a1730;
+      --surface-2: #241f3d;
+      --ink: #ece9f7;
+      --ink-muted: #a49fbe;
+      --line: #322c4c;
+      --accent: #948ff0;
+      --accent-soft: #221f3f;
+      --good: #52c797;
+      --good-soft: #16352a;
+      --warn: #e0a94e;
+      --warn-soft: #3a2c16;
+      --bad: #e08199;
+      --bad-soft: #3a2028;
+      --code-bg: #0c0a18;
+      --code-ink: #e0dcf0;
+      --code-key: #b0a8ff;
+      --code-str: #7bd9ac;
+      --code-com: #7a7597;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 780px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+
+  .subhead {
+    font-size: 16.5px;
+    color: var(--ink-muted);
+    margin: 0 0 22px;
+    max-width: 64ch;
+    text-wrap: balance;
+  }
+
+  .source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 10px 5px 9px;
+    margin-bottom: 44px;
+  }
+
+  h2 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+    font-weight: 700;
+  }
+  h2 .num {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 9px;
+    font-size: 18px;
+  }
+
+  .section { margin-top: 56px; }
+  .section-lede {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 22px;
+    max-width: 66ch;
+  }
+
+  p { margin: 0 0 14px; }
+  strong { font-weight: 650; }
+  code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .callout code { background: var(--accent-soft); }
+
+  /* ---------- Diagram ---------- */
+  .diagram-scroll { overflow-x: auto; margin: 28px 0 12px; padding: 4px; }
+  .flow { position: relative; width: 700px; height: 744px; margin: 0 auto; }
+  .flow svg { position: absolute; inset: 0; width: 700px; height: 744px; overflow: visible; }
+
+  .fnode {
+    position: absolute;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 6px 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .fnode .t { font-weight: 700; font-size: 13.5px; }
+  .fnode .s {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-muted);
+    line-height: 1.35;
+  }
+
+  .fnode.start     { top: 0px;   left: 296px; width: 128px; height: 42px; background: var(--surface-2); }
+  .fnode.retrieve  { top: 72px;  left: 242px; width: 236px; height: 58px; border-color: var(--accent); }
+  .fnode.retrieve .t { color: var(--accent); }
+  .fnode.grade     { top: 168px; left: 226px; width: 268px; height: 62px; border-color: var(--accent); }
+  .fnode.grade .t  { color: var(--accent); }
+  .fnode.decide {
+    top: 272px; left: 234px; width: 252px; height: 56px;
+    border-radius: 10px; border-style: dashed;
+  }
+  .fnode.generate  { top: 400px; left: 248px; width: 224px; height: 60px; border-color: var(--good); }
+  .fnode.generate .t { color: var(--good); }
+  .fnode.gradegen {
+    top: 524px; left: 216px; width: 288px; height: 70px;
+    border-radius: 10px; border-style: dashed; border-color: var(--accent);
+  }
+  .fnode.gradegen .t { color: var(--accent); }
+  .fnode.transform { top: 402px; left: 36px; width: 176px; height: 62px; border-color: var(--warn); background: var(--warn-soft); }
+  .fnode.transform .t { color: var(--warn); }
+  .fnode.end       { top: 686px; left: 300px; width: 120px; height: 42px; background: var(--surface-2); }
+
+  .flabel {
+    position: absolute;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .flabel.good { color: var(--good); }
+  .flabel.warn { color: var(--warn); }
+  .flabel.bad  { color: var(--bad); }
+
+  .legend {
+    display: flex;
+    gap: 8px 20px;
+    justify-content: center;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- Cards grid ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card .ch {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; margin-bottom: 6px;
+  }
+  .card .ch .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .card .d { font-size: 13.8px; color: var(--ink); margin: 0; }
+  .card .fn {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* ---------- Schema cards ---------- */
+  .schema { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .fld {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .fld .k {
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; color: var(--accent);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .fld .ty { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
+  .fld .d { font-size: 13.5px; color: var(--ink); margin-top: 6px; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 18px 0 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); background: var(--surface-2); font-weight: 700;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace; font-size: 13px; }
+  .tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  }
+  .tag.indigo { background: var(--accent-soft); color: var(--accent); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.bad  { background: var(--bad-soft); color: var(--bad); }
+
+  /* ---------- Compare table emphasis ---------- */
+  td .crag { color: var(--ink-muted); }
+  td .self { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Run cards (examples) ---------- */
+  .runcard {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .runcard .rbar {
+    padding: 12px 18px;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+    border-bottom: 1px solid var(--line);
+  }
+  .runcard.happy .rbar { background: var(--good-soft); color: var(--good); }
+  .runcard.loop .rbar { background: var(--bad-soft); color: var(--bad); }
+  .runcard .rbar .pill {
+    font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; background: var(--surface); margin-left: auto;
+  }
+  .runcard.happy .rbar .pill { color: var(--good); }
+  .runcard.loop .rbar .pill { color: var(--bad); }
+  .runcard .rbody { padding: 16px 18px; }
+  .runcard .q {
+    font-size: 14.5px; margin: 0 0 14px;
+  }
+  .runcard .q b { color: var(--ink); }
+
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
+  .steps .st {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .steps .st.indigo { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .steps .st.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+  .steps .st.good { border-color: var(--good); color: var(--good); background: var(--good-soft); }
+  .steps .st.bad  { border-color: var(--bad); color: var(--bad); background: var(--bad-soft); }
+  .steps .arw { color: var(--ink-muted); font-size: 13px; }
+  .steps .loopmark { color: var(--bad); font-size: 12px; font-weight: 700; }
+  .runcard .res {
+    font-size: 13.8px; margin: 0;
+    padding: 11px 14px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .runcard .res b { color: var(--ink); }
+
+  /* ---------- Code panel ---------- */
+  .code-panel {
+    background: var(--code-bg);
+    border-radius: 9px;
+    margin: 14px 0 4px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .code-panel .bar {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 11px; color: #8f89a8; padding: 8px 14px 0;
+  }
+  .code-panel pre { margin: 0; padding: 10px 14px 14px; overflow-x: auto; }
+  .code-panel code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.8px; color: var(--code-ink); line-height: 1.6; white-space: pre;
+    background: none; padding: 0;
+  }
+  .code-panel .k { color: var(--code-key); }
+  .code-panel .s { color: var(--code-str); }
+  .code-panel .c { color: var(--code-com); }
+
+  /* ---------- Recap ---------- */
+  .recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .recap li {
+    display: flex; gap: 12px; font-size: 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .recap li::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+  hr.divider { border: none; border-top: 1px solid var(--line); margin: 56px 0 0; }
+
+  footer { margin-top: 40px; font-size: 12.5px; color: var(--ink-muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 26px; }
+    .page { padding: 40px 16px 72px; }
+    .cards, .schema { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <p class="eyebrow">LangGraph · 03-Use-Cases · 04</p>
+  <h1>검색한 문서도, 스스로 만든 답도 다시 검증하는 RAG</h1>
+  <p class="subhead">
+    <strong>Self-RAG</strong> — 검색한 문서가 질문에 맞는지 채점하고, 답을 만든 <strong>뒤에도</strong>
+    그 답이 근거에 기반하는지(환각) · 질문을 실제로 해결하는지 다시 채점합니다.
+    미흡하면 <strong>질문을 고쳐 재검색하거나 다시 생성</strong>하는 <strong>자기 반성(self-reflection)</strong> RAG입니다.
+  </p>
+  <span class="source-tag">📓 04-LangGraph-Self-RAG.ipynb</span>
+
+  <!-- 개요 -->
+  <div class="section">
+    <div class="callout">
+      <span class="label">한눈에 보기</span>
+      <p>
+        일반 RAG는 <strong>검색 → 생성</strong> 한 방향으로 끝납니다. Self-RAG는 이 흐름 곳곳에
+        <strong>자기 점검(채점) 관문</strong>을 세워 두고, 통과하지 못하면 앞 단계로 <strong>되돌아갑니다</strong>.
+      </p>
+      <p>
+        점검은 두 지점에서 일어납니다. <strong>①&nbsp;생성 전</strong> — 검색한 문서가 질문과 관련 있는지 채점하고,
+        쓸 문서가 없으면 <code>질문 재작성 → 재검색</code>. <strong>②&nbsp;생성 후</strong> — 만든 답이
+        근거에 기반하는지(환각 여부)와 질문을 해결하는지 채점하고, 실패하면 <code>재생성</code> 또는 <code>재검색</code>.
+        이 <strong>되돌아가는 루프</strong>가 Self-RAG의 핵심입니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- 1. 개념 -->
+  <div class="section">
+    <h2><span class="num">01</span>Self-RAG의 네 가지 자기 판단</h2>
+    <p class="section-lede">
+      원 논문(<em>Self-RAG</em>, 2310.11511)은 RAG 과정에 네 번의 스스로 판단하는 단계를 제안합니다.
+      이 튜토리얼은 그중 세 가지를 <strong>yes/no 이진 채점으로 단순화</strong>해 구현합니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:22%">자기 판단</th>
+            <th>입력 → 출력 (원 논문)</th>
+            <th style="width:30%">이 튜토리얼 구현</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>검색 필요?</td>
+            <td class="mono">질문 → yes / no / continue</td>
+            <td><span class="crag">생략 (항상 먼저 검색)</span></td>
+          </tr>
+          <tr>
+            <td>문서 관련성</td>
+            <td class="mono">질문+문서 → relevant / irrelevant</td>
+            <td><span class="self">yes/no · <code>GradeDocuments</code></span></td>
+          </tr>
+          <tr>
+            <td>사실성 (환각)</td>
+            <td class="mono">질문+문서+답변 → 완전/부분/무근거</td>
+            <td><span class="self">yes/no · <code>Groundedness</code></span></td>
+          </tr>
+          <tr>
+            <td>정답 품질</td>
+            <td class="mono">질문+답변 → 5 · 4 · 3 · 2 · 1</td>
+            <td><span class="self">yes/no · <code>GradeAnswer</code></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 2. CRAG와 비교 -->
+  <div class="section">
+    <h2><span class="num">02</span>바로 앞의 CRAG와 무엇이 다른가</h2>
+    <p class="section-lede">
+      둘 다 "검색 결과를 의심하고 채점"하지만, <strong>보정 방법과 점검 범위</strong>가 다릅니다.
+      CRAG는 밖(웹)에서 보강하고 한 방향으로 끝나지만, Self-RAG는 안(문서)에서 다시 찾으며 답까지 검증하고 되돌아갑니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:24%">비교 항목</th><th>CRAG (03)</th><th>Self-RAG (04)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>점검 대상</td>
+            <td><span class="crag">검색 문서만</span></td>
+            <td><span class="self">검색 문서 + 생성 답변</span></td>
+          </tr>
+          <tr>
+            <td>문서가 부적합할 때</td>
+            <td><span class="crag">웹 검색으로 지식 보강</span></td>
+            <td><span class="self">질문 재작성 → 재검색(루프백)</span></td>
+          </tr>
+          <tr>
+            <td>생성 후 점검</td>
+            <td><span class="crag">없음 (단방향으로 종료)</span></td>
+            <td><span class="self">환각·정답성 채점 후 재생성/재검색</span></td>
+          </tr>
+          <tr>
+            <td>외부 웹 검색</td>
+            <td><span class="crag">사용 (Tavily)</span></td>
+            <td><span class="self">사용 안 함 (내부 문서 재검색)</span></td>
+          </tr>
+          <tr>
+            <td>반복 구조</td>
+            <td><span class="crag">없음</span></td>
+            <td><span class="self">루프 있음 → 무한 루프 주의</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 3. 전체 흐름 -->
+  <div class="section">
+    <h2><span class="num">03</span>전체 흐름 — 두 개의 되먹임 루프</h2>
+    <p class="section-lede">
+      가운데 세로줄이 정상 흐름입니다. 채점에 걸리면 왼쪽 <strong>재검색 루프</strong>(질문 재작성 → retrieve)나
+      오른쪽 <strong>환각 재생성 루프</strong>(generate 자기 반복)로 빠져 다시 시도합니다.
+    </p>
+
+    <div class="diagram-scroll">
+      <div class="flow">
+        <svg viewBox="0 0 700 744" aria-hidden="true">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted)"></path>
+            </marker>
+            <marker id="a-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path>
+            </marker>
+            <marker id="a-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"></path>
+            </marker>
+            <marker id="a-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"></path>
+            </marker>
+          </defs>
+
+          <!-- START -> retrieve -->
+          <path d="M 360 42 L 360 72" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- retrieve -> grade_documents -->
+          <path d="M 360 130 L 360 168" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- grade -> decide -->
+          <path d="M 360 230 L 360 272" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- decide -> generate (docs ok) -->
+          <path d="M 360 328 L 360 400" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+          <!-- decide -> transform_query (no docs) -->
+          <path d="M 234 300 C 160 315, 124 350, 124 402" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- generate -> grade_generation -->
+          <path d="M 360 460 L 360 524" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- generate self-loop (hallucination) -->
+          <path d="M 472 414 C 548 404, 548 446, 474 446" stroke="var(--bad)" stroke-width="1.7" fill="none" marker-end="url(#a-bad)"></path>
+          <!-- grade_generation -> END (relevant) -->
+          <path d="M 360 594 L 360 686" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+          <!-- grade_generation -> transform_query (not relevant) -->
+          <path d="M 216 559 C 150 555, 124 512, 124 466" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- transform_query -> retrieve (loop back, far-left lane) -->
+          <path d="M 36 433 L 16 433 L 16 101 L 242 101" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+        </svg>
+
+        <div class="fnode start"><div class="t">START</div></div>
+
+        <div class="fnode retrieve">
+          <div class="t">retrieve</div>
+          <div class="s">PDF Retriever로 문서 검색</div>
+        </div>
+
+        <div class="fnode grade">
+          <div class="t">grade_documents</div>
+          <div class="s">문서별 yes/no 채점 → 관련 문서만 남김</div>
+        </div>
+
+        <div class="fnode decide">
+          <div class="t">decide_to_generate</div>
+          <div class="s">남은 문서가 있나?</div>
+        </div>
+
+        <div class="fnode generate">
+          <div class="t">generate</div>
+          <div class="s">RAG 체인으로 답변 생성</div>
+        </div>
+
+        <div class="fnode gradegen">
+          <div class="t">grade_generation</div>
+          <div class="s">① 환각(근거성) 점검<br>② 정답성(질문 해결) 점검</div>
+        </div>
+
+        <div class="fnode transform">
+          <div class="t">transform_query</div>
+          <div class="s">질문 재작성</div>
+        </div>
+
+        <div class="fnode end"><div class="t">END</div></div>
+
+        <div class="flabel good" style="top:356px; left:370px;">문서 있음</div>
+        <div class="flabel warn" style="top:340px; left:148px;">문서 없음</div>
+        <div class="flabel bad"  style="top:420px; left:556px;">환각 → 재생성</div>
+        <div class="flabel good" style="top:628px; left:370px;">사실적 · 질문 해결 → 종료</div>
+        <div class="flabel warn" style="top:500px; left:130px;">질문 못 풂</div>
+        <div class="flabel warn" style="top:78px;  left:26px;">재작성 후 재검색</div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>검색 · 채점기</span>
+      <span><i style="background:var(--good)"></i>통과 (생성 · 종료)</span>
+      <span><i style="background:var(--warn)"></i>재검색 루프</span>
+      <span><i style="background:var(--bad)"></i>환각 재생성</span>
+      <span><i style="background:var(--surface-2);border:1px solid var(--line)"></i>시작 / 종료</span>
+    </div>
+  </div>
+
+  <!-- 4. 채점기 -->
+  <div class="section">
+    <h2><span class="num">04</span>세 개의 채점기 + 질문 재작성기</h2>
+    <p class="section-lede">
+      Self-RAG의 "자기 반성"은 아래 네 개의 LangChain 체인으로 이뤄집니다. 채점기 셋은 모두
+      <code>with_structured_output</code>으로 <code>yes</code>/<code>no</code> 이진 점수만 강제로 뱉게 만듭니다.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>Retrieval Grader</div>
+        <p class="d">검색된 문서를 <strong>한 개씩</strong> 질문과의 관련성으로 채점. 생성 <strong>전</strong>에 쓸모없는 문서를 걸러 냄.</p>
+        <span class="fn">GradeDocuments · binary_score</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--bad)"></span>Hallucination Grader</div>
+        <p class="d">생성된 답이 <strong>검색 문서에 근거</strong>하는지(환각 여부) 채점. <code>no</code>면 지어낸 답 → 재생성.</p>
+        <span class="fn">Groundedness · 근거성 점검</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--good)"></span>Answer Grader</div>
+        <p class="d">근거는 있어도 <strong>질문을 실제로 해결</strong>하는지 채점. <code>no</code>면 동문서답 → 재검색.</p>
+        <span class="fn">GradeAnswer · 정답성 점검</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--warn)"></span>Question Re-writer</div>
+        <p class="d">질문의 <strong>숨은 의도</strong>를 파악해 검색에 더 잘 맞는 형태로 다시 씀. 두 루프 모두의 되돌아가는 지점.</p>
+        <span class="fn">re_write_prompt | llm | StrOutputParser()</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 상태 -->
+  <div class="section">
+    <h2><span class="num">05</span>상태(State) — CRAG보다 단순</h2>
+    <p class="section-lede">
+      Self-RAG는 경로를 가르는 별도 스위치 필드가 필요 없습니다. 분기는 그때그때
+      <strong>채점기를 직접 호출</strong>해 결정하므로, 상태에는 딱 세 값만 담깁니다.
+    </p>
+    <div class="schema">
+      <div class="fld">
+        <div class="k">question <span class="ty">str</span></div>
+        <div class="d">사용자 질문. <strong>재작성되면 이 값이 교체</strong>되어 다시 검색된다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">generation <span class="ty">str</span></div>
+        <div class="d">LLM이 만든 답변. 환각 판정 시 <strong>덮어쓰며 재생성</strong>된다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">documents <span class="ty">List</span></div>
+        <div class="d">검색·선별된 문서 목록.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. 노드 -->
+  <div class="section">
+    <h2><span class="num">06</span>노드 구성</h2>
+    <p class="section-lede">CRAG와 달리 웹 검색 노드가 없고, <code>transform_query</code>가 <code>retrieve</code>로 되돌아갑니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>노드</th><th>하는 일</th><th>갱신하는 키</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag indigo">retrieve</span></td>
+            <td>PDF Retriever로 질문에 맞는 문서를 검색</td>
+            <td class="mono">documents</td>
+          </tr>
+          <tr>
+            <td><span class="tag indigo">grade_documents</span></td>
+            <td>문서별로 관련성 채점, 관련된 것만 남김</td>
+            <td class="mono">documents</td>
+          </tr>
+          <tr>
+            <td><span class="tag good">generate</span></td>
+            <td>선별된 문서로 RAG 답변 생성</td>
+            <td class="mono">generation</td>
+          </tr>
+          <tr>
+            <td><span class="tag warn">transform_query</span></td>
+            <td>질문을 재작성 → 다시 <code>retrieve</code>로 보냄</td>
+            <td class="mono">question</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 7. 분기 -->
+  <div class="section">
+    <h2><span class="num">07</span>두 개의 분기 함수</h2>
+    <p class="section-lede">
+      조건부 엣지가 두 군데 붙습니다. 하나는 <strong>생성 전</strong>(문서 채점 결과), 하나는 <strong>생성 후</strong>(답변 채점 결과)입니다.
+    </p>
+
+    <h3 style="font-size:15.5px; margin:22px 0 2px;">① <code>decide_to_generate</code> — 생성 전 (문서 채점 후)</h3>
+    <p class="section-lede" style="margin-bottom:12px">남은 문서가 있으면 생성으로, 하나도 없으면 재검색 루프로 보냅니다.</p>
+    <div class="code-panel">
+      <div class="bar">decide_to_generate() · 문서 유무로 분기</div>
+      <pre><code><span class="k">def</span> decide_to_generate(state):
+    <span class="k">if</span> <span class="k">not</span> state[<span class="s">"documents"</span>]:      <span class="c"># 관련 문서 0개</span>
+        <span class="k">return</span> <span class="s">"transform_query"</span>     <span class="c"># 질문 재작성 → 재검색</span>
+    <span class="k">else</span>:
+        <span class="k">return</span> <span class="s">"generate"</span>            <span class="c"># 관련 문서 있음 → 생성</span></code></pre>
+    </div>
+
+    <h3 style="font-size:15.5px; margin:26px 0 2px;">② <code>grade_generation_v_documents_and_question</code> — 생성 후 (2단 채점)</h3>
+    <p class="section-lede" style="margin-bottom:12px">
+      먼저 환각을 점검하고(근거성), 통과하면 정답성을 점검합니다. 세 가지 결말이 나옵니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>① 환각 점검<br>(groundedness)</th>
+            <th>② 정답성 점검<br>(answer)</th>
+            <th>반환값</th>
+            <th>다음 이동</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">no · 근거 없음</td>
+            <td>—</td>
+            <td><span class="tag bad">hallucination</span></td>
+            <td><span class="tag good">generate</span> 재시도</td>
+          </tr>
+          <tr>
+            <td class="mono">yes · 근거 있음</td>
+            <td class="mono">yes · 질문 해결</td>
+            <td><span class="tag good">relevant</span></td>
+            <td>END ✓</td>
+          </tr>
+          <tr>
+            <td class="mono">yes · 근거 있음</td>
+            <td class="mono">no · 못 풂</td>
+            <td><span class="tag warn">not relevant</span></td>
+            <td><span class="tag warn">transform_query</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="code-panel">
+      <div class="bar">grade_generation_v_documents_and_question() · 2단 채점</div>
+      <pre><code><span class="k">def</span> grade_generation_v_documents_and_question(state):
+    <span class="c"># 1차: 환각(근거성) 점검</span>
+    grade = groundedness_grader.invoke(...).binary_score
+    <span class="k">if</span> grade == <span class="s">"no"</span>:
+        <span class="k">return</span> <span class="s">"hallucination"</span>    <span class="c"># 근거 없음 → 재생성</span>
+
+    <span class="c"># 2차: 정답성 점검</span>
+    grade = answer_grader.invoke(...).binary_score
+    <span class="k">if</span> grade == <span class="s">"yes"</span>:
+        <span class="k">return</span> <span class="s">"relevant"</span>         <span class="c"># 질문 해결 → END</span>
+    <span class="k">else</span>:
+        <span class="k">return</span> <span class="s">"not relevant"</span>     <span class="c"># 못 풂 → 재검색</span></code></pre>
+    </div>
+  </div>
+
+  <!-- 8. 실행 예시 -->
+  <div class="section">
+    <h2><span class="num">08</span>실행 예시 — 정상 종료 vs 무한 루프</h2>
+    <p class="section-lede">
+      루프가 있다는 건 <strong>빠져나오지 못할 수도</strong> 있다는 뜻입니다. 그래서
+      <code>recursion_limit</code>으로 최대 반복 횟수를 정해 둡니다.
+    </p>
+
+    <div class="runcard happy">
+      <div class="rbar">
+        정상 종료 — 문서에 답이 있는 경우
+        <span class="pill">relevant → END</span>
+      </div>
+      <div class="rbody">
+        <p class="q">질문: <b>"삼성전자가 개발한 생성형 AI 의 이름은?"</b></p>
+        <div class="steps">
+          <span class="st indigo">retrieve</span>
+          <span class="arw">→</span>
+          <span class="st indigo">grade_documents</span>
+          <span class="arw">→</span>
+          <span class="st good">generate</span>
+          <span class="arw">→</span>
+          <span class="st indigo">grade_generation</span>
+          <span class="arw">→</span>
+          <span class="st">END</span>
+        </div>
+        <p class="res">
+          PDF에 관련 내용이 있어 문서 채점을 통과합니다. 생성한 답도 근거가 있고(환각 없음)
+          질문을 해결하므로 <b>relevant</b> 판정 → 곧바로 <b>"삼성 가우스"</b>를 답하고 종료합니다.
+        </p>
+      </div>
+    </div>
+
+    <div class="runcard loop">
+      <div class="rbar">
+        무한 루프 — 문서에도 없고 답도 못 만드는 경우
+        <span class="pill">GraphRecursionError</span>
+      </div>
+      <div class="rbody">
+        <p class="q">질문: <b>"테디노트가 개발한 생성형 AI 의 이름은?"</b></p>
+        <div class="steps">
+          <span class="st indigo">retrieve</span>
+          <span class="arw">→</span>
+          <span class="st indigo">grade_documents</span>
+          <span class="arw">→</span>
+          <span class="st warn">transform_query</span>
+          <span class="loopmark">↺ 반복</span>
+          <span class="arw">→</span>
+          <span class="st bad">recursion_limit 초과</span>
+        </div>
+        <p class="res">
+          PDF에 없는 내용이라 <b>관련 문서가 계속 0개</b>입니다. 재작성 → 재검색을 아무리 반복해도
+          문서를 못 찾아 같은 루프를 맴돌다 <b>recursion_limit(=10)</b>에 걸려 멈춥니다.
+          Self-RAG를 실전에 쓰려면 <b>이런 루프를 빠져나올 탈출 로직</b>(예: 웹 검색 대체)이 필요합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. 그래프 조립 -->
+  <div class="section">
+    <h2><span class="num">09</span>그래프 조립 코드</h2>
+    <p class="section-lede">
+      조건부 엣지가 <strong>두 개</strong>인 것이 핵심입니다. <code>transform_query</code>는 <code>retrieve</code>로,
+      <code>hallucination</code>은 <code>generate</code>로 되돌아가 루프를 만듭니다.
+    </p>
+    <div class="code-panel">
+      <div class="bar">workflow 구성 · StateGraph</div>
+      <pre><code>workflow.add_edge(START, <span class="s">"retrieve"</span>)
+workflow.add_edge(<span class="s">"retrieve"</span>, <span class="s">"grade_documents"</span>)
+
+<span class="c"># ① 생성 전 분기: 문서 유무</span>
+workflow.add_conditional_edges(
+    <span class="s">"grade_documents"</span>, decide_to_generate,
+    {<span class="s">"transform_query"</span>: <span class="s">"transform_query"</span>, <span class="s">"generate"</span>: <span class="s">"generate"</span>},
+)
+workflow.add_edge(<span class="s">"transform_query"</span>, <span class="s">"retrieve"</span>)   <span class="c"># 재검색 루프</span>
+
+<span class="c"># ② 생성 후 분기: 환각·정답성</span>
+workflow.add_conditional_edges(
+    <span class="s">"generate"</span>, grade_generation_v_documents_and_question,
+    {
+        <span class="s">"hallucination"</span>: <span class="s">"generate"</span>,       <span class="c"># 재생성 루프</span>
+        <span class="s">"relevant"</span>: END,                  <span class="c"># 종료</span>
+        <span class="s">"not relevant"</span>: <span class="s">"transform_query"</span>,  <span class="c"># 재검색 루프</span>
+    },
+)
+
+app = workflow.compile(checkpointer=MemorySaver())</code></pre>
+    </div>
+  </div>
+
+  <!-- Recap -->
+  <div class="section">
+    <h2><span class="num">10</span>핵심 정리</h2>
+    <ul class="recap">
+      <li>Self-RAG는 <strong>검색 문서와 생성 답변을 모두 채점</strong>하는 자기 반성형 RAG다.</li>
+      <li>점검은 두 지점 — <strong>생성 전</strong>(문서 관련성), <strong>생성 후</strong>(환각 + 정답성)에서 일어난다.</li>
+      <li>생성 후 채점은 2단계다: 먼저 <strong>근거성(환각)</strong>, 통과하면 <strong>정답성(질문 해결)</strong>.</li>
+      <li>실패하면 <code>transform_query → retrieve</code>(재검색) 또는 <code>generate</code>(재생성)로 <strong>되돌아간다</strong>.</li>
+      <li>CRAG는 <strong>웹으로 보강·단방향</strong>, Self-RAG는 <strong>내부 재검색·루프</strong>라는 점이 가장 큰 차이다.</li>
+      <li>루프가 있으므로 <code>recursion_limit</code>이 필수 — 못 빠져나오면 <code>GraphRecursionError</code>가 난다.</li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+  <footer>
+    LangGraph 03-Use-Cases · Self-RAG 학습 정리 · 04-LangGraph-Self-RAG.ipynb
+  </footer>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-RAG — 스스로 검색·생성·비평하는 RAG 논문 정리</title>
+<style>
+/* ============================================================
+   Self-Reflection Tape — Self-RAG paper explainer
+   Sibling document to the CRAG guide (shared design system,
+   accent shifted teal → indigo per the CRAG palette's own
+   "Self-RAG series" reservation).
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F4F5FA;
+  --panel:#FFFFFF;
+  --panel-2:#F8F9FD;
+  --border:#E4E6F0;
+  --border-strong:#CBCFE4;
+  --ink:#14161F;
+  --ink-2:#474D63;
+  --ink-3:#79809A;
+
+  --brand:#6366F1;        /* primary accent (Self-RAG) */
+  --brand-ink:#4F46E5;
+  --brand-tint:#ECEDFE;
+  --brand-2:#8B5CF6;      /* violet support tone */
+
+  --teal:#0D9488;         /* CRAG cameo in comparison */
+  --teal-ink:#0B7A70;
+  --teal-tint:#E4F5F2;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --slate:#64748B; --slate-2:#94A3B8;   /* muted baselines in charts */
+
+  --shadow:0 1px 2px rgba(17,20,40,.04), 0 8px 28px rgba(17,20,40,.06);
+  --shadow-lg:0 2px 6px rgba(17,20,40,.06), 0 18px 48px rgba(17,20,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --grid:#E8E9F3;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0C0D14;
+  --panel:#15161F;
+  --panel-2:#191B26;
+  --border:#282A3A;
+  --border-strong:#3A3D53;
+  --ink:#E9EAF4;
+  --ink-2:#A9AECB;
+  --ink-3:#6E7391;
+
+  --brand:#8B90FF;
+  --brand-ink:#A5A9FF;
+  --brand-tint:#1C1D3C;
+  --brand-2:#A78BFA;
+
+  --teal:#2DD4BF;
+  --teal-ink:#5AE0D0;
+  --teal-tint:#0E2A2A;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --slate:#94A3B8; --slate-2:#64748B;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --grid:#242636;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0C0D14; --panel:#15161F; --panel-2:#191B26; --border:#282A3A; --border-strong:#3A3D53;
+    --ink:#E9EAF4; --ink-2:#A9AECB; --ink-3:#6E7391;
+    --brand:#8B90FF; --brand-ink:#A5A9FF; --brand-tint:#1C1D3C; --brand-2:#A78BFA;
+    --teal:#2DD4BF; --teal-ink:#5AE0D0; --teal-tint:#0E2A2A;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --slate:#94A3B8; --slate-2:#64748B;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --grid:#242636;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--brand-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+em{font-style:normal;color:var(--brand-ink);font-weight:700}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:50%;
+  background:conic-gradient(from 130deg,var(--brand) 0 45%,var(--brand-2) 0 72%,var(--green-mark) 0);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--brand-ink);background:var(--brand-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+.theme-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media (max-width:760px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:44px;align-items:center}
+@media (max-width:880px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(46px,9vw,84px);line-height:.94;letter-spacing:-.04em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--brand);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+/* hero signal card — the four reflection tokens */
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.sig-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.sig-row:first-of-type{border-top:none}
+.sig-ic{flex:none;width:auto;min-width:64px;height:26px;padding:0 8px;border-radius:7px;display:grid;place-items:center;
+  font-weight:700;font-family:var(--mono);font-size:11px;letter-spacing:.02em;
+  background:var(--brand-tint);color:var(--brand-ink);border:1px solid color-mix(in srgb,var(--brand) 30%,var(--border))}
+.sig-row .t{font-weight:700;font-size:14px;color:var(--ink)}
+.sig-row .d{font-size:12.5px;color:var(--ink-3);line-height:1.4}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:770px}
+
+/* cards / panels */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.brand{background:var(--brand-tint);border-color:color-mix(in srgb,var(--brand) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:118px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--brand);background:var(--brand-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* ---------- reflection token cards ---------- */
+.tokgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0 6px}
+@media (max-width:760px){.tokgrid{grid-template-columns:1fr}}
+.tokcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px 18px 16px;box-shadow:var(--shadow)}
+.tokcard .head{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+.tokname{font-family:var(--mono);font-weight:700;font-size:13.5px;color:var(--brand-ink);
+  background:var(--brand-tint);border:1px solid color-mix(in srgb,var(--brand) 30%,var(--border));
+  padding:3px 9px;border-radius:7px}
+.tokcard .q{font-size:13px;color:var(--ink-3);font-weight:600}
+.tokcard p{margin:8px 0 12px;font-size:14px}
+.vals{display:flex;flex-wrap:wrap;gap:7px}
+.val-pill{font-family:var(--mono);font-size:11.5px;font-weight:700;padding:4px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.val-pill.g{color:var(--green);background:var(--green-tint);border-color:var(--green-bd)}
+.val-pill.a{color:var(--amber);background:var(--amber-tint);border-color:var(--amber-bd)}
+.val-pill.r{color:var(--red);background:var(--red-tint);border-color:var(--red-bd)}
+.val-pill.n{color:var(--ink-2);background:var(--panel-2)}
+
+/* ---------- self-reflection tape (signature) ---------- */
+.tape{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  box-shadow:var(--shadow-lg);overflow:hidden;margin:20px 0}
+.tape-head{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--border);
+  background:var(--panel-2)}
+.tape-head .dots{display:flex;gap:6px}
+.tape-head .dots i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.tape-head .dots i:nth-child(1){background:var(--red-mark)}
+.tape-head .dots i:nth-child(2){background:var(--amber-mark)}
+.tape-head .dots i:nth-child(3){background:var(--green-mark)}
+.tape-head .ttl{font-family:var(--mono);font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.tape-body{padding:8px 18px 18px}
+.lane{border-left:2px solid var(--border);margin-left:6px;padding:14px 0 6px 20px;position:relative}
+.lane:last-child{padding-bottom:2px}
+.lane .stephdr{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+  margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.lane .stephdr::before{content:"";position:absolute;left:-7px;width:12px;height:12px;border-radius:50%;
+  background:var(--panel);border:2px solid var(--brand)}
+.usermsg{background:var(--panel-2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14.5px;color:var(--ink)}
+.usermsg b{color:var(--brand-ink)}
+.rtok{display:inline-flex;align-items:center;gap:0;font-family:var(--mono);font-size:12px;font-weight:700;
+  border-radius:7px;overflow:hidden;border:1px solid color-mix(in srgb,var(--brand) 32%,var(--border));vertical-align:middle;
+  margin:3px 4px 3px 0;box-shadow:var(--shadow)}
+.rtok .k{background:var(--brand-tint);color:var(--brand-ink);padding:3px 8px}
+.rtok .v{padding:3px 9px;color:#fff;font-weight:700}
+.rtok .v.g{background:var(--green-mark)}
+.rtok .v.a{background:var(--amber-mark)}
+.rtok .v.r{background:var(--red-mark)}
+.rtok .v.b{background:var(--brand)}
+.psg{background:var(--panel-2);border:1px dashed var(--border-strong);border-radius:10px;padding:10px 13px;margin:8px 0;
+  font-size:13.5px;color:var(--ink-2)}
+.psg .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:block;margin-bottom:3px}
+.seg{background:color-mix(in srgb,var(--brand) 8%,var(--panel));border:1px solid color-mix(in srgb,var(--brand) 22%,var(--border));
+  border-radius:10px;padding:10px 13px;margin:8px 0;font-size:14.5px;color:var(--ink)}
+.note{font-size:12.5px;color:var(--ink-3);margin-top:6px}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border)}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-row td{background:var(--brand-tint)!important}
+.hl-row td.name{color:var(--brand-ink)}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+.best{color:var(--brand-ink);font-weight:800}
+
+/* ---------- chart ---------- */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);position:relative}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.legend .li{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);font-weight:600}
+.legend .sw{width:13px;height:13px;border-radius:4px}
+#chart{width:100%;height:auto;display:block}
+#chart text{font-family:var(--mono)}
+.tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-118%);
+  background:var(--ink);color:var(--bg);padding:8px 11px;border-radius:9px;font-size:12.5px;font-family:var(--mono);
+  white-space:nowrap;box-shadow:var(--shadow-lg);transition:opacity .12s ease;z-index:5;line-height:1.5}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:34px;font-weight:750;letter-spacing:-.02em;color:var(--brand-ink);line-height:1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* lists */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--brand)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>Self-RAG</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#problem">문제</a>
+      <a href="#tokens">리플렉션 토큰</a>
+      <a href="#tape">생성 흐름</a>
+      <a href="#train">학습</a>
+      <a href="#infer">추론</a>
+      <a href="#results">실험</a>
+      <a href="#compare">비교분석</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">arXiv:2310.11511 · ICLR 2024 (Oral)</span>
+      <h1>Self-RAG</h1>
+      <div class="sub">Learning to Retrieve, Generate, and Critique through Self-Reflection<br>스스로 <em>검색·생성·비평</em>하는 RAG</div>
+      <p class="thesis">“필요할 때만 검색하고, 검색한 근거가 맞는지 <b>스스로 채점</b>한다.” 하나의 언어모델이 생성 도중 <b>리플렉션 토큰</b>을 내뱉어 언제 검색할지, 근거가 답을 뒷받침하는지, 답이 쓸모 있는지를 <b>스스로 판단</b>한다.</p>
+      <div class="chips">
+        <span class="chip">저자 <b>Asai · Wu · Wang · Sil · Hajishirzi</b></span>
+        <span class="chip">UW · AI2 · IBM</span>
+        <span class="chip">7B / 13B</span>
+        <span class="chip">Critic는 <b>학습 때만</b>, 추론엔 불필요</span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="네 가지 리플렉션 토큰 요약">
+      <div class="cap">Reflection Tokens — 모델이 뱉는 4가지 제어 신호</div>
+      <div class="sig-row">
+        <div class="sig-ic" aria-hidden="true">Retrieve</div>
+        <div><div class="t">지금 검색이 필요한가?</div><div class="d">yes · no · continue</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic" aria-hidden="true">IsRel</div>
+        <div><div class="t">검색 문서가 관련 있나?</div><div class="d">relevant · irrelevant</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic" aria-hidden="true">IsSup</div>
+        <div><div class="t">근거가 답을 뒷받침하나?</div><div class="d">full · partial · no support</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic" aria-hidden="true">IsUse</div>
+        <div><div class="t">답이 얼마나 쓸모 있나?</div><div class="d">5점 척도 (1–5)</div></div>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">일반 RAG는 <b>항상 고정 개수</b>의 문서를 검색해 무조건 집어넣는다. 검색이 불필요하거나 빗나가도 <b>노이즈가 그대로</b> 들어가고, 답이 근거에 <b>충실한지 확인할 장치가 없다</b>.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0">모델이 생성하면서 <b>리플렉션 토큰</b> 4종을 함께 뱉게 학습한다. <b>필요할 때만 검색</b>(on-demand)하고, 검색한 근거와 자기 출력을 <b>스스로 비평</b>한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">7B·13B 모델이 <b>ChatGPT·Llama2-chat을 능가</b>. 특히 장문 생성에서 <b>인용(citation) 정확도</b>가 압도적으로 높아 사실성과 출처 신뢰성을 동시에 잡는다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. PROBLEM ========== -->
+<section class="section" id="problem">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 동기</span>
+    <h2>왜 “무조건 검색”이 문제인가</h2>
+    <p class="lead">RAG는 파라미터 지식만 쓰는 LLM의 환각을 줄여준다. 하지만 대부분의 RAG는 질문 종류와 무관하게 <b>정해진 개수의 문서를 항상 검색</b>해 그대로 이어붙인다. 여기서 세 가지가 어긋난다.</p>
+
+    <div class="callout">
+      <span class="k">논문 인용</span>
+      <p>“they indiscriminately retrieve and incorporate a <b>fixed number of retrieved passages</b>, regardless of whether retrieval is necessary or passages are relevant, and do not ensure that generations are <b>consistent with the cited sources</b>.”</p>
+    </div>
+
+    <div class="grid3" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--red)">불필요한 검색</h3>
+        <p style="margin:0">“여름휴가 에세이를 써줘” 같은 창작 질문엔 검색이 필요 없다. 그런데도 문서를 끌어와 <b>다양성·유창성을 해친다</b>.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--red)">관련성 미검증</h3>
+        <p style="margin:0">검색이 빗나가도 문서를 <b>그대로 주입</b>. 무관한 정보가 근거로 둔갑해 환각을 부추긴다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--red)">출처 불일치</h3>
+        <p style="margin:0">생성한 문장이 실제로 <b>인용 문서에 있는지</b> 보장하지 못한다. 그럴듯하지만 근거 없는 답이 나온다.</p>
+      </div>
+    </div>
+
+    <h3>일반 RAG의 흐름 — 언제나 같은 파이프라인</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Query</div><div class="val">질문</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">Always</div><div class="val">무조건 Top-k<br>검색</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">No Check</div><div class="val">관련성 검증 ✕<br>그대로 주입</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">LLM</div><div class="val">생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">Risk</div><div class="val">노이즈·출처<br>불일치</div></div>
+    </div>
+    <p class="caption">검색 필요 여부도, 검색 품질도, 답–근거 일치도 아무도 확인하지 않는다.</p>
+  </div>
+</section>
+
+<!-- ========== 2. REFLECTION TOKENS ========== -->
+<section class="section" id="tokens">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 핵심 개념</span>
+    <h2>리플렉션 토큰 — 모델이 스스로에게 남기는 4가지 메모</h2>
+    <p class="lead">Self-RAG의 심장은 <b>리플렉션 토큰(reflection tokens)</b>이다. 모델의 <b>어휘(vocabulary)에 추가된 특수 토큰</b>으로, 일반 텍스트를 생성하듯 자연스럽게 함께 출력된다. 검색을 <em>제어</em>하는 토큰 1종과, 생성물을 <em>비평</em>하는 토큰 3종으로 나뉜다.</p>
+
+    <div class="tokgrid">
+      <div class="tokcard">
+        <div class="head"><span class="tokname">Retrieve</span><span class="q">지금 검색이 필요한가?</span></div>
+        <p>다음 세그먼트를 쓰기 전에 <b>외부 문서를 검색할지</b> 결정한다. 검색을 <b>필요할 때만</b> 부르는 on-demand 검색의 스위치다.</p>
+        <div class="vals">
+          <span class="val-pill g">yes · 검색한다</span>
+          <span class="val-pill n">no · 파라미터 지식으로</span>
+          <span class="val-pill n">continue · 기존 근거 계속 사용</span>
+        </div>
+      </div>
+
+      <div class="tokcard">
+        <div class="head"><span class="tokname">IsRel</span><span class="q">문서가 관련 있나?</span></div>
+        <p>검색된 각 문서가 질문에 <b>유용한 정보를 담고 있는지</b> 판정한다. 관련 없으면 그 문서에 기반한 답은 배제된다.</p>
+        <div class="vals">
+          <span class="val-pill g">relevant · 관련 있음</span>
+          <span class="val-pill r">irrelevant · 관련 없음</span>
+        </div>
+      </div>
+
+      <div class="tokcard">
+        <div class="head"><span class="tokname">IsSup</span><span class="q">근거가 답을 뒷받침하나?</span></div>
+        <p>생성한 문장이 <b>인용 문서로 실제 검증되는지</b> 3단계로 채점한다. 출처 일치(attribution)를 직접 강제하는 토큰이다.</p>
+        <div class="vals">
+          <span class="val-pill g">fully supported</span>
+          <span class="val-pill a">partially supported</span>
+          <span class="val-pill r">no support / contradictory</span>
+        </div>
+      </div>
+
+      <div class="tokcard">
+        <div class="head"><span class="tokname">IsUse</span><span class="q">답이 쓸모 있나?</span></div>
+        <p>최종 응답이 질문에 <b>얼마나 유용한지</b>를 5점 척도로 평가한다. 근거와 별개로 답 자체의 품질을 본다.</p>
+        <div class="vals">
+          <span class="val-pill r">1</span>
+          <span class="val-pill a">2</span>
+          <span class="val-pill a">3</span>
+          <span class="val-pill g">4</span>
+          <span class="val-pill g">5</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout brand">
+      <span class="k">왜 “토큰”으로 만들었나</span>
+      <p>판단을 <b>별도 분류기</b>가 아니라 <b>생성 어휘에 녹여</b> 넣었기 때문에, 모델은 텍스트를 쓰는 것과 <b>똑같은 방식</b>으로 비평을 출력한다. 덕분에 추론 시 이 토큰의 <b>확률값</b>을 그대로 읽어 검색 여부·답 선택을 제어할 수 있고, 별도 비평 모델을 돌릴 필요가 없다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. THE TAPE (signature) ========== -->
+<section class="section" id="tape">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 생성 흐름</span>
+    <h2>한 번의 생성, 실시간 자기 비평</h2>
+    <p class="lead">Self-RAG의 출력은 <b>“텍스트 + 리플렉션 토큰”이 뒤섞인 하나의 스트림</b>이다. 아래 테이프처럼 모델은 쓰면서 동시에 스스로를 채점한다. 같은 모델이 질문에 따라 <b>검색을 켜거나 끄는 것</b>이 핵심이다.</p>
+
+    <!-- Scenario A: retrieval needed -->
+    <div class="tape" aria-label="사례 A: 사실 질문 — 검색이 필요한 경우">
+      <div class="tape-head"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="ttl">사례 A · 사실 질문 → 검색 ON</span></div>
+      <div class="tape-body">
+        <div class="lane">
+          <div class="stephdr">입력</div>
+          <div class="usermsg"><b>Q.</b> 에펠탑은 언제 완공되었나요?</div>
+        </div>
+        <div class="lane">
+          <div class="stephdr">1 · 검색 판단</div>
+          <span class="rtok"><span class="k">Retrieve</span><span class="v g">Yes</span></span>
+          <span class="note">사실 확인이 필요 → 검색을 호출한다.</span>
+        </div>
+        <div class="lane">
+          <div class="stephdr">2 · 근거 확보 &amp; 관련성 평가</div>
+          <div class="psg"><span class="tag">Retrieved passage</span>“에펠탑은 1889년 파리 만국박람회를 위해 건설되어 <b>1889년 3월 31일 완공</b>되었다.”</div>
+          <span class="rtok"><span class="k">IsRel</span><span class="v g">Relevant</span></span>
+        </div>
+        <div class="lane">
+          <div class="stephdr">3 · 생성 &amp; 근거 검증</div>
+          <div class="seg">에펠탑은 <b>1889년 3월 31일</b>에 완공되었습니다.</div>
+          <span class="rtok"><span class="k">IsSup</span><span class="v g">Fully&nbsp;Supported</span></span>
+          <span class="rtok"><span class="k">IsUse</span><span class="v b">5</span></span>
+          <span class="note">생성 문장이 문서로 완전히 뒷받침됨 → 그대로 채택.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scenario B: no retrieval -->
+    <div class="tape" aria-label="사례 B: 창작 질문 — 검색이 불필요한 경우">
+      <div class="tape-head"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="ttl">사례 B · 창작 질문 → 검색 OFF</span></div>
+      <div class="tape-body">
+        <div class="lane">
+          <div class="stephdr">입력</div>
+          <div class="usermsg"><b>Q.</b> 최고의 여름휴가에 대한 짧은 에세이를 써줘.</div>
+        </div>
+        <div class="lane">
+          <div class="stephdr">1 · 검색 판단</div>
+          <span class="rtok"><span class="k">Retrieve</span><span class="v r">No</span></span>
+          <span class="note">외부 사실이 필요 없는 창작 → 검색을 건너뛴다(노이즈 유입 차단).</span>
+        </div>
+        <div class="lane">
+          <div class="stephdr">2 · 파라미터 지식으로 직접 생성</div>
+          <div class="seg">그해 여름, 우리는 해가 지지 않을 것처럼 느껴지는 해변에서 …</div>
+          <span class="rtok"><span class="k">IsUse</span><span class="v b">5</span></span>
+          <span class="note">근거가 없으니 IsRel·IsSup은 평가하지 않고, 답의 유용성만 채점.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout brand">
+      <span class="k">이 테이프가 말하는 것</span>
+      <p>같은 모델이 <b>질문에 맞춰 검색을 켜고 끈다(adaptive retrieval)</b>. 검색을 켠 경우엔 문서 관련성(IsRel)과 답–근거 일치(IsSup)까지 스스로 채점하고, 끈 경우엔 유용성(IsUse)만 본다. <b>비평이 곧 출력의 일부</b>라는 점이 Self-RAG를 이전 RAG와 가르는 지점이다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. TRAINING ========== -->
+<section class="section" id="train">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 학습</span>
+    <h2>어떻게 이런 모델을 학습하나 — 2단계 증류</h2>
+    <p class="lead">핵심 아이디어: <b>비평 모델(Critic)</b>로 학습 데이터에 리플렉션 토큰을 미리 심어 두고, 그 데이터를 흉내 내도록 <b>생성 모델(Generator)</b>을 학습시킨다. 그러면 추론 때는 <b>생성 모델 혼자</b> 토큰까지 뱉는다.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">1단계 · Critic 모델 <span class="mono" style="font-size:14px;color:var(--ink-3)">C</span></h3>
+        <p>Llama2-7B를 <b>GPT-4의 판단을 증류</b>해 학습. 원본 데이터에서 표본을 뽑아 GPT-4에게 “이 상황에 맞는 리플렉션 토큰을 붙여라”라고 프롬프트하고, 그 라벨을 모방하게 한다.</p>
+        <ul class="clean">
+          <li>목표: <code>log p<sub>C</sub>(r | x, y)</code> 최대화 (r = 리플렉션 토큰)</li>
+          <li>대부분의 토큰 유형에서 <b>GPT-4와 90%+ 일치</b></li>
+          <li><b>오프라인 데이터 제작용</b> — 최종 배포엔 쓰지 않는다</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">2단계 · Generator 모델 <span class="mono" style="font-size:14px;color:var(--ink-3)">M</span></h3>
+        <p>Critic으로 리플렉션 토큰이 <b>삽입된 코퍼스</b>를 만든 뒤, 그 위에서 일반적인 <b>다음 토큰 예측</b>으로 학습. 텍스트와 토큰을 <b>한꺼번에</b> 예측하도록 배운다.</p>
+        <ul class="clean">
+          <li>목표: <code>log p<sub>M</sub>(y, r | x)</code> — 출력·토큰 동시 예측</li>
+          <li>검색된 지문은 <b>손실 계산에서 마스킹</b></li>
+          <li>어휘에 리플렉션 토큰을 <b>추가</b>해 생성으로 취급</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="margin-top:28px">전체 파이프라인</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Seed data</div><div class="val">원본 (x, y)<br>표본 추출</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">GPT-4</div><div class="val">리플렉션 토큰<br>라벨 생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Critic C</div><div class="val">GPT-4 증류로<br>학습</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Augment</div><div class="val">코퍼스에 토큰<br>+ 지문 삽입</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Generator M</div><div class="val">토큰까지 뱉게<br>학습 (배포용)</div></div>
+    </div>
+    <p class="caption">Critic은 데이터 공장, Generator는 완제품. 추론 단계엔 Critic이 사라진다.</p>
+
+    <div class="callout brand">
+      <span class="k">왜 이 구조가 영리한가</span>
+      <p>GPT-4를 매 추론마다 부르면 느리고 비싸다. Self-RAG는 GPT-4의 판단력을 <b>학습 시점에 단 한 번</b> 7B Critic으로 증류하고, 다시 Generator에 이식한다. 그 결과 <b>추론 비용은 일반 LM 한 대</b> 수준이면서, 검색 제어와 자기비평 능력을 내장한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 5. INFERENCE ========== -->
+<section class="section" id="infer">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 추론</span>
+    <h2>추론 시점 — 검색은 켜고 끄고, 답은 골라 담는다</h2>
+    <p class="lead">학습된 Generator는 추론에서 두 개의 조절 손잡이를 준다. 하나는 <b>언제 검색할지(adaptive retrieval)</b>, 다른 하나는 여러 후보 중 <b>어떤 세그먼트를 채택할지(segment beam search)</b>.</p>
+
+    <h3>① 적응형 검색 — Retrieve 확률에 임계값</h3>
+    <p><code>Retrieve=Yes</code> 토큰의 확률이 임계값 <code>δ</code>를 넘으면 검색을 켠다. <code>δ</code>를 낮추면 <b>검색이 잦아져 사실성·인용↑</b>, 높이면 <b>검색이 줄어 유창성·속도↑</b>. 하나의 모델로 <b>재학습 없이</b> 이 균형을 조절할 수 있다.</p>
+
+    <h3>② 세그먼트 단위 빔서치 — 근거별 후보를 채점</h3>
+    <p>검색을 켜면 <b>K개 문서를 병렬로</b> 처리해 각 문서 기반 후보 세그먼트를 만들고, 아래 점수로 순위를 매겨 상위 후보(빔 폭 2)를 남긴다. 생성 확률에 <b>리플렉션 토큰 점수를 가중합</b>한다.</p>
+
+    <div class="card" style="margin:16px 0 4px;text-align:center;background:var(--panel-2)">
+      <div class="mono" style="font-size:15px;color:var(--ink);line-height:2.2">
+        f(y<sub>t</sub>, d, <span style="color:var(--brand-ink)">Critique</span>) &nbsp;=&nbsp; p(y<sub>t</sub> | x, d, y<sub>&lt;t</sub>) &nbsp;+&nbsp; <span style="color:var(--brand-ink)">S(Critique)</span><br>
+        <span style="font-size:13.5px;color:var(--ink-2)">S(Critique) = Σ<sub>G</sub> &nbsp;w<sup>G</sup> · s<sub>t</sub><sup>G</sup> &nbsp;&nbsp;<span style="color:var(--ink-3)">(G ∈ {IsRel, IsSup, IsUse})</span></span>
+      </div>
+    </div>
+    <div class="grid3" style="margin-top:14px">
+      <div class="stat"><div class="big">δ</div><div class="lab">검색 임계값</div><div class="sub">Retrieve=Yes 확률이 넘으면 검색</div></div>
+      <div class="stat"><div class="big">2</div><div class="lab">세그먼트 빔 폭</div><div class="sub">문서별 후보 중 상위 2개 유지</div></div>
+      <div class="stat"><div class="big">1·1·0.5</div><div class="lab">기본 가중치 w</div><div class="sub">IsRel · IsSup · IsUse 순</div></div>
+    </div>
+    <p class="small" style="margin-top:14px">→ 가중치 <code>w</code>는 <b>테스트 시점에 조절 가능한 하이퍼파라미터</b>다. 예를 들어 인용이 중요한 과제에선 <code>IsSup</code> 가중치를 키워 <b>근거에 더 충실한 답</b>을 고르도록 만들 수 있다 — 모델을 다시 학습할 필요 없이.</p>
+  </div>
+</section>
+
+<!-- ========== 6. RESULTS ========== -->
+<section class="section" id="results">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 실험</span>
+    <h2>실험 결과 — 작은 모델이 큰 모델을 이긴다</h2>
+    <p class="lead">단답 QA, 사실검증, 객관식 추론, 장문 생성까지 6개 과제에서 평가한다. 헤드라인: <b>Self-RAG 7B/13B가 ChatGPT와 Llama2-chat-13B를 여러 과제에서 앞서고</b>, 장문 생성의 <b>인용 정확도는 격차가 크다</b>.</p>
+
+    <div class="chart-card" style="margin-top:14px">
+      <div class="chart-head">
+        <div><div class="mono" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">점수 (높을수록 좋음)</div></div>
+        <div class="legend">
+          <span class="li"><span class="sw" style="background:var(--brand)"></span>Self-RAG 7B</span>
+          <span class="li"><span class="sw" style="background:var(--slate)"></span>ChatGPT</span>
+          <span class="li"><span class="sw" style="background:var(--slate-2)"></span>Llama2-chat 13B</span>
+        </div>
+      </div>
+      <svg id="chart" viewBox="0 0 760 380" role="img" aria-label="Self-RAG 7B와 ChatGPT, Llama2-chat 13B의 과제별 점수 비교 막대그래프"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <p class="caption">출처: 논문 Table 2. Bio는 FactScore, 나머지는 Accuracy(%). Self-RAG는 검색 없는 두 모델보다 사실성이 높다.</p>
+
+    <h3 style="margin-top:32px">전체 결과표</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">모델</th>
+            <th>PopQA<span class="cellnote">acc</span></th>
+            <th>TriviaQA<span class="cellnote">acc</span></th>
+            <th>PubHealth<span class="cellnote">acc</span></th>
+            <th>ARC-C<span class="cellnote">acc</span></th>
+            <th>Bio<span class="cellnote">FactScore</span></th>
+            <th>ASQA<span class="cellnote">MAUVE</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="name" colspan="7" style="background:var(--panel-2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-3)">■ 독점/대형 베이스라인 (검색 없음)</td></tr>
+          <tr><td class="name">ChatGPT</td><td class="num">29.3</td><td class="num best">74.3</td><td class="num">70.1</td><td class="num best">75.3</td><td class="num">71.8</td><td class="num">68.8</td></tr>
+          <tr><td class="name">Llama2-chat 13B</td><td class="num">51.8</td><td class="num">59.8</td><td class="num">52.1</td><td class="num">37.9</td><td class="num">79.9</td><td class="num">43.8</td></tr>
+          <tr><td class="name" colspan="7" style="background:var(--panel-2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-3)">■ 표준 RAG 베이스라인</td></tr>
+          <tr><td class="name">Llama2 13B + RAG</td><td class="num">45.7</td><td class="num">47.0</td><td class="num">30.2</td><td class="num">26.0</td><td class="num">77.5</td><td class="num">24.7</td></tr>
+          <tr><td class="name" colspan="7" style="background:var(--panel-2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-3)">■ Self-RAG (제안 방법)</td></tr>
+          <tr class="hl-row"><td class="name">Self-RAG 7B</td><td class="num">54.9</td><td class="num">66.4</td><td class="num">72.4</td><td class="num">67.3</td><td class="num best">81.2</td><td class="num best">74.3</td></tr>
+          <tr class="hl-row"><td class="name">Self-RAG 13B</td><td class="num best">55.8</td><td class="num">69.3</td><td class="num best">74.5</td><td class="num">73.1</td><td class="num">80.2</td><td class="num">71.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">출처: 논문 Table 2. <span class="best">파란 굵은 수치</span> = 각 열의 최고값. 표는 대표 지표만 발췌.</p>
+
+    <h3 style="margin-top:32px">장문 생성의 진짜 격차 — 인용(Citation) 정확도</h3>
+    <p>Self-RAG의 <code>IsSup</code> 토큰은 답이 근거에 충실하도록 강제한다. 그 효과는 ASQA의 <b>인용 정밀도·재현율</b>에서 극명하다.</p>
+    <div class="stats">
+      <div class="stat"><div class="big">66.9</div><div class="lab">Self-RAG 7B · 인용 정밀도</div><div class="sub">Llama2-chat 13B는 19.8 · RAG는 2.3</div></div>
+      <div class="stat"><div class="big">67.8</div><div class="lab">Self-RAG 7B · 인용 재현율</div><div class="sub">Llama2-chat 13B는 36.1</div></div>
+      <div class="stat"><div class="big">70.3</div><div class="lab">Self-RAG 13B · 인용 정밀도</div><div class="sub">더 큰 모델일수록 근거 충실도↑</div></div>
+    </div>
+    <p class="small" style="margin-top:14px">→ 단순 정답률만이 아니라 “<b>답이 실제 출처로 검증되는가</b>”에서 Self-RAG는 훨씬 앞선다. 사실성이 중요한 실서비스에서 이 지표가 핵심 차별점이다.</p>
+  </div>
+</section>
+
+<!-- ========== 7. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 비교 분석</span>
+    <h2>Standard RAG vs Self-RAG vs <span style="color:var(--teal-ink)">CRAG</span></h2>
+    <p class="lead">“검색 필요 여부와 품질을 어떻게 다루는가”라는 축에서 세 접근을 비교하면 Self-RAG의 자리가 분명해진다. (자매편 <a href="CRAG-Corrective-RAG-Guide.html">CRAG 정리</a>와 함께 보면 좋다.)</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">항목</th>
+            <th>Standard RAG</th>
+            <th style="color:var(--brand-ink)">Self-RAG</th>
+            <th style="color:var(--teal-ink)">CRAG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">검색을 언제 하나</td>
+            <td><span class="cross">✕</span> 항상 고정 개수</td>
+            <td><span class="tick">✓</span> <b>필요할 때만</b> (Retrieve 토큰)</td>
+            <td><span class="tilde">~</span> 검색 후 품질로 사후 판단</td>
+          </tr>
+          <tr>
+            <td class="name">품질 검사 주체</td>
+            <td><span class="cross">✕</span> 없음</td>
+            <td><b>생성기 자신</b> (reflection token)</td>
+            <td><b>외부 경량 평가기</b> (T5-large 0.77B)</td>
+          </tr>
+          <tr>
+            <td class="name">답–근거 일치 강제</td>
+            <td><span class="cross">✕</span> 보장 없음</td>
+            <td><span class="tick">✓</span> <b>IsSup</b>로 직접 채점</td>
+            <td><span class="tilde">~</span> strip 정제로 간접</td>
+          </tr>
+          <tr>
+            <td class="name">검색 실패 시 대응</td>
+            <td><span class="cross">✕</span> 없음</td>
+            <td><span class="tilde">~</span> 무관 문서 배제 (외부 대체는 없음)</td>
+            <td><span class="tick">✓</span> <b>웹 검색</b>으로 대체·보강</td>
+          </tr>
+          <tr>
+            <td class="name">생성 LLM 파인튜닝</td>
+            <td><span class="tick">✓</span> 불필요</td>
+            <td><span class="cross">✕</span> <b>필수</b> (토큰 학습)</td>
+            <td><span class="tick">✓</span> 불필요 (plug&amp;play)</td>
+          </tr>
+          <tr>
+            <td class="name">추가 모델</td>
+            <td>검색기만</td>
+            <td>학습용 7B Critic (추론엔 불필요)</td>
+            <td>추론용 0.77B 평가기</td>
+          </tr>
+          <tr>
+            <td class="name">조절 손잡이</td>
+            <td>—</td>
+            <td><b>임계값 δ · 가중치 w</b> (재학습 없이)</td>
+            <td>신뢰도 상·하한 임계값</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">해석 — 판단을 “안에” 두느냐 “밖에” 두느냐</h3>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--brand-ink)">Self-RAG: 판단을 모델 안에</h3>
+        <p style="margin:0">생성기를 <b>재학습</b>해 검색 제어와 자기비평을 내장한다. 검색을 <b>켜고 끌 수 있고</b> 답–근거 일치를 직접 강제한다. 대신 <b>모델을 바꿔야</b> 하고, 검색이 틀렸을 때 <b>웹 같은 외부 대안이 없다</b>.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--teal-ink)">CRAG: 판단을 모델 밖에</h3>
+        <p style="margin:0">경량 평가기를 <b>따로</b> 두어 어떤 생성기에도 <b>얹을 수 있다</b>. 검색이 틀리면 <b>웹으로 갈아탄다</b>. 대신 검색을 <b>항상 먼저 수행</b>하고, 성능은 <b>평가기 정확도</b>에 의존한다.</p>
+      </div>
+    </div>
+
+    <div class="callout teal">
+      <span class="k">둘은 경쟁이자 상호보완</span>
+      <p>CRAG 논문은 자신의 교정 모듈을 Self-RAG 생성기 위에 얹은 <b>Self-CRAG</b>로 성능을 더 끌어올렸다. Self-RAG는 “<b>똑똑한 생성기</b>”를, CRAG는 그 앞의 “<b>똑똑한 품질 게이트 + 웹 대체</b>”를 담당한다 — 합치면 가장 강하다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 8. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">08</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 한계</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 강하다</h3>
+        <ul class="plain">
+          <li>답의 <b>출처 신뢰성·인용</b>이 중요한 서비스(의료·법률·검색)</li>
+          <li>질문 유형이 섞여 <b>검색이 필요할 때만</b> 하고 싶을 때</li>
+          <li>큰 독점 모델 없이 <b>7B/13B로 높은 사실성</b>이 필요할 때</li>
+          <li>재학습 없이 <b>δ·w로 사실성↔유창성</b>을 조절하고 싶을 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li>생성기를 <b>파인튜닝</b>해야 한다(플러그인식 도입 불가)</li>
+          <li>학습 데이터 품질이 <b>Critic·GPT-4 라벨</b>에 의존</li>
+          <li>검색이 전부 빗나가면 <b>외부(웹) 대체 수단이 없다</b></li>
+          <li>자기비평도 <b>완벽하지 않다</b> — 틀린 IsSup 판정 가능</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout brand" style="margin-top:22px">
+      <span class="k">LangGraph로 구현한다면</span>
+      <p>Self-RAG는 <b>조건부 그래프</b>로 자연스럽게 매핑된다 — 노드: <code>retrieve_or_not</code> → (조건부) <code>retrieve → grade_relevance(IsRel) → generate → grade_support(IsSup) → grade_usefulness(IsUse)</code>. 각 리플렉션 토큰이 곧 <b>등급 판정 노드 + conditional edge</b>가 되어, 지원이 부족하면 <b>재생성·재검색으로 되돌아가는 루프</b>를 만든다. 이 저장소의 <code>17-LangGraph</code> 예제에서 대표적으로 다루는 패턴이다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>Self-RAG — Learning to Retrieve, Generate, and Critique through Self-Reflection</b></p>
+    <p class="mono" style="margin:0 0 4px">Akari Asai, Zeqiu Wu, Yizhong Wang, Avirup Sil, Hannaneh Hajishirzi · ICLR 2024 (Oral) · arXiv:2310.11511</p>
+    <p class="mono" style="margin:0"><a href="https://arxiv.org/abs/2310.11511" target="_blank" rel="noopener">arxiv.org/abs/2310.11511</a> · 논문 내용을 한국어로 정리한 학습 자료 · 자매편: <a href="CRAG-Corrective-RAG-Guide.html">CRAG 정리</a></p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    drawChart();
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['problem','tokens','tape','train','infer','results','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+
+/* ---------- grouped bar chart ---------- */
+var DATA=[
+  {name:'PopQA',    s:54.9, c:29.3, l:51.8},
+  {name:'TriviaQA', s:66.4, c:74.3, l:59.8},
+  {name:'PubHealth',s:72.4, c:70.1, l:52.1},
+  {name:'Bio*',     s:81.2, c:71.8, l:79.9}
+];
+var SERIES=[
+  {key:'s', label:'Self-RAG 7B',     col:'--brand'},
+  {key:'c', label:'ChatGPT',         col:'--slate'},
+  {key:'l', label:'Llama2-chat 13B', col:'--slate-2'}
+];
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+function drawChart(){
+  var svg=document.getElementById('chart'); if(!svg) return;
+  var W=760,H=380, pad={l:44,r:20,t:24,b:52};
+  var iw=W-pad.l-pad.r, ih=H-pad.t-pad.b, yMax=100;
+  var grid=cssv('--grid'), ink=cssv('--ink'), ink3=cssv('--ink-3'), surf=cssv('--panel');
+  var cols=SERIES.map(function(s){return cssv(s.col);});
+  var y=function(v){ return pad.t+ih-(v/yMax)*ih; };
+  var out='';
+
+  // gridlines + y labels
+  [0,25,50,75,100].forEach(function(t){
+    var yy=y(t);
+    out+='<line x1="'+pad.l+'" y1="'+yy+'" x2="'+(W-pad.r)+'" y2="'+yy+'" stroke="'+grid+'" stroke-width="1"/>';
+    out+='<text x="'+(pad.l-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="'+ink3+'">'+t+'</text>';
+  });
+
+  var gw=iw/DATA.length, n=SERIES.length, bw=Math.min(30,(gw*0.62)/n), gap=4;
+  var groupW=bw*n+gap*(n-1);
+  DATA.forEach(function(d,i){
+    var cx=pad.l+gw*i+gw/2;
+    var x0=cx-groupW/2;
+    SERIES.forEach(function(s,j){
+      var bv=d[s.key], bx=x0+j*(bw+gap), by=y(bv), bh=pad.t+ih-by;
+      out+='<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="4" fill="'+cols[j]+'"'+
+           ' stroke="'+surf+'" stroke-width="1" class="bar" data-n="'+d.name+'" data-s="'+s.label+'" data-v="'+bv+'"/>';
+      out+='<text x="'+(bx+bw/2)+'" y="'+(by-6)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="'+ink+'">'+bv.toFixed(0)+'</text>';
+    });
+    out+='<text x="'+cx+'" y="'+(H-pad.b+22)+'" text-anchor="middle" font-size="12.5" fill="'+ink+'" font-weight="600">'+d.name+'</text>';
+  });
+  out+='<line x1="'+pad.l+'" y1="'+y(0)+'" x2="'+(W-pad.r)+'" y2="'+y(0)+'" stroke="'+cssv('--border-strong')+'" stroke-width="1.5"/>';
+  svg.innerHTML=out;
+
+  // hover tooltip
+  var tip=document.getElementById('tip');
+  [].slice.call(svg.querySelectorAll('.bar')).forEach(function(r){
+    r.style.cursor='pointer';
+    r.addEventListener('mousemove',function(ev){
+      var host=svg.parentElement.getBoundingClientRect();
+      tip.style.left=(ev.clientX-host.left)+'px';
+      tip.style.top=(ev.clientY-host.top)+'px';
+      tip.innerHTML='<b>'+r.getAttribute('data-s')+'</b> · '+r.getAttribute('data-n')+'<br>점수 <b>'+r.getAttribute('data-v')+'</b>';
+      tip.style.opacity='1';
+    });
+    r.addEventListener('mouseleave',function(){ tip.style.opacity='0'; });
+  });
+}
+drawChart();
+</script>
+</body>
+</html>

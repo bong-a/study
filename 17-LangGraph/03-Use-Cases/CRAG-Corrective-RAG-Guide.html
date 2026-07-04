@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRAG — Corrective Retrieval-Augmented Generation 논문 정리</title>
+<style>
+/* ============================================================
+   Retrieval Triage Console — CRAG paper explainer
+   Palette validated with dataviz validate_palette.js
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F3F5F7;
+  --panel:#FFFFFF;
+  --panel-2:#FAFBFC;
+  --border:#E2E6EB;
+  --border-strong:#CDD4DC;
+  --ink:#111721;
+  --ink-2:#48515E;
+  --ink-3:#78828F;
+
+  --teal:#0D9488;        /* primary accent + Self-CRAG series */
+  --teal-ink:#0B7A70;
+  --teal-tint:#E4F5F2;
+  --indigo:#6366F1;      /* secondary accent + Self-RAG series */
+  --indigo-tint:#ECEDFE;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 28px rgba(16,24,40,.06);
+  --shadow-lg:0 2px 6px rgba(16,24,40,.06), 0 18px 48px rgba(16,24,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --chart-a:#6366F1; /* Self-RAG */
+  --chart-b:#0D9488; /* Self-CRAG */
+  --grid:#E7EBEF;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0D1014;
+  --panel:#161A21;
+  --panel-2:#1A1F28;
+  --border:#28303B;
+  --border-strong:#3A4552;
+  --ink:#E8ECF2;
+  --ink-2:#A7B0BD;
+  --ink-3:#6E7885;
+
+  --teal:#2DD4BF;
+  --teal-ink:#5AE0D0;
+  --teal-tint:#0E2A2A;
+  --indigo:#8B93F8;
+  --indigo-tint:#1B1E3A;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --chart-a:#6366F1;
+  --chart-b:#10A697;
+  --grid:#242C36;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1014; --panel:#161A21; --panel-2:#1A1F28; --border:#28303B; --border-strong:#3A4552;
+    --ink:#E8ECF2; --ink-2:#A7B0BD; --ink-3:#6E7885;
+    --teal:#2DD4BF; --teal-ink:#5AE0D0; --teal-tint:#0E2A2A; --indigo:#8B93F8; --indigo-tint:#1B1E3A;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --chart-a:#6366F1; --chart-b:#10A697; --grid:#242C36;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;
+  overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--teal-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:50%;
+  background:conic-gradient(from 210deg,var(--green-mark) 0 33%,var(--amber-mark) 0 66%,var(--red-mark) 0);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--teal-ink);background:var(--teal-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+@media (max-width:720px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:center}
+@media (max-width:860px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(46px,9vw,86px);line-height:.94;letter-spacing:-.04em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--teal);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+/* hero signal card (signature teaser) */
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.sig-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.sig-row:first-of-type{border-top:none}
+.sig-ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-family:var(--mono);font-size:15px}
+.sig-ic.g{background:var(--green-tint);color:var(--green);border:1px solid var(--green-bd)}
+.sig-ic.a{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd)}
+.sig-ic.r{background:var(--red-tint);color:var(--red);border:1px solid var(--red-bd)}
+.sig-row .t{font-weight:700;font-size:14.5px;color:var(--ink)}
+.sig-row .d{font-size:12.5px;color:var(--ink-3);line-height:1.4}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:760px}
+
+/* cards / panels */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams (HTML/CSS) ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--teal);background:var(--teal-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* triage signature */
+.triage{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px 22px;box-shadow:var(--shadow-lg);margin:22px 0}
+.triage svg{width:100%;height:auto;display:block}
+.triage-legend{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+@media (max-width:760px){.triage-legend{grid-template-columns:1fr}}
+.tl{border-radius:12px;padding:15px 16px;border:1px solid var(--border)}
+.tl.g{background:var(--green-tint);border-color:var(--green-bd)}
+.tl.a{background:var(--amber-tint);border-color:var(--amber-bd)}
+.tl.r{background:var(--red-tint);border-color:var(--red-bd)}
+.tl .tag{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;margin-bottom:9px}
+.tl.g .tag{color:var(--green);background:color-mix(in srgb,var(--green-mark) 16%,transparent)}
+.tl.a .tag{color:var(--amber);background:color-mix(in srgb,var(--amber-mark) 16%,transparent)}
+.tl.r .tag{color:var(--red);background:color-mix(in srgb,var(--red-mark) 16%,transparent)}
+.tl h4{margin:0 0 6px;font-size:15px;color:var(--ink);font-weight:750}
+.tl p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+
+/* strips diagram */
+.strips{display:flex;flex-direction:column;gap:8px}
+.strip{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--panel);font-size:14px}
+.strip .badge{flex:none;font-family:var(--mono);font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px}
+.strip.keep{border-color:var(--green-bd);background:var(--green-tint)}
+.strip.keep .badge{color:var(--green);background:color-mix(in srgb,var(--green-mark) 16%,transparent)}
+.strip.drop{opacity:.62;text-decoration:line-through;text-decoration-color:var(--red-mark)}
+.strip.drop .badge{color:var(--red);background:var(--red-tint);text-decoration:none;display:inline-block}
+.strip .txt{color:var(--ink-2)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-row td{background:var(--teal-tint)!important}
+.hl-row td.name{color:var(--teal-ink)}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+
+/* ---------- chart ---------- */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);position:relative}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.legend .li{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);font-weight:600}
+.legend .sw{width:13px;height:13px;border-radius:4px}
+#chart{width:100%;height:auto;display:block}
+#chart text{font-family:var(--mono)}
+.tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-118%);
+  background:var(--ink);color:var(--bg);padding:8px 11px;border-radius:9px;font-size:12.5px;font-family:var(--mono);
+  white-space:nowrap;box-shadow:var(--shadow-lg);transition:opacity .12s ease;z-index:5;line-height:1.5}
+.tip b{color:var(--bg)}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:34px;font-weight:750;letter-spacing:-.02em;color:var(--teal-ink);line-height:1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* takeaway list */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--teal)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>CRAG</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#problem">문제</a>
+      <a href="#overview">개요</a>
+      <a href="#evaluator">평가기</a>
+      <a href="#actions">3-액션</a>
+      <a href="#refine">지식정제</a>
+      <a href="#web">웹검색</a>
+      <a href="#results">실험</a>
+      <a href="#compare">비교분석</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">arXiv:2401.15884 · 2024</span>
+      <h1>CRAG</h1>
+      <div class="sub">Corrective Retrieval-Augmented Generation<br>검색을 <em>교정</em>하는 RAG</div>
+      <p class="thesis">“검색이 틀렸을 때 생성까지 무너지지 않도록.” 검색된 문서의 품질을 <b>스스로 평가</b>하고, 필요하면 <b>웹 검색</b>과 <b>노이즈 제거</b>로 지식을 교정한 뒤 답을 만든다.</p>
+      <div class="chips">
+        <span class="chip">저자 <b>Yan · Gu · Zhu · Ling</b></span>
+        <span class="chip">USTC · Google Research</span>
+        <span class="chip">Plug&nbsp;&amp;&nbsp;Play</span>
+        <span class="chip">평가기 <b>0.77B</b> (T5-large)</span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="세 가지 교정 액션 요약">
+      <div class="cap">Retrieval Triage — 검색 품질 신호</div>
+      <div class="sig-row">
+        <div class="sig-ic g" aria-hidden="true">✓</div>
+        <div><div class="t">Correct — 관련 있음</div><div class="d">문서에서 핵심만 추려 그대로 사용</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic a" aria-hidden="true">~</div>
+        <div><div class="t">Ambiguous — 애매함</div><div class="d">내부 지식 + 웹 검색을 함께 사용</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic r" aria-hidden="true">✕</div>
+        <div><div class="t">Incorrect — 관련 없음</div><div class="d">문서 버리고 웹 검색으로 대체</div></div>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">일반 RAG는 검색 결과를 <b>무조건</b> LLM에 넣는다. 검색이 빗나가면 노이즈가 그대로 들어가 <b>환각(hallucination)</b>을 유발한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0">경량 <b>검색 평가기</b>가 문서 관련도를 채점 → 신뢰도에 따라 <b>3가지 교정 액션</b>(사용 / 웹검색 / 혼합)을 자동 선택.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">생성 LLM을 <b>건드리지 않는</b> plug-and-play. Self-RAG에 얹은 <b>Self-CRAG</b>가 4개 벤치마크 대부분에서 성능을 끌어올림.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. PROBLEM ========== -->
+<section class="section" id="problem">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 동기</span>
+    <h2>왜 일반 RAG는 위험한가</h2>
+    <p class="lead">RAG의 성능은 <b>검색기(retriever)의 정확도에 절대적으로 의존</b>한다. 그런데 대부분의 RAG는 검색된 문서가 실제로 관련이 있든 없든 <b>가리지 않고 그대로</b> 생성기에 밀어 넣는다.</p>
+
+    <div class="callout">
+      <span class="k">논문 인용</span>
+      <p>“a low-quality retriever is prone to introducing a substantial amount of <b>irrelevant information</b>, impeding the generators from acquiring accurate knowledge and potentially <b>misleading them</b>.”</p>
+      <p style="margin-top:8px">“most conventional RAG approaches <b>indiscriminately incorporate</b> the retrieved documents, regardless of whether these documents are relevant or not.”</p>
+    </div>
+
+    <h3>일반 RAG의 흐름 — 품질 검사가 없다</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Query</div><div class="val">질문</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Retrieve</div><div class="val">Top-k 문서</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">No Check</div><div class="val">관련성 검증 ✕<br>그대로 주입</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">LLM</div><div class="val">생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">Risk</div><div class="val">노이즈 → 환각</div></div>
+    </div>
+    <p class="caption">문제 지점: 검색이 틀려도 이를 감지·교정할 장치가 전혀 없다.</p>
+  </div>
+</section>
+
+<!-- ========== 2. OVERVIEW ========== -->
+<section class="section" id="overview">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 개요</span>
+    <h2>CRAG 파이프라인 한눈에</h2>
+    <p class="lead">CRAG는 검색과 생성 사이에 <b>‘교정 계층(corrective layer)’</b>을 끼워 넣는다. 검색 결과를 평가하고, 그 결과에 따라 지식을 다듬거나 웹에서 보강한 뒤 생성기로 넘긴다.</p>
+
+    <div class="flow" style="margin:20px 0 6px">
+      <div class="node"><div class="lbl">1 · Query</div><div class="val">질문</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">2 · Retrieve</div><div class="val">Top-k 문서 검색</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">3 · Evaluator</div><div class="val">신뢰도 채점<br>(T5-large)</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">4 · Triage</div><div class="val">3-액션 분기<br>✓ ~ ✕</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">5 · Knowledge</div><div class="val">정제 / 웹검색<br>/ 혼합</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">6 · Generate</div><div class="val">최종 답변</div></div>
+    </div>
+    <p class="caption">3~5번 단계가 CRAG의 핵심 — 기존 RAG에 그대로 끼워 넣을 수 있는 모듈이다.</p>
+
+    <div class="callout teal">
+      <span class="k">핵심 아이디어</span>
+      <p>“검색이 맞았는지 <b>따로 검사</b>하고, 틀렸으면 <b>다른 지식원(웹)</b>으로 갈아탄다. 맞았어도 문서 속 <b>불필요한 부분은 잘라낸다</b>.” — 이 세 가지가 CRAG를 이룬다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. EVALUATOR ========== -->
+<section class="section" id="evaluator">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 검색 평가기</span>
+    <h2>Retrieval Evaluator — 관련도를 채점하는 경량 심판</h2>
+    <p class="lead">CRAG는 <b>T5-large를 파인튜닝</b>한 경량 평가기를 둔다. <code>(질문, 문서)</code> 쌍마다 관련도 점수를 예측하고, 이를 모아 <b>최종 신뢰도(confidence)</b>를 산출한다.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="big">0.77B</div>
+        <div class="lab">CRAG 평가기 (T5-large)</div>
+        <div class="sub">생성기와 별개로 동작하는 외부 모듈</div>
+      </div>
+      <div class="stat">
+        <div class="big">≈ 9×</div>
+        <div class="lab">Self-RAG 대비 가벼움</div>
+        <div class="sub">Self-RAG의 critic은 7B 규모</div>
+      </div>
+      <div class="stat">
+        <div class="big">쌍-단위</div>
+        <div class="lab">문서별 개별 채점</div>
+        <div class="sub">질문+문서 concat → 관련도 예측</div>
+      </div>
+    </div>
+
+    <h3>동작 방식</h3>
+    <ul class="clean">
+      <li>검색된 <b>각 문서를 질문과 짝지어</b> 관련도 점수를 개별 예측한다.</li>
+      <li>문서별 점수를 종합해 <b>하나의 최종 판정(신뢰도)</b>으로 정리한다.</li>
+      <li>이 신뢰도를 <b>상·하한 임계값</b>과 비교해 다음 단계(3-액션)를 결정한다.</li>
+    </ul>
+    <p class="small">※ 별도의 대형 비평 모델 없이 0.77B 평가기 하나만 추가하므로, 생성 LLM을 재학습할 필요가 없다(= plug-and-play의 근거).</p>
+  </div>
+</section>
+
+<!-- ========== 4. THREE ACTIONS (signature) ========== -->
+<section class="section" id="actions">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 핵심</span>
+    <h2>신뢰도로 갈리는 3가지 교정 액션</h2>
+    <p class="lead">평가기의 신뢰도를 <b>하한·상한 두 임계값</b>으로 잘라 세 구간으로 나눈다. 구간마다 사용할 지식원과 처리 방식이 달라진다.</p>
+
+    <div class="triage">
+      <svg viewBox="0 0 900 200" role="img" aria-label="신뢰도 축을 하한/상한 임계값으로 나눈 세 구간: Incorrect, Ambiguous, Correct">
+        <defs>
+          <linearGradient id="gband" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%"  stop-color="var(--red-mark)"/>
+            <stop offset="33%" stop-color="var(--red-mark)"/>
+            <stop offset="40%" stop-color="var(--amber-mark)"/>
+            <stop offset="60%" stop-color="var(--amber-mark)"/>
+            <stop offset="67%" stop-color="var(--green-mark)"/>
+            <stop offset="100%" stop-color="var(--green-mark)"/>
+          </linearGradient>
+        </defs>
+        <!-- track -->
+        <rect x="40" y="86" width="820" height="20" rx="10" fill="url(#gband)" opacity="0.92"/>
+        <!-- zone dividers -->
+        <line x1="313" y1="66" x2="313" y2="126" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 4" opacity="0.55"/>
+        <line x1="587" y1="66" x2="587" y2="126" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 4" opacity="0.55"/>
+        <!-- threshold labels -->
+        <text x="313" y="58" text-anchor="middle" font-size="12" fill="var(--ink-2)">하한 임계값</text>
+        <text x="587" y="58" text-anchor="middle" font-size="12" fill="var(--ink-2)">상한 임계값</text>
+        <!-- axis ends -->
+        <text x="40"  y="150" font-size="12" fill="var(--ink-3)">낮은 신뢰도 (검색 실패)</text>
+        <text x="860" y="150" text-anchor="end" font-size="12" fill="var(--ink-3)">높은 신뢰도 (검색 성공)</text>
+        <!-- zone tags -->
+        <text x="176" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="var(--red-mark)">✕ INCORRECT</text>
+        <text x="450" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="var(--amber-mark)">~ AMBIGUOUS</text>
+        <text x="724" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="var(--green-mark)">✓ CORRECT</text>
+        <!-- zone bottom labels -->
+        <text x="176" y="176" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">웹 검색으로 대체</text>
+        <text x="450" y="176" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">내부 정제 + 웹 검색</text>
+        <text x="724" y="176" text-anchor="middle" font-size="12.5" fill="var(--ink-2)">내부 문서 정제 사용</text>
+      </svg>
+
+      <div class="triage-legend">
+        <div class="tl g">
+          <span class="tag">✓ CORRECT</span>
+          <h4>관련 있음</h4>
+          <p><b>조건:</b> 최소 한 문서의 신뢰도가 <b>상한 임계값 초과</b>.<br><b>처리:</b> 검색 문서에 <b>지식 정제(decompose-then-recompose)</b>를 적용해 핵심만 남겨 사용.</p>
+        </div>
+        <div class="tl a">
+          <span class="tag">~ AMBIGUOUS</span>
+          <h4>애매함</h4>
+          <p><b>조건:</b> 상·하한 <b>사이</b> — 확신이 서지 않는 경우.<br><b>처리:</b> Correct의 <b>내부 정제 지식</b>과 Incorrect의 <b>웹 검색 지식</b>을 <b>함께</b> 사용해 서로 보완.</p>
+        </div>
+        <div class="tl r">
+          <span class="tag">✕ INCORRECT</span>
+          <h4>관련 없음</h4>
+          <p><b>조건:</b> <b>모든</b> 문서의 신뢰도가 <b>하한 임계값 미만</b>.<br><b>처리:</b> 검색 문서를 <b>전부 폐기</b>하고, <b>웹 검색</b>으로 외부 지식을 새로 확보.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="small">※ 임계값은 고정 상수가 아니라 데이터셋별로 <b>실험적으로 튜닝</b>한다. 그림의 구간 비율은 이해를 돕기 위한 예시다.</p>
+  </div>
+</section>
+
+<!-- ========== 5. KNOWLEDGE REFINEMENT ========== -->
+<section class="section" id="refine">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 지식 정제</span>
+    <h2>Decompose-then-Recompose — 문서 속 노이즈 걷어내기</h2>
+    <p class="lead">검색이 <b>맞았어도</b> 문서 전체가 관련 있는 건 아니다. CRAG는 문서를 잘게 쪼개(<b>knowledge strip</b>) 관련 있는 조각만 다시 이어 붙인다.</p>
+
+    <div class="flow" style="margin:18px 0 6px">
+      <div class="node"><div class="lbl">Decompose</div><div class="val">문서를<br>knowledge strip으로 분해</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Score</div><div class="val">평가기로<br>strip별 관련도 채점</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Filter</div><div class="val">무관한 strip<br>제거</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Recompose</div><div class="val">관련 strip만<br>순서대로 재결합</div></div>
+    </div>
+
+    <h3 style="margin-top:26px">예시 — strip 필터링</h3>
+    <div class="strips">
+      <div class="strip keep"><span class="badge">KEEP ✓</span><span class="txt">질문의 핵심 개체·사실을 직접 담은 조각</span></div>
+      <div class="strip drop"><span class="badge">DROP ✕</span><span class="txt">배경 설명·광고 문구 등 질문과 무관한 조각</span></div>
+      <div class="strip keep"><span class="badge">KEEP ✓</span><span class="txt">답을 뒷받침하는 근거 문장</span></div>
+      <div class="strip drop"><span class="badge">DROP ✕</span><span class="txt">주제를 벗어난 여담·중복 정보</span></div>
+    </div>
+    <p class="caption">결과 = 노이즈가 제거된 “정제된 내부 지식(internal knowledge)”. 같은 절차를 웹 검색 결과에도 그대로 적용한다.</p>
+  </div>
+</section>
+
+<!-- ========== 6. WEB SEARCH ========== -->
+<section class="section" id="web">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 웹 검색 교정</span>
+    <h2>검색이 실패하면 웹으로 갈아탄다</h2>
+    <p class="lead">Incorrect·Ambiguous 상황에서 CRAG는 <b>대규모 웹 검색</b>으로 외부 지식을 끌어온다. 정적인 코퍼스의 한계(오래됨·좁음)를 열린 웹으로 보완하는 것이 핵심이다.</p>
+
+    <div class="flow" style="margin:18px 0 6px">
+      <div class="node"><div class="lbl">Rewrite</div><div class="val">ChatGPT가 질문을<br>키워드형 쿼리로 변환</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Search</div><div class="val">검색 API로<br>웹 페이지 URL 수집</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Transcribe</div><div class="val">페이지 본문<br>추출·정리</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Refine</div><div class="val">동일한 정제 적용<br>→ 외부 지식</div></div>
+    </div>
+
+    <div class="callout">
+      <span class="k">왜 키워드로 바꾸나</span>
+      <p>사람이 검색엔진을 쓰듯 <b>키워드 중심 쿼리</b>로 재작성해야 웹 검색이 더 잘 걸린다. 논문 표현대로 “to mimic the daily usage of search engine”.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 7. RESULTS ========== -->
+<section class="section" id="results">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 실험</span>
+    <h2>실험 결과</h2>
+    <p class="lead">단답형·장문형을 아우르는 <b>4개 데이터셋</b>에서 평가한다. 핵심은 “CRAG를 얹으면 좋아지는가”, 그리고 “<b>기반 생성기 성능에 따라 이득이 어떻게 달라지는가</b>”이다.</p>
+
+    <div class="tablewrap" style="margin-top:18px">
+      <table>
+        <thead>
+          <tr><th class="name">데이터셋</th><th>형태</th><th>과제</th><th>지표</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">PopQA</td><td>단답형</td><td>희귀 개체 QA</td><td>Accuracy</td></tr>
+          <tr><td class="name">Biography</td><td>장문형</td><td>인물 전기 생성</td><td>FactScore</td></tr>
+          <tr><td class="name">PubHealth</td><td>단답형</td><td>보건 사실검증(T/F)</td><td>Accuracy</td></tr>
+          <tr><td class="name">Arc-Challenge</td><td>단답형</td><td>과학 상식 객관식</td><td>Accuracy</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:30px">헤드라인 — Self-RAG vs <span style="color:var(--teal-ink)">Self-CRAG</span></h3>
+    <p>Self-RAG의 생성기 위에 CRAG를 얹은 <b>Self-CRAG</b>는 4개 중 3개 지표에서 Self-RAG를 앞선다(ARC는 사실상 동률).</p>
+
+    <div class="chart-card" style="margin-top:14px">
+      <div class="chart-head">
+        <div>
+          <div class="mono" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">점수 (높을수록 좋음)</div>
+        </div>
+        <div class="legend">
+          <span class="li"><span class="sw" style="background:var(--chart-a)"></span>Self-RAG (기준선)</span>
+          <span class="li"><span class="sw" style="background:var(--chart-b)"></span>Self-CRAG (CRAG 적용)</span>
+        </div>
+      </div>
+      <svg id="chart" viewBox="0 0 760 380" role="img" aria-label="Self-RAG와 Self-CRAG의 데이터셋별 점수 비교 막대그래프"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <p class="caption">출처: 논문 Table 2 (SelfRAG-LLaMA2-7b 기반). Biography는 FactScore, 나머지는 Accuracy.</p>
+
+    <h3 style="margin-top:34px">전체 결과표 — 기반 생성기별 두 그룹</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">방법</th>
+            <th>PopQA</th><th>Bio<span class="cellnote">FactScore</span></th><th>PubHealth</th><th>ARC-C</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="name" colspan="5" style="background:var(--panel-2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-3)">■ 기반: LLaMA2-hf-7b (지시학습 안 된 약한 생성기)</td></tr>
+          <tr><td class="name">Standard RAG</td><td class="num">37.7</td><td class="num">44.9</td><td class="num">9.1</td><td class="num">23.8</td></tr>
+          <tr><td class="name">CRAG</td><td class="num">39.8</td><td class="num">47.7</td><td class="num">9.1</td><td class="num">25.8</td></tr>
+          <tr><td class="name" colspan="5" style="background:var(--panel-2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--ink-3)">■ 기반: SelfRAG-LLaMA2-7b (지시학습된 강한 생성기)</td></tr>
+          <tr><td class="name">Self-RAG</td><td class="num">54.9</td><td class="num">81.2</td><td class="num">72.4</td><td class="num">67.3</td></tr>
+          <tr class="hl-row"><td class="name">Self-CRAG</td><td class="num">61.8</td><td class="num">86.2</td><td class="num">74.8</td><td class="num">67.2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">출처: 논문 Table 2. 단위는 Accuracy(%) / Bio는 FactScore.</p>
+
+    <div class="grid2" style="margin-top:22px">
+      <div class="callout teal" style="margin:0">
+        <span class="k">읽는 법 ①</span>
+        <p><b>강한 생성기에서 이득이 크다.</b> Self-CRAG는 PopQA +6.9, Bio +5.0, PubHealth +2.4로 Self-RAG를 확실히 앞선다.</p>
+      </div>
+      <div class="callout amber" style="margin:0">
+        <span class="k">읽는 법 ②</span>
+        <p><b>약한 생성기에선 이득이 작다.</b> LLaMA2-hf-7b는 지시를 잘 못 따라(PubHealth·ARC가 바닥), 좋은 지식을 줘도 활용하지 못한다.</p>
+      </div>
+    </div>
+    <p class="small" style="margin-top:14px">→ 결론: CRAG의 교정이 빛을 보려면 <b>지식을 제대로 소화할 수 있는 생성기</b>가 전제되어야 한다. 교정은 “좋은 재료”를 주는 것이고, 요리는 생성기 몫이다.</p>
+  </div>
+</section>
+
+<!-- ========== 8. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">08</span> · 비교 분석</span>
+    <h2>Standard RAG vs Self-RAG vs CRAG</h2>
+    <p class="lead">세 접근을 “검색 실패에 어떻게 대응하는가”라는 축에서 비교하면 CRAG의 자리가 분명해진다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">항목</th>
+            <th>Standard RAG</th>
+            <th>Self-RAG</th>
+            <th style="color:var(--teal-ink)">CRAG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">검색 품질 검사</td>
+            <td><span class="cross">✕</span> 없음 (무조건 사용)</td>
+            <td><span class="tick">✓</span> 생성기가 낸 <b>reflection token</b>으로 자기 판단</td>
+            <td><span class="tick">✓</span> <b>외부 경량 평가기</b>(T5)가 채점</td>
+          </tr>
+          <tr>
+            <td class="name">검색 실패 시 교정</td>
+            <td><span class="cross">✕</span> 없음</td>
+            <td><span class="tilde">~</span> 무시/비판은 하나 <b>외부 대체 없음</b></td>
+            <td><span class="tick">✓</span> <b>웹 검색</b>으로 지식 대체·보강</td>
+          </tr>
+          <tr>
+            <td class="name">외부(웹) 지식</td>
+            <td><span class="cross">✕</span> 코퍼스 한정</td>
+            <td><span class="cross">✕</span> 코퍼스 한정</td>
+            <td><span class="tick">✓</span> 열린 웹 검색</td>
+          </tr>
+          <tr>
+            <td class="name">문서 내 노이즈 처리</td>
+            <td><span class="cross">✕</span> 통째로 주입</td>
+            <td><span class="tilde">~</span> 세그먼트 관련성 비판</td>
+            <td><span class="tick">✓</span> <b>strip 단위 분해·필터</b></td>
+          </tr>
+          <tr>
+            <td class="name">생성 LLM 파인튜닝</td>
+            <td><span class="tick">✓</span> 불필요</td>
+            <td><span class="cross">✕</span> <b>필수</b> (reflection token 학습)</td>
+            <td><span class="tick">✓</span> <b>불필요</b> (plug&amp;play)</td>
+          </tr>
+          <tr>
+            <td class="name">추가 모델</td>
+            <td>검색기만</td>
+            <td>7B critic으로 학습 데이터 생성 → 생성기 재학습</td>
+            <td><b>0.77B</b> 평가기만 추가</td>
+          </tr>
+          <tr>
+            <td class="name">기존 RAG에 결합</td>
+            <td>—</td>
+            <td><span class="tilde">~</span> 구조 변경 필요</td>
+            <td><span class="tick">✓</span> 그대로 얹기 (Self-CRAG)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">해석 — 무엇이 다른가</h3>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Self-RAG: 생성기가 스스로 판단</h3>
+        <p style="margin:0">생성 LLM을 <b>재학습</b>해 <code>Retrieve / IsRel / IsSup / IsUse</code> 같은 <b>reflection token</b>을 뱉게 만든다. 판단이 모델 내부에 녹아 강력하지만, <b>생성기를 바꿔야</b> 하고 검색이 틀렸을 때 <b>외부 대안이 없다</b>.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">CRAG: 판단을 밖으로 분리</h3>
+        <p style="margin:0">판단을 <b>0.77B 외부 평가기</b>로 떼어내 생성기를 건드리지 않는다. 그래서 어떤 RAG/LLM에도 <b>끼워 넣을 수 있고</b>, 검색이 틀리면 <b>웹으로 갈아탄다</b>. 대신 성능은 <b>평가기 정확도</b>에 의존한다.</p>
+      </div>
+    </div>
+
+    <div class="callout teal">
+      <span class="k">한 줄 정리</span>
+      <p>Self-RAG는 “<b>똑똑한 생성기</b>”를 만들고, CRAG는 생성기 앞에 “<b>똑똑한 품질관리 게이트</b>”를 세운다. 둘은 경쟁이자 <b>상호보완</b>이라 합치면(Self-CRAG) 가장 강하다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 9. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">09</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 한계</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 쓰면 좋다</h3>
+        <ul class="plain">
+          <li>검색 코퍼스가 <b>불완전·구식</b>일 수 있어 웹 보강이 필요할 때</li>
+          <li>생성 LLM을 <b>재학습하기 어려운</b> 환경(플러그인식 도입)</li>
+          <li>검색 노이즈로 인한 <b>환각을 억제</b>하고 싶을 때</li>
+          <li>이미 쓰는 RAG 파이프라인에 <b>모듈만 얹고</b> 싶을 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li>성능이 <b>평가기 정확도</b>에 좌우된다(잘못 채점하면 교정도 어긋남)</li>
+          <li>웹 검색은 <b>지연·신뢰성·비용</b> 이슈가 따른다</li>
+          <li><b>임계값을 데이터셋마다 튜닝</b>해야 한다</li>
+          <li><b>약한 생성기</b>에서는 이득이 제한적(실험에서 확인)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:22px">
+      <span class="k">LangGraph로 구현한다면</span>
+      <p>CRAG는 <b>상태 머신(state machine)</b>으로 아주 자연스럽게 매핑된다 — 노드: <code>retrieve → grade_documents → (조건부)</code> → <code>generate</code> 또는 <code>transform_query → web_search → generate</code>. 평가기의 3-액션이 곧 <b>conditional edge</b>가 된다. 이 저장소의 <code>17-LangGraph</code> 패턴과 잘 맞아, “Corrective RAG”는 대표적인 LangGraph 예제로 자주 구현된다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>CRAG — Corrective Retrieval-Augmented Generation</b></p>
+    <p class="mono" style="margin:0 0 4px">Shi-Qi Yan, Jia-Chen Gu, Yun Zhu, Zhen-Hua Ling · arXiv:2401.15884 (2024)</p>
+    <p class="mono" style="margin:0"><a href="https://arxiv.org/abs/2401.15884" target="_blank" rel="noopener">arxiv.org/abs/2401.15884</a> · 논문 내용을 한국어로 정리한 학습 자료</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    drawChart();
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['problem','overview','evaluator','actions','refine','web','results','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+
+/* ---------- grouped bar chart (dataviz spec) ---------- */
+var DATA=[
+  {name:'PopQA',   a:54.9, b:61.8},
+  {name:'Bio*',    a:81.2, b:86.2},
+  {name:'PubHealth',a:72.4, b:74.8},
+  {name:'ARC-C',   a:67.3, b:67.2}
+];
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+function drawChart(){
+  var svg=document.getElementById('chart'); if(!svg) return;
+  var W=760,H=380, pad={l:44,r:20,t:24,b:52};
+  var iw=W-pad.l-pad.r, ih=H-pad.t-pad.b, yMax=100;
+  var colA=cssv('--chart-a'), colB=cssv('--chart-b'),
+      grid=cssv('--grid'), ink=cssv('--ink'), ink3=cssv('--ink-3'), surf=cssv('--panel');
+  var y=function(v){ return pad.t+ih-(v/yMax)*ih; };
+  var ns='http://www.w3.org/2000/svg', out='';
+
+  // gridlines + y labels
+  [0,25,50,75,100].forEach(function(t){
+    var yy=y(t);
+    out+='<line x1="'+pad.l+'" y1="'+yy+'" x2="'+(W-pad.r)+'" y2="'+yy+'" stroke="'+grid+'" stroke-width="1"/>';
+    out+='<text x="'+(pad.l-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="'+ink3+'">'+t+'</text>';
+  });
+
+  var gw=iw/DATA.length, bw=Math.min(46,gw*0.30), gap=10;
+  DATA.forEach(function(d,i){
+    var cx=pad.l+gw*i+gw/2;
+    var xa=cx-bw-gap/2, xb=cx+gap/2;
+    [[xa,d.a,colA,'Self-RAG'],[xb,d.b,colB,'Self-CRAG']].forEach(function(s){
+      var bx=s[0],bv=s[1],bc=s[2],bn=s[3], by=y(bv), bh=pad.t+ih-by;
+      // 2px surface ring/gap around fills
+      out+='<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="4" fill="'+bc+'"'+
+           ' stroke="'+surf+'" stroke-width="1" class="bar" data-n="'+d.name+'" data-s="'+bn+'" data-v="'+bv+'"/>';
+      // direct value label
+      out+='<text x="'+(bx+bw/2)+'" y="'+(by-7)+'" text-anchor="middle" font-size="11.5" font-weight="700" fill="'+ink+'">'+bv.toFixed(1)+'</text>';
+    });
+    // x label
+    out+='<text x="'+cx+'" y="'+(H-pad.b+22)+'" text-anchor="middle" font-size="12.5" fill="'+ink+'" font-weight="600">'+d.name+'</text>';
+  });
+  // baseline
+  out+='<line x1="'+pad.l+'" y1="'+y(0)+'" x2="'+(W-pad.r)+'" y2="'+y(0)+'" stroke="'+cssv('--border-strong')+'" stroke-width="1.5"/>';
+  svg.innerHTML=out;
+
+  // hover tooltip
+  var tip=document.getElementById('tip');
+  [].slice.call(svg.querySelectorAll('.bar')).forEach(function(r){
+    r.style.cursor='pointer';
+    r.addEventListener('mousemove',function(ev){
+      var host=svg.parentElement.getBoundingClientRect();
+      tip.style.left=(ev.clientX-host.left)+'px';
+      tip.style.top=(ev.clientY-host.top)+'px';
+      var name=r.getAttribute('data-n'), other=DATA.find(function(d){return d.name===name;});
+      var delta=(other.b-other.a);
+      tip.innerHTML='<b>'+r.getAttribute('data-s')+'</b> · '+name+'<br>점수 <b>'+r.getAttribute('data-v')+'</b>'+
+        '<br>Δ(CRAG−RAG) '+(delta>=0?'+':'')+delta.toFixed(1);
+      tip.style.opacity='1';
+    });
+    r.addEventListener('mouseleave',function(){ tip.style.opacity='0'; });
+  });
+}
+drawChart();
+window.addEventListener('resize',function(){ /* svg is viewBox-scaled; no redraw needed */ });
+</script>
+</body>
+</html>
