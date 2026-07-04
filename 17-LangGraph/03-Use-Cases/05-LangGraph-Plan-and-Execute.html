@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph Plan-and-Execute 정리</title>
+<style>
+  :root {
+    --bg: #f2f6f6;
+    --surface: #ffffff;
+    --surface-2: #e6eeee;
+    --ink: #142423;
+    --ink-muted: #5b6b6a;
+    --line: #d5e1e0;
+    --accent: #0d8f8f;          /* 계획(planner) – 틸 */
+    --accent-soft: #d2eaea;
+    --exec: #7c5cd6;            /* 실행(execute) – 바이올렛 */
+    --exec-soft: #e7e0f8;
+    --good: #2f9e6f;            /* 완료(보고서·종료) – 그린 */
+    --good-soft: #d6f0e4;
+    --warn: #c07a12;            /* 재실행 루프 – 앰버 */
+    --warn-soft: #f6e7cc;
+    --code-bg: #0f2222;
+    --code-ink: #dbe9e8;
+    --code-key: #6fd6c9;
+    --code-str: #e3b778;
+    --code-com: #6d8483;
+    --shadow: 0 1px 2px rgba(20, 36, 35, 0.05), 0 6px 20px rgba(20, 36, 35, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0b1615;
+    --surface: #142322;
+    --surface-2: #1c302e;
+    --ink: #e7f0ef;
+    --ink-muted: #97a9a7;
+    --line: #294240;
+    --accent: #43c4bd;
+    --accent-soft: #12302e;
+    --exec: #a794ec;
+    --exec-soft: #241f3d;
+    --good: #52c797;
+    --good-soft: #16352a;
+    --warn: #e0a94e;
+    --warn-soft: #3a2c16;
+    --code-bg: #081413;
+    --code-ink: #dbe9e8;
+    --code-key: #6fd6c9;
+    --code-str: #e3b778;
+    --code-com: #6d8483;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0b1615;
+      --surface: #142322;
+      --surface-2: #1c302e;
+      --ink: #e7f0ef;
+      --ink-muted: #97a9a7;
+      --line: #294240;
+      --accent: #43c4bd;
+      --accent-soft: #12302e;
+      --exec: #a794ec;
+      --exec-soft: #241f3d;
+      --good: #52c797;
+      --good-soft: #16352a;
+      --warn: #e0a94e;
+      --warn-soft: #3a2c16;
+      --code-bg: #081413;
+      --code-ink: #dbe9e8;
+      --code-key: #6fd6c9;
+      --code-str: #e3b778;
+      --code-com: #6d8483;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 780px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+
+  .subhead {
+    font-size: 16.5px;
+    color: var(--ink-muted);
+    margin: 0 0 22px;
+    max-width: 64ch;
+    text-wrap: balance;
+  }
+
+  .source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 10px 5px 9px;
+    margin-bottom: 44px;
+  }
+
+  h2 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+    font-weight: 700;
+  }
+  h2 .num {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 9px;
+    font-size: 18px;
+  }
+  h3 { font-size: 15.5px; margin: 22px 0 2px; font-weight: 700; }
+
+  .section { margin-top: 56px; }
+  .section-lede {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 22px;
+    max-width: 66ch;
+  }
+
+  p { margin: 0 0 14px; }
+  strong { font-weight: 650; }
+  code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .callout code { background: var(--accent-soft); }
+
+  .steps-inline {
+    list-style: none; margin: 12px 0 0; padding: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .steps-inline li { display: flex; gap: 10px; font-size: 14.5px; align-items: baseline; }
+  .steps-inline .n {
+    font-family: ui-monospace, monospace; font-size: 11.5px; font-weight: 700;
+    color: #fff; background: var(--accent);
+    width: 20px; height: 20px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transform: translateY(2px);
+  }
+  .steps-inline .n.e { background: var(--exec); }
+  .steps-inline .n.r { background: var(--warn); }
+  .steps-inline .n.f { background: var(--good); }
+
+  /* ---------- Diagram ---------- */
+  .diagram-scroll { overflow-x: auto; margin: 28px 0 12px; padding: 4px; }
+  .flow { position: relative; width: 700px; height: 574px; margin: 0 auto; }
+  .flow svg { position: absolute; inset: 0; width: 700px; height: 574px; overflow: visible; }
+
+  .fnode {
+    position: absolute;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 6px 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .fnode .t { font-weight: 700; font-size: 13.5px; }
+  .fnode .s {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-muted);
+    line-height: 1.35;
+  }
+
+  .fnode.start    { top: 0px;   left: 296px; width: 128px; height: 42px; background: var(--surface-2); }
+  .fnode.planner  { top: 74px;  left: 240px; width: 240px; height: 60px; border-color: var(--accent); }
+  .fnode.planner .t { color: var(--accent); }
+  .fnode.execute  { top: 176px; left: 238px; width: 244px; height: 62px; border-color: var(--exec); }
+  .fnode.execute .t { color: var(--exec); }
+  .fnode.replan {
+    top: 288px; left: 244px; width: 232px; height: 60px;
+    border-radius: 10px; border-style: dashed; border-color: var(--accent);
+  }
+  .fnode.replan .t { color: var(--accent); }
+  .fnode.report   { top: 404px; left: 242px; width: 236px; height: 60px; border-color: var(--good); }
+  .fnode.report .t { color: var(--good); }
+  .fnode.end      { top: 512px; left: 300px; width: 120px; height: 42px; background: var(--surface-2); }
+
+  .flabel {
+    position: absolute;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .flabel.good { color: var(--good); }
+  .flabel.warn { color: var(--warn); }
+  .flabel.exec { color: var(--exec); }
+
+  .legend {
+    display: flex;
+    gap: 8px 20px;
+    justify-content: center;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- Cards grid ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card .ch {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; margin-bottom: 6px;
+  }
+  .card .ch .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .card .d { font-size: 13.8px; color: var(--ink); margin: 0; }
+  .card .fn {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* ---------- Schema cards ---------- */
+  .schema { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .fld {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .fld .k {
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; color: var(--accent);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .fld .ty { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
+  .fld .d { font-size: 13.5px; color: var(--ink); margin-top: 6px; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 18px 0 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); background: var(--surface-2); font-weight: 700;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace; font-size: 13px; }
+  .tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  }
+  .tag.teal { background: var(--accent-soft); color: var(--accent); }
+  .tag.exec { background: var(--exec-soft); color: var(--exec); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+
+  td .a { color: var(--ink-muted); }
+  td .b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Run card ---------- */
+  .runcard {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .runcard .rbar {
+    padding: 12px 18px;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+    border-bottom: 1px solid var(--line);
+    background: var(--good-soft); color: var(--good);
+  }
+  .runcard .rbar .pill {
+    font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; background: var(--surface); margin-left: auto;
+    color: var(--good);
+  }
+  .runcard .rbody { padding: 16px 18px; }
+  .runcard .q { font-size: 14.5px; margin: 0 0 6px; }
+  .runcard .q b { color: var(--ink); }
+  .runcard .cap {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--ink-muted); margin: 16px 0 8px;
+  }
+
+  .planlist { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .planlist li {
+    display: flex; gap: 10px; font-size: 13.8px; align-items: baseline;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .planlist .n {
+    font-family: ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    color: var(--accent); flex-shrink: 0;
+  }
+
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 4px 0 4px; }
+  .steps .st {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .steps .st.teal { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .steps .st.exec { border-color: var(--exec); color: var(--exec); background: var(--exec-soft); }
+  .steps .st.good { border-color: var(--good); color: var(--good); background: var(--good-soft); }
+  .steps .arw { color: var(--ink-muted); font-size: 13px; }
+  .steps .loopmark { color: var(--warn); font-size: 12px; font-weight: 700; }
+  .runcard .res {
+    font-size: 13.8px; margin: 12px 0 0;
+    padding: 11px 14px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .runcard .res b { color: var(--ink); }
+
+  /* ---------- Code panel ---------- */
+  .code-panel {
+    background: var(--code-bg);
+    border-radius: 9px;
+    margin: 14px 0 4px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .code-panel .bar {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 11px; color: #8aa3a1; padding: 8px 14px 0;
+  }
+  .code-panel pre { margin: 0; padding: 10px 14px 14px; overflow-x: auto; }
+  .code-panel code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.8px; color: var(--code-ink); line-height: 1.6; white-space: pre;
+    background: none; padding: 0;
+  }
+  .code-panel .k { color: var(--code-key); }
+  .code-panel .s { color: var(--code-str); }
+  .code-panel .c { color: var(--code-com); }
+
+  /* ---------- Recap ---------- */
+  .recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .recap li {
+    display: flex; gap: 12px; font-size: 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .recap li::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+  hr.divider { border: none; border-top: 1px solid var(--line); margin: 56px 0 0; }
+
+  footer { margin-top: 40px; font-size: 12.5px; color: var(--ink-muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 26px; }
+    .page { padding: 40px 16px 72px; }
+    .cards, .schema { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <p class="eyebrow">LangGraph · 03-Use-Cases · 05</p>
+  <h1>먼저 계획을 세우고, 한 단계씩 실행하며 계획을 고쳐 나가는 에이전트</h1>
+  <p class="subhead">
+    <strong>Plan-and-Execute</strong> — 복잡한 작업을 <strong>장기 계획</strong>으로 먼저 나눈 뒤,
+    한 단계씩 실행하고 매번 <strong>남은 계획을 다시 점검·수정</strong>합니다.
+    매 순간 즉흥적으로 움직이는 <strong>ReAct</strong>와 달리, 명시적 계획으로 긴 작업에서도 길을 잃지 않습니다.
+  </p>
+  <span class="source-tag">📓 05-LangGraph-Plan-and-Execute.ipynb</span>
+
+  <!-- 개요 -->
+  <div class="section">
+    <div class="callout">
+      <span class="label">한눈에 보기</span>
+      <p>
+        일반 ReAct 에이전트는 <strong>"생각 → 행동"</strong>을 매 순간 즉흥적으로 반복합니다. 편하지만
+        작업이 길어지면 <strong>큰 그림을 놓치고</strong> 헤매기 쉽습니다.
+      </p>
+      <p>
+        Plan-and-Execute는 이를 <strong>계획과 실행으로 분리</strong>합니다.
+      </p>
+      <ul class="steps-inline">
+        <li><span class="n">1</span><span><b>계획(planner)</b> — 목표를 보고 <strong>전체 단계 리스트</strong>를 먼저 만든다.</span></li>
+        <li><span class="n e">2</span><span><b>실행(execute)</b> — 계획의 <strong>첫 단계 하나</strong>를 ReAct 에이전트로 수행한다.</span></li>
+        <li><span class="n r">3</span><span><b>재계획(replan)</b> — 결과를 보고 <strong>남은 계획을 다시 세우거나</strong>, 다 됐으면 종료를 결정한다. → 2로 반복.</span></li>
+        <li><span class="n f">4</span><span><b>최종 보고서(final&nbsp;report)</b> — 쌓인 결과를 정리해 마크다운 보고서로 마무리한다.</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1. 개념 -->
+  <div class="section">
+    <h2><span class="num">01</span>Plan-and-Execute란 &amp; ReAct와 무엇이 다른가</h2>
+    <p class="section-lede">
+      <a style="color:var(--accent)">Plan-and-Solve</a> 논문(2305.04091)과 Baby-AGI에서 영감을 받은 방식으로,
+      <strong>명시적인 장기 계획</strong>을 강조한다는 점이 핵심입니다. 전통적 ReAct와 비교하면 차이가 뚜렷합니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:22%">항목</th>
+            <th>ReAct 스타일</th>
+            <th>Plan-and-Execute</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>진행 방식</td>
+            <td><span class="a">한 번에 한 단계씩 생각·행동</span></td>
+            <td><span class="b">전체 계획을 먼저 수립 후 실행</span></td>
+          </tr>
+          <tr>
+            <td>장기 과제</td>
+            <td><span class="a">도중에 큰 그림을 잃기 쉬움</span></td>
+            <td><span class="b">명시적 계획으로 안정적 진행</span></td>
+          </tr>
+          <tr>
+            <td>계획 수정</td>
+            <td><span class="a">매 스텝 즉흥적</span></td>
+            <td><span class="b">단계 완료마다 명시적 재계획</span></td>
+          </tr>
+          <tr>
+            <td>모델 사용</td>
+            <td><span class="a">보통 단일 모델</span></td>
+            <td><span class="b">계획=강한 모델 / 실행=가벼운 모델 분리 가능</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-lede" style="margin-top:14px">
+      즉 <strong>장점은 둘</strong>입니다. ① 강력한 LLM도 어려워하는 <strong>장기 계획을 명시적으로</strong> 세워 안정성을 높이고,
+      ② 계획엔 큰 모델, 실행엔 작은 모델을 써서 <strong>비용·자원을 최적화</strong>할 수 있습니다.
+    </p>
+  </div>
+
+  <!-- 2. 전체 흐름 -->
+  <div class="section">
+    <h2><span class="num">02</span>전체 흐름 — 실행 ↔ 재계획 루프</h2>
+    <p class="section-lede">
+      가운데 세로줄이 기본 흐름입니다. <code>replan</code>이 매번 <strong>더 할 일이 남았는지</strong> 판단해,
+      남았으면 <span style="color:var(--warn)"><strong>execute로 되돌아가고</strong></span>(재실행 루프),
+      끝났으면 <span style="color:var(--good)"><strong>보고서 작성 후 종료</strong></span>합니다.
+    </p>
+
+    <div class="diagram-scroll">
+      <div class="flow">
+        <svg viewBox="0 0 700 574" aria-hidden="true">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted)"></path>
+            </marker>
+            <marker id="a-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path>
+            </marker>
+            <marker id="a-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"></path>
+            </marker>
+            <marker id="a-exec" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--exec)"></path>
+            </marker>
+          </defs>
+
+          <!-- START -> planner -->
+          <path d="M 360 42 L 360 74" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- planner -> execute -->
+          <path d="M 360 134 L 360 176" stroke="var(--exec)" stroke-width="1.7" fill="none" marker-end="url(#a-exec)"></path>
+          <!-- execute -> replan -->
+          <path d="M 360 238 L 360 288" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <!-- replan -> report (final_report) -->
+          <path d="M 360 348 L 360 404" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+          <!-- report -> END -->
+          <path d="M 360 464 L 360 512" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+          <!-- replan -> execute loop back (right lane) -->
+          <path d="M 476 318 C 556 312, 556 207, 482 207" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+        </svg>
+
+        <div class="fnode start"><div class="t">START</div></div>
+
+        <div class="fnode planner">
+          <div class="t">planner</div>
+          <div class="s">목표 → 전체 단계 리스트 생성</div>
+        </div>
+
+        <div class="fnode execute">
+          <div class="t">execute</div>
+          <div class="s">계획의 첫 단계 1개를<br>ReAct 에이전트로 실행</div>
+        </div>
+
+        <div class="fnode replan">
+          <div class="t">replan</div>
+          <div class="s">남은 계획 갱신 or 완료 판단</div>
+        </div>
+
+        <div class="fnode report">
+          <div class="t">final_report</div>
+          <div class="s">누적 결과로 보고서 작성</div>
+        </div>
+
+        <div class="fnode end"><div class="t">END</div></div>
+
+        <div class="flabel good" style="top:368px; left:372px;">응답 준비됨</div>
+        <div class="flabel warn" style="top:246px; left:502px;">할 일 남음 → 재실행</div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>계획 (planner · replan)</span>
+      <span><i style="background:var(--exec)"></i>실행 (execute)</span>
+      <span><i style="background:var(--warn)"></i>재실행 루프</span>
+      <span><i style="background:var(--good)"></i>완료 (보고서 · 종료)</span>
+      <span><i style="background:var(--surface-2);border:1px solid var(--line)"></i>시작 / 종료</span>
+    </div>
+  </div>
+
+  <!-- 3. 상태 -->
+  <div class="section">
+    <h2><span class="num">03</span>상태(State) — 계획과 결과를 함께 들고 다닌다</h2>
+    <p class="section-lede">
+      네 개의 값이 노드 사이를 흐릅니다. 특히 <code>past_steps</code>는 <code>operator.add</code>로 선언되어
+      실행할 때마다 결과가 <strong>지워지지 않고 누적</strong>되고, <code>response</code>가 채워지는 순간이 <strong>종료 신호</strong>입니다.
+    </p>
+    <div class="schema">
+      <div class="fld">
+        <div class="k">input <span class="ty">str</span></div>
+        <div class="d">사용자의 원래 질문·목표. 계획과 재계획의 기준점이 된다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">plan <span class="ty">List[str]</span></div>
+        <div class="d">현재 <strong>남은</strong> 계획 단계들. 재계획 때 통째로 새로 채워진다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">past_steps <span class="ty">List[Tuple] · add</span></div>
+        <div class="d">(단계, 실행 결과) 쌍을 <strong>계속 누적</strong>. 재계획·보고서의 근거가 된다.</div>
+      </div>
+      <div class="fld">
+        <div class="k">response <span class="ty">str</span></div>
+        <div class="d">최종 응답. <strong>값이 채워지면 곧 종료</strong>(→ 보고서) 신호로 쓰인다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 노드 -->
+  <div class="section">
+    <h2><span class="num">04</span>노드 구성</h2>
+    <p class="section-lede">
+      <code>execute</code>가 <strong>계획 전체가 아니라 첫 단계 하나(<code>plan[0]</code>)만</strong> 실행한다는 점이 포인트입니다.
+      그래야 한 단계 끝날 때마다 <code>replan</code>이 상황을 다시 볼 수 있습니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:26%">노드</th><th>하는 일</th><th>갱신하는 키</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag teal">planner</span></td>
+            <td><code>input</code>을 보고 전체 단계 리스트를 만든다</td>
+            <td class="mono">plan</td>
+          </tr>
+          <tr>
+            <td><span class="tag exec">execute</span></td>
+            <td>계획의 <strong>첫 단계</strong>를 ReAct 에이전트로 실행</td>
+            <td class="mono">past_steps</td>
+          </tr>
+          <tr>
+            <td><span class="tag teal">replan</span></td>
+            <td>결과를 반영해 남은 계획을 갱신하거나, 끝이면 응답을 낸다</td>
+            <td class="mono">plan · response</td>
+          </tr>
+          <tr>
+            <td><span class="tag good">final_report</span></td>
+            <td>누적된 <code>past_steps</code>로 마크다운 최종 보고서 작성</td>
+            <td class="mono">response</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. 계획 / 재계획 -->
+  <div class="section">
+    <h2><span class="num">05</span>계획과 재계획 — 두 개의 구조화 출력</h2>
+    <p class="section-lede">
+      LLM이 자유 문장을 뱉지 않도록 <code>with_structured_output</code>으로 <strong>정해진 형태</strong>만 내게 합니다.
+      계획은 <strong>단계 리스트</strong>, 재계획은 <strong>"끝낼지 / 계속할지"</strong>를 타입으로 표현하는 게 핵심입니다.
+    </p>
+
+    <h3>① Planner — 단계 리스트만 생성</h3>
+    <p class="section-lede" style="margin-bottom:12px">
+      <code>Plan</code> 모델은 <code>steps</code> 하나뿐. 목표를 <strong>순서 있는 개별 작업들</strong>로 쪼개게 합니다.
+    </p>
+
+    <h3>② Re-planner — Union으로 "종료 or 계속"을 결정</h3>
+    <p class="section-lede" style="margin-bottom:12px">
+      재계획기의 출력 타입이 <code>Union[Response, Plan]</code>입니다. LLM이 <strong>어떤 타입을 고르느냐</strong>가 곧 분기입니다 —
+      <code>Response</code>를 고르면 "이제 답할 수 있음(종료)", <code>Plan</code>을 고르면 "아직 남았음(계속)".
+    </p>
+    <div class="code-panel">
+      <div class="bar">Plan / Act 모델 · replan_step</div>
+      <pre><code><span class="c"># ── 계획: 실행할 단계 리스트 ──</span>
+<span class="k">class</span> Plan(BaseModel):
+    steps: List[str]                  <span class="c"># 순서대로 수행할 단계들</span>
+
+<span class="c"># ── 재계획: 끝낼지 / 계속할지 ──</span>
+<span class="k">class</span> Response(BaseModel):
+    response: str                     <span class="c"># 사용자에게 줄 최종 응답</span>
+
+<span class="k">class</span> Act(BaseModel):
+    action: Union[Response, Plan]     <span class="c"># Response=종료, Plan=계속</span>
+
+<span class="k">def</span> replan_step(state):
+    output = replanner.invoke(state)
+    <span class="k">if</span> isinstance(output.action, Response):
+        <span class="k">return</span> {<span class="s">"response"</span>: output.action.response}   <span class="c"># ← 종료 신호</span>
+    <span class="k">return</span> {<span class="s">"plan"</span>: output.action.steps}             <span class="c"># ← 남은 계획 갱신</span></code></pre>
+    </div>
+    <p class="section-lede" style="margin-top:14px">
+      재계획 프롬프트는 <strong>"이미 끝낸 단계는 빼고, 아직 해야 할 단계만"</strong> 다시 나열하라고 지시합니다.
+      그래서 반복할수록 <code>plan</code>이 점점 짧아지다가 비게 되고, 결국 <code>Response</code>로 마무리됩니다.
+    </p>
+  </div>
+
+  <!-- 6. 종료 판단 -->
+  <div class="section">
+    <h2><span class="num">06</span>종료 판단 — <code>should_end</code></h2>
+    <p class="section-lede">
+      <code>replan</code> 뒤에 붙는 조건부 엣지입니다. 상태에 <code>response</code>가 채워졌으면 보고서로,
+      아니면 다시 실행으로 보냅니다. <strong>딱 이 한 가지</strong>로 루프의 지속/종료가 갈립니다.
+    </p>
+    <div class="code-panel">
+      <div class="bar">should_end() · 루프 지속 여부</div>
+      <pre><code><span class="k">def</span> should_end(state):
+    <span class="c"># response가 채워졌으면 종료(보고서), 아니면 계속 실행</span>
+    <span class="k">if</span> <span class="s">"response"</span> <span class="k">in</span> state <span class="k">and</span> state[<span class="s">"response"</span>]:
+        <span class="k">return</span> <span class="s">"final_report"</span>
+    <span class="k">return</span> <span class="s">"execute"</span></code></pre>
+    </div>
+  </div>
+
+  <!-- 7. 실행 예시 -->
+  <div class="section">
+    <h2><span class="num">07</span>실행 예시 — 한 질문이 흘러가는 모습</h2>
+    <p class="section-lede">
+      <code>recursion_limit=50</code>으로 넉넉히 두고 실행합니다. 계획이 단계마다 짧아지므로
+      보통은 몇 번의 <code>execute ↔ replan</code> 반복 뒤 자연스럽게 보고서로 끝납니다.
+    </p>
+
+    <div class="runcard">
+      <div class="rbar">
+        계획 → 단계별 실행 → 재계획 반복 → 최종 보고서
+        <span class="pill">response → END</span>
+      </div>
+      <div class="rbody">
+        <p class="q">질문: <b>"Modular RAG가 기존 Naive RAG와 어떤 차이가 있는지와 production level에서 쓰는 이점을 설명해줘"</b></p>
+
+        <p class="cap">① planner가 세운 계획 (예시)</p>
+        <ul class="planlist">
+          <li><span class="n">1.</span><span>Naive RAG의 개념과 한계 조사</span></li>
+          <li><span class="n">2.</span><span>Modular RAG의 개념과 구성 요소 조사</span></li>
+          <li><span class="n">3.</span><span>두 방식의 핵심 차이점 비교</span></li>
+          <li><span class="n">4.</span><span>production 환경에서의 이점 정리</span></li>
+        </ul>
+
+        <p class="cap">② 실행 ↔ 재계획 루프</p>
+        <div class="steps">
+          <span class="st teal">planner</span>
+          <span class="arw">→</span>
+          <span class="st exec">execute (1)</span>
+          <span class="arw">→</span>
+          <span class="st teal">replan</span>
+          <span class="loopmark">↺</span>
+          <span class="arw">→</span>
+          <span class="st exec">execute (2)</span>
+          <span class="arw">→</span>
+          <span class="st teal">replan</span>
+          <span class="loopmark">↺</span>
+          <span class="arw">→</span>
+          <span class="st">⋯</span>
+          <span class="arw">→</span>
+          <span class="st good">final_report</span>
+          <span class="arw">→</span>
+          <span class="st">END</span>
+        </div>
+
+        <p class="res">
+          매 <b>execute</b>는 남은 계획의 <b>첫 단계 하나</b>만 Tavily 검색 기반 ReAct 에이전트로 수행하고,
+          결과를 <code>past_steps</code>에 쌓습니다. <b>replan</b>은 그 결과를 보고 남은 단계를 다시 정리하다가,
+          더 할 일이 없어지면 <code>Response</code>를 반환 → <code>response</code>가 채워지고 →
+          <b>final_report</b>가 누적 결과를 <b>마크다운 보고서</b>로 정리하며 종료합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 그래프 조립 -->
+  <div class="section">
+    <h2><span class="num">08</span>그래프 조립 코드</h2>
+    <p class="section-lede">
+      대부분 일반 엣지로 이어지고, <strong>조건부 엣지는 <code>replan</code> 뒤 한 곳</strong>뿐입니다.
+      이 한 갈래가 <code>execute</code>로 돌아가는 루프와 <code>final_report</code>로 나가는 출구를 동시에 만듭니다.
+    </p>
+    <div class="code-panel">
+      <div class="bar">workflow 구성 · StateGraph</div>
+      <pre><code>workflow.add_edge(START, <span class="s">"planner"</span>)
+workflow.add_edge(<span class="s">"planner"</span>, <span class="s">"execute"</span>)   <span class="c"># 계획 → 첫 단계 실행</span>
+workflow.add_edge(<span class="s">"execute"</span>, <span class="s">"replan"</span>)    <span class="c"># 실행 → 재계획</span>
+
+<span class="c"># 재계획 후: 끝낼지 / 더 실행할지</span>
+workflow.add_conditional_edges(
+    <span class="s">"replan"</span>, should_end,
+    {<span class="s">"execute"</span>: <span class="s">"execute"</span>,          <span class="c"># 할 일 남음 → 재실행 루프</span>
+     <span class="s">"final_report"</span>: <span class="s">"final_report"</span>}, <span class="c"># 응답 준비됨 → 보고서</span>
+)
+workflow.add_edge(<span class="s">"final_report"</span>, END)
+
+app = workflow.compile(checkpointer=MemorySaver())</code></pre>
+    </div>
+  </div>
+
+  <!-- Recap -->
+  <div class="section">
+    <h2><span class="num">09</span>핵심 정리</h2>
+    <ul class="recap">
+      <li>Plan-and-Execute는 <strong>계획을 먼저, 실행은 한 단계씩</strong> 하는 에이전트 전략이다.</li>
+      <li>ReAct의 즉흥적 진행과 달리 <strong>명시적 장기 계획</strong>으로 긴 작업에서도 길을 잃지 않는다.</li>
+      <li><code>execute</code>는 계획 전체가 아니라 <strong>첫 단계 하나</strong>만 실행하고, 그 뒤 <code>replan</code>이 상황을 다시 본다.</li>
+      <li>재계획기는 <code>Union[Response, Plan]</code>으로 <strong>"종료(Response) or 계속(Plan)"</strong>을 타입으로 결정한다.</li>
+      <li><code>response</code>가 채워지는 순간이 종료 신호 — <code>should_end</code>가 이를 보고 보고서로 내보낸다.</li>
+      <li>계획엔 강한 모델, 실행엔 가벼운 모델을 나눠 쓰면 <strong>비용·자원까지 최적화</strong>할 수 있다.</li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+  <footer>
+    LangGraph 03-Use-Cases · Plan-and-Execute 학습 정리 · 05-LangGraph-Plan-and-Execute.ipynb
+  </footer>
+
+</div>
+
+</body>
+</html>

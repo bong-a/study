@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plan-and-Solve Prompting — 계획하고 풀게 하는 제로샷 추론 논문 정리</title>
+<style>
+/* ============================================================
+   Reasoning Worksheet — Plan-and-Solve Prompting explainer
+   Third in the paper-guide collection.
+   Identity: violet accent + graph-paper motif (distinct from
+   CRAG=teal, Self-RAG=indigo). green/amber/red reserved for
+   the three Zero-shot-CoT error types.
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F6F5FB;
+  --panel:#FFFFFF;
+  --panel-2:#FAF9FE;
+  --border:#E7E4F1;
+  --border-strong:#D2CCE4;
+  --ink:#161320;
+  --ink-2:#4B4660;
+  --ink-3:#7C7796;
+
+  --brand:#7C3AED;        /* primary accent (Plan-and-Solve) */
+  --brand-ink:#6D28D9;
+  --brand-tint:#F1EBFE;
+  --brand-2:#A855F7;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --slate:#475569; --slate-2:#94A3B8;   /* muted baselines in charts */
+
+  --paper-line:rgba(124,58,237,.06);
+
+  --shadow:0 1px 2px rgba(20,16,40,.04), 0 8px 28px rgba(20,16,40,.06);
+  --shadow-lg:0 2px 6px rgba(20,16,40,.06), 0 18px 48px rgba(20,16,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --grid:#EBE8F4;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0D0B14;
+  --panel:#16131F;
+  --panel-2:#1A1726;
+  --border:#2A2539;
+  --border-strong:#3C3652;
+  --ink:#EAE7F4;
+  --ink-2:#AAA4C4;
+  --ink-3:#726C90;
+
+  --brand:#A78BFA;
+  --brand-ink:#C4B5FD;
+  --brand-tint:#241B3D;
+  --brand-2:#C084FC;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --slate:#94A3B8; --slate-2:#64748B;
+
+  --paper-line:rgba(167,139,250,.08);
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --grid:#262034;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D0B14; --panel:#16131F; --panel-2:#1A1726; --border:#2A2539; --border-strong:#3C3652;
+    --ink:#EAE7F4; --ink-2:#AAA4C4; --ink-3:#726C90;
+    --brand:#A78BFA; --brand-ink:#C4B5FD; --brand-tint:#241B3D; --brand-2:#C084FC;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --slate:#94A3B8; --slate-2:#64748B;
+    --paper-line:rgba(167,139,250,.08);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --grid:#262034;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* graph-paper motif */
+.paper-bg{
+  background-image:
+    linear-gradient(var(--paper-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--paper-line) 1px, transparent 1px);
+  background-size:26px 26px;
+}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--brand-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--brand-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+em{font-style:normal;color:var(--brand-ink);font-weight:700}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:2px;
+  background:linear-gradient(135deg,var(--brand) 0 50%,var(--brand-2) 50% 100%);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--brand-ink);background:var(--brand-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+.theme-btn:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media (max-width:760px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:44px;align-items:center}
+@media (max-width:880px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(42px,8vw,76px);line-height:.96;letter-spacing:-.035em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--brand);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+/* hero signal card — three error types */
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.signal-card .cap2{font-size:12.5px;color:var(--ink-3);margin-bottom:14px}
+.errbar{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.errbar:first-of-type{border-top:none}
+.errbar .pct{flex:none;width:44px;font-family:var(--mono);font-weight:750;font-size:16px;text-align:right}
+.errbar .track{flex:1;height:9px;border-radius:999px;background:var(--panel-2);overflow:hidden;border:1px solid var(--border)}
+.errbar .fill{height:100%;border-radius:999px}
+.errbar .t{flex:none;width:118px;font-size:12.5px;color:var(--ink);font-weight:650;text-align:right}
+.errbar.r .pct{color:var(--red)} .errbar.r .fill{background:var(--red-mark)}
+.errbar.a .pct{color:var(--amber)} .errbar.a .fill{background:var(--amber-mark)}
+.errbar.g .pct{color:var(--green)} .errbar.g .fill{background:var(--green-mark)}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:770px}
+
+/* cards / panels */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.accent{background:var(--brand-tint);border-color:color-mix(in srgb,var(--brand) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--brand);background:var(--brand-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* ---------- prompt evolution ladder (signature 1) ---------- */
+.ladder{display:flex;flex-direction:column;gap:14px;margin:20px 0 6px}
+.rung{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.rung .rhead{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--panel-2);flex-wrap:wrap}
+.rung .tag{font-family:var(--mono);font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--border-strong);color:var(--ink)}
+.rung.on .tag{background:var(--brand);border-color:var(--brand);color:#fff}
+.rung .rname{font-weight:750;font-size:15px;color:var(--ink)}
+.rung .rfix{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-family:var(--mono)}
+.prompt{padding:16px 18px;font-family:var(--mono);font-size:14px;line-height:1.75;color:var(--ink);background:
+  linear-gradient(var(--paper-line) 1px, transparent 1px) 0 -1px/100% 26px}
+.prompt .quote{color:var(--ink-3)}
+.add{background:color-mix(in srgb,var(--brand) 20%,transparent);color:var(--brand-ink);
+  border-radius:5px;padding:.05em .3em;font-weight:700;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.rung .why{padding:0 18px 16px;font-size:13.5px;color:var(--ink-2)}
+.rung .why b{color:var(--ink)}
+
+/* ---------- worksheet trace (signature 2) ---------- */
+.worksheet{border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);overflow:hidden;margin:20px 0}
+.ws-q{padding:15px 18px;background:var(--panel-2);border-bottom:1px solid var(--border);font-size:15px;color:var(--ink)}
+.ws-q b{color:var(--brand-ink)}
+.ws-cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media (max-width:720px){.ws-cols{grid-template-columns:1fr}}
+.ws-col{padding:16px 18px;background:var(--panel)}
+.ws-col.plan{border-right:1px solid var(--border)}
+@media (max-width:720px){.ws-col.plan{border-right:none;border-bottom:1px solid var(--border)}}
+.ws-phase{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;
+  display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;margin-bottom:12px}
+.ws-phase.p{color:var(--brand-ink);background:var(--brand-tint);border:1px solid color-mix(in srgb,var(--brand) 30%,var(--border))}
+.ws-phase.s{color:var(--green);background:var(--green-tint);border:1px solid var(--green-bd)}
+.ws-line{display:flex;gap:10px;padding:7px 0;font-size:14px;color:var(--ink-2);align-items:baseline;
+  background:linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0/100% 30px}
+.ws-line .st{flex:none;width:20px;font-family:var(--mono);font-weight:700;color:var(--brand-ink);font-size:12.5px}
+.ws-line b{color:var(--ink)}
+.ws-calc{font-family:var(--mono);color:var(--ink);background:var(--panel-2);border:1px solid var(--border);
+  border-radius:7px;padding:2px 7px;font-size:13px}
+.ws-ans{margin-top:12px;padding:11px 14px;border-radius:10px;background:var(--green-tint);border:1px solid var(--green-bd);
+  font-weight:700;color:var(--ink);font-size:14.5px}
+.ws-ans .lab{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:2px}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border)}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-col{background:var(--brand-tint)!important}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+.best{color:var(--brand-ink);font-weight:800}
+
+/* ---------- chart ---------- */
+.chart-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);position:relative}
+.chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:6px}
+.legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.legend .li{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);font-weight:600}
+.legend .sw{width:13px;height:13px;border-radius:4px}
+#chart{width:100%;height:auto;display:block}
+#chart text{font-family:var(--mono)}
+.tip{position:absolute;pointer-events:none;opacity:0;transform:translate(-50%,-118%);
+  background:var(--ink);color:var(--bg);padding:8px 11px;border-radius:9px;font-size:12.5px;font-family:var(--mono);
+  white-space:nowrap;box-shadow:var(--shadow-lg);transition:opacity .12s ease;z-index:5;line-height:1.5}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:34px;font-weight:750;letter-spacing:-.02em;color:var(--brand-ink);line-height:1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* lists */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--brand)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>Plan-and-Solve</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#problem">문제</a>
+      <a href="#idea">아이디어</a>
+      <a href="#prompts">프롬프트 진화</a>
+      <a href="#trace">워크시트</a>
+      <a href="#process">동작 방식</a>
+      <a href="#results">실험</a>
+      <a href="#compare">비교분석</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero paper-bg">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">arXiv:2305.04091 · ACL 2023</span>
+      <h1>Plan-and-Solve<br>Prompting</h1>
+      <div class="sub">계획을 세운 <em>뒤</em> 풀게 하는 제로샷 추론<br>Improving Zero-Shot Chain-of-Thought Reasoning</div>
+      <p class="thesis">“그냥 <b>차근차근 생각해</b>”가 아니라, “먼저 <b>계획을 세우고</b> → 그 계획대로 <b>풀어라</b>”. 예시(few-shot) 하나 없이 <b>프롬프트 문장 하나</b>로 추론 정확도를 끌어올린다.</p>
+      <div class="chips">
+        <span class="chip">저자 <b>Wang · Xu · Lan 외</b></span>
+        <span class="chip">SMU · ECNU</span>
+        <span class="chip">Zero-shot</span>
+        <span class="chip">GPT-3 <b>text-davinci-003</b></span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="Zero-shot-CoT의 세 가지 오류 유형과 빈도">
+      <div class="cap">Zero-shot-CoT 오답 분석</div>
+      <div class="cap2">“차근차근 생각해”가 실패하는 3가지 이유</div>
+      <div class="errbar r">
+        <div class="t">의미 오해</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="pct">27%</div>
+      </div>
+      <div class="errbar a">
+        <div class="t">단계 누락</div>
+        <div class="track"><div class="fill" style="width:44%"></div></div>
+        <div class="pct">12%</div>
+      </div>
+      <div class="errbar g">
+        <div class="t">계산 실수</div>
+        <div class="track"><div class="fill" style="width:26%"></div></div>
+        <div class="pct">7%</div>
+      </div>
+      <p class="small" style="margin:12px 0 0">Plan-and-Solve는 이 중 <b style="color:var(--ink)">단계 누락·계산 실수</b>를 직접 겨냥한다.</p>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">Zero-shot-CoT의 “Let's think step by step”은 강력하지만, <b>추론 단계를 빼먹거나</b> <b>계산을 틀리는</b> 오류가 잦다. 생각을 유도할 뿐 <b>구조가 없기</b> 때문.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0">추론을 <b>PLAN(계획) → SOLVE(실행)</b> 두 단계로 나누도록 지시한다. 여기에 <b>변수 추출·중간 계산</b> 지시를 더한 <b>PS+</b>로 계산 오류까지 잡는다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">예시 없이도 <b>Zero-shot-CoT를 크게 능가</b>하고, 사람이 예시를 손수 짠 <b>Few-shot CoT에 근접</b>(산술 평균 76.7 vs 77.6).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. PROBLEM ========== -->
+<section class="section" id="problem">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 동기</span>
+    <h2>“차근차근 생각해”의 세 가지 함정</h2>
+    <p class="lead">Zero-shot-CoT(Kojima et al., 2022)는 프롬프트 끝에 <code>Let's think step by step</code> 한 줄만 붙여 LLM이 추론을 펼치게 한다. 놀랍도록 잘 되지만, 저자들이 오답을 뜯어보니 <b>세 가지 오류</b>가 반복됐다.</p>
+
+    <div class="grid3" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--red)">의미 오해 · 27%</h3>
+        <p style="margin:0">문제 자체를 <b>잘못 이해</b>한다. 무엇을 구하는지, 조건이 무엇인지 놓친다. <b>가장 큰</b> 오류지만 프롬프트만으로 고치기 어렵다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--amber)">단계 누락 · 12%</h3>
+        <p style="margin:0">필요한 <b>중간 추론 단계를 건너뛴다</b>. 계획 없이 즉흥적으로 풀다 보니 논리에 구멍이 생긴다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--green)">계산 실수 · 7%</h3>
+        <p style="margin:0">논리는 맞는데 <b>산수를 틀린다</b>. 중간 결과를 명시하지 않고 암산하듯 넘어가다 어긋난다.</p>
+      </div>
+    </div>
+
+    <div class="callout amber">
+      <span class="k">핵심 통찰</span>
+      <p>단계 누락과 계산 실수는 <b>“생각의 구조”가 없어서</b> 생긴다. 사람이 어려운 문제를 풀 때처럼 <b>먼저 계획을 세우게</b> 만들면, 이 두 오류를 프롬프트만으로 줄일 수 있지 않을까? — 이것이 Plan-and-Solve의 출발점이다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 2. IDEA ========== -->
+<section class="section" id="idea">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 핵심 아이디어</span>
+    <h2>“생각하라”를 “계획하고 → 실행하라”로 쪼개기</h2>
+    <p class="lead">Zero-shot-CoT는 추론을 <b>하나의 뭉뚱그린 지시</b>로 유도한다. Plan-and-Solve는 그 지시를 <b>두 국면</b>으로 명시적으로 분해한다.</p>
+
+    <div class="flow" style="margin:20px 0 6px">
+      <div class="node warn"><div class="lbl">Zero-shot-CoT</div><div class="val">“Let's think<br>step by step”</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">PLAN · 계획</div><div class="val">문제 이해<br>+ 풀이 계획 수립</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">SOLVE · 실행</div><div class="val">계획을 단계대로<br>실행하며 계산</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Answer</div><div class="val">최종 답 추출</div></div>
+    </div>
+    <p class="caption">한 줄짜리 지시(왼쪽)를 계획–실행 두 국면(가운데)으로 나눈 것이 방법의 전부다 — 모델도, 예시도 그대로.</p>
+
+    <div class="grid2" style="margin-top:22px">
+      <div class="card">
+        <h3 style="margin-top:0">PS — 계획을 강제</h3>
+        <p style="margin:0"><b>“먼저 계획을 세우고, 그 계획을 실행하라”</b>는 구조를 부여한다. 즉흥 풀이를 막아 <b>단계 누락 오류</b>를 줄인다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">PS+ — 계산까지 챙기게</h3>
+        <p style="margin:0">계획에 더해 <b>“변수와 숫자를 추출하고, 중간 결과를 계산하라”</b>고 지시. <b>계산 실수 오류</b>까지 함께 줄인다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. PROMPT EVOLUTION (signature 1) ========== -->
+<section class="section" id="prompts">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 프롬프트 진화</span>
+    <h2>한 문장이 자라는 과정</h2>
+    <p class="lead">Plan-and-Solve의 정체는 결국 <b>트리거 문장 하나</b>다. 아래처럼 문장이 자라면서 앞 절에서 본 오류를 하나씩 겨냥한다. <span class="add">보라색</span>이 이전 단계 대비 <b>새로 추가된 지시</b>다.</p>
+
+    <div class="ladder">
+      <div class="rung">
+        <div class="rhead">
+          <span class="tag">기준선</span>
+          <span class="rname">Zero-shot-CoT</span>
+          <span class="rfix">— 구조 없음</span>
+        </div>
+        <div class="prompt"><span class="quote">“</span>Let's think step by step<span class="quote">”</span></div>
+        <div class="why">추론을 <b>유도</b>하지만 계획이 없어 <b>단계 누락·계산 실수</b>에 취약하다.</div>
+      </div>
+
+      <div class="rung on">
+        <div class="rhead">
+          <span class="tag">PS</span>
+          <span class="rname">Plan-and-Solve</span>
+          <span class="rfix">→ 단계 누락 ↓</span>
+        </div>
+        <div class="prompt"><span class="quote">“</span>Let's first <span class="add">understand the problem and devise a plan to solve the problem</span>. Then, let's <span class="add">carry out the plan and</span> solve the problem step by step<span class="quote">”</span></div>
+        <div class="why"><b>계획 수립 → 계획 실행</b>이라는 구조를 강제해 즉흥 풀이를 막는다.</div>
+      </div>
+
+      <div class="rung on">
+        <div class="rhead">
+          <span class="tag">PS+</span>
+          <span class="rname">Plan-and-Solve+</span>
+          <span class="rfix">→ 계산 실수 ↓</span>
+        </div>
+        <div class="prompt"><span class="quote">“</span>Let's first understand the problem, <span class="add">extract relevant variables and their corresponding numerals</span>, and <span class="add">make a complete plan</span>. Then, let's carry out the plan, <span class="add">calculate intermediate variables (pay attention to correct numerical calculation and commonsense)</span>, solve the problem step by step, and <span class="add">show the answer</span><span class="quote">”</span></div>
+        <div class="why"><b>변수·숫자 추출</b>과 <b>중간 결과 계산</b>을 명시해, 논리는 맞지만 산수를 틀리는 오류까지 잡는다.</div>
+      </div>
+    </div>
+
+    <div class="callout accent">
+      <span class="k">왜 이게 되나</span>
+      <p>지시가 구체적일수록 모델의 추론 <b>출력 형식이 정돈</b>된다. “계획을 세워라”는 중간 단계를 빠짐없이 나열하게 만들고, “변수를 추출하고 중간값을 계산하라”는 숫자를 명시적으로 적어두게 해 <b>암산 실수</b>를 줄인다. 학습도, 예시도 필요 없다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. WORKSHEET TRACE (signature 2) ========== -->
+<section class="section paper-bg" id="trace">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 워크시트</span>
+    <h2>PS+가 실제로 푸는 모습</h2>
+    <p class="lead">PS+ 프롬프트를 받은 모델은 아래처럼 <b>왼쪽에서 계획하고, 오른쪽에서 실행</b>한다. 변수 추출과 중간 계산이 눈에 보이게 적히는 것이 핵심이다.</p>
+
+    <div class="worksheet">
+      <div class="ws-q"><b>Q.</b> 그레이스는 사과를 3봉지 샀고 각 봉지에는 12개가 들어 있다. 그중 5개를 먹었다면, 남은 사과는 몇 개일까?</div>
+      <div class="ws-cols">
+        <div class="ws-col plan">
+          <span class="ws-phase p">◆ Plan · 계획</span>
+          <div class="ws-line"><span class="st">변수</span><span>봉지 수 <span class="ws-calc">= 3</span>, 봉지당 사과 <span class="ws-calc">= 12</span>, 먹은 사과 <span class="ws-calc">= 5</span></span></div>
+          <div class="ws-line"><span class="st">1</span><span><b>총 사과 수</b>를 구한다 (봉지 수 × 봉지당 사과)</span></div>
+          <div class="ws-line"><span class="st">2</span><span>먹은 사과를 <b>빼서</b> 남은 개수를 구한다</span></div>
+        </div>
+        <div class="ws-col solve">
+          <span class="ws-phase s">▶ Solve · 실행</span>
+          <div class="ws-line"><span class="st">1</span><span>총 사과 = <span class="ws-calc">3 × 12 = 36</span></span></div>
+          <div class="ws-line"><span class="st">2</span><span>남은 사과 = <span class="ws-calc">36 − 5 = 31</span></span></div>
+          <div class="ws-ans"><span class="lab">Therefore, the answer is</span>31개</div>
+        </div>
+      </div>
+    </div>
+    <p class="caption">변수(3·12·5)를 미리 뽑고 중간값(36)을 적어두니, 단계도 빠지지 않고 계산도 어긋나지 않는다.</p>
+
+    <div class="callout">
+      <span class="k">Zero-shot-CoT였다면</span>
+      <p>구조가 없으면 “사과가 많으니까… 3×12는 대충 36, 거기서 좀 빼면…”처럼 <b>중간값을 흘려</b> 계산을 틀리거나(계산 실수), 먹은 사과를 <b>빼는 단계를 잊기</b> 쉽다(단계 누락). PS+의 명시적 계획·계산이 이 틈을 막는다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 5. PROCESS ========== -->
+<section class="section" id="process">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 동작 방식</span>
+    <h2>2단계 프롬프팅 — 추론 생성 → 답 추출</h2>
+    <p class="lead">Plan-and-Solve는 Zero-shot-CoT와 동일한 <b>2단계 프롬프팅</b> 골격을 쓴다. 바뀐 것은 1단계의 <b>트리거 문장</b>뿐이다.</p>
+
+    <div class="flow" style="margin:20px 0 6px">
+      <div class="node"><div class="lbl">Input</div><div class="val">Q: [문제]<br>A: [트리거 프롬프트]</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Stage 1 · 추론 생성</div><div class="val">LLM이 계획+풀이<br>추론을 생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">이어붙이기</div><div class="val">“Therefore, the answer<br>(arabic numerals) is”</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Stage 2 · 답 추출</div><div class="val">LLM이 최종 답만<br>깔끔히 출력</div></div>
+    </div>
+    <p class="caption">두 번의 LLM 호출: ①추론을 펼치게 하고, ②그 추론 뒤에 “정답은…”을 붙여 최종 답을 뽑는다.</p>
+
+    <div class="grid2" style="margin-top:22px">
+      <div class="card">
+        <h3 style="margin-top:0">Stage 1 · Reasoning Generation</h3>
+        <p style="margin:0"><code>Q: [문제]. A: [트리거]</code> 형태로 넣어 모델이 <b>계획과 풀이 과정</b>을 길게 생성하도록 한다. 여기서 PS / PS+ 트리거가 작동한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Stage 2 · Answer Extraction</h3>
+        <p style="margin:0">1단계 출력 뒤에 <code>Therefore, the answer (arabic numerals) is</code>를 붙여 다시 호출. 장황한 추론에서 <b>정답 숫자만</b> 안정적으로 뽑아낸다.</p>
+      </div>
+    </div>
+    <p class="small" style="margin-top:14px">→ 즉, 방법의 비용은 <b>일반 프롬프팅과 동일</b>(모델 그대로, 예시 없음, 호출 2회). 바꾼 것은 오직 <b>지시 문장</b>이다.</p>
+  </div>
+</section>
+
+<!-- ========== 6. RESULTS ========== -->
+<section class="section" id="results">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 실험</span>
+    <h2>실험 결과 — 예시 없이 Few-shot에 근접</h2>
+    <p class="lead">산술 6종 · 상식 2종 · 기호 2종에서 <code>text-davinci-003</code>로 평가한다. 헤드라인: <b>PS+가 Zero-shot-CoT를 크게 앞서고</b>, 사람이 예시를 손수 만든 <b>Few-shot Manual-CoT에 거의 닿는다</b> — 예시 하나 없이.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="big">+6.3</div><div class="lab">PS+의 산술 평균 향상</div><div class="sub">Zero-shot-CoT 70.4 → PS+ 76.7</div></div>
+      <div class="stat"><div class="big">0.9</div><div class="lab">Few-shot CoT와의 격차</div><div class="sub">PS+ 76.7 vs Manual-CoT 77.6 (예시 8개 사용)</div></div>
+      <div class="stat"><div class="big">0</div><div class="lab">PS+가 쓰는 예시 수</div><div class="sub">완전 제로샷 — 프롬프트 한 문장</div></div>
+    </div>
+
+    <div class="chart-card" style="margin-top:14px">
+      <div class="chart-head">
+        <div><div class="mono" style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)">산술 추론 정확도 (%)</div></div>
+        <div class="legend">
+          <span class="li"><span class="sw" style="background:var(--slate-2)"></span>Zero-shot-CoT</span>
+          <span class="li"><span class="sw" style="background:var(--brand)"></span>PS+ (제안)</span>
+          <span class="li"><span class="sw" style="background:var(--slate)"></span>Manual-CoT (few-shot)</span>
+        </div>
+      </div>
+      <svg id="chart" viewBox="0 0 820 380" role="img" aria-label="산술 데이터셋별 Zero-shot-CoT, PS+, Manual-CoT 정확도 비교 막대그래프"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <p class="caption">출처: 논문 Table 2 (text-davinci-003). 숫자 라벨은 PS+ 막대에만 표기, 나머지는 막대에 마우스를 올리면 표시된다.</p>
+
+    <h3 style="margin-top:32px">산술 추론 전체 표</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">데이터셋</th>
+            <th>Zero-shot-CoT</th>
+            <th>PS</th>
+            <th class="hl-col">PS+</th>
+            <th>Manual-CoT<span class="cellnote">few-shot</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">MultiArith</td><td class="num">83.8</td><td class="num">87.2</td><td class="num hl-col">91.8</td><td class="num">93.6</td></tr>
+          <tr><td class="name">GSM8K</td><td class="num">56.4</td><td class="num">58.2</td><td class="num hl-col best">59.3</td><td class="num">58.4</td></tr>
+          <tr><td class="name">AddSub</td><td class="num">85.3</td><td class="num">88.1</td><td class="num hl-col best">92.2</td><td class="num">91.6</td></tr>
+          <tr><td class="name">AQuA</td><td class="num">38.9</td><td class="num">42.5</td><td class="num hl-col">46.0</td><td class="num">48.4</td></tr>
+          <tr><td class="name">SingleEq</td><td class="num">88.1</td><td class="num">89.2</td><td class="num hl-col best">94.7</td><td class="num">93.5</td></tr>
+          <tr><td class="name">SVAMP</td><td class="num">69.9</td><td class="num">72.0</td><td class="num hl-col">75.7</td><td class="num">80.3</td></tr>
+          <tr style="border-top:2px solid var(--border-strong)"><td class="name">평균</td><td class="num">70.4</td><td class="num">72.9</td><td class="num hl-col">76.7</td><td class="num">77.6</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">출처: 논문 Table 2. <span class="best">파란 굵은 수치</span> = PS+가 Few-shot CoT까지 앞선 경우 (GSM8K·AddSub·SingleEq).</p>
+
+    <h3 style="margin-top:30px">상식 · 기호 추론</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">데이터셋</th><th>유형</th><th>Zero-shot-CoT</th><th class="hl-col">PS+</th><th>Manual-CoT</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">CSQA</td><td>상식</td><td class="num">65.2</td><td class="num hl-col">71.9</td><td class="num">78.3</td></tr>
+          <tr><td class="name">StrategyQA</td><td>상식</td><td class="num">63.8</td><td class="num hl-col">65.4</td><td class="num">71.2</td></tr>
+          <tr><td class="name">Last Letters</td><td>기호</td><td class="num">64.8</td><td class="num hl-col best">75.2</td><td class="num">70.6</td></tr>
+          <tr><td class="name">Coin Flip</td><td>기호</td><td class="num">96.8</td><td class="num hl-col">99.6</td><td class="num">100.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="caption">출처: 논문 Table 3·4. 기호 추론 Last Letters에선 PS+가 Few-shot CoT마저 넘어선다.</p>
+
+    <div class="callout accent">
+      <span class="k">읽는 법</span>
+      <p>PS+의 진짜 의미는 “<b>1등”이 아니라 “예시 없이 여기까지</b>”다. Few-shot CoT는 사람이 문제마다 <b>모범 풀이 예시를 손수 작성</b>해야 하지만, PS+는 <b>같은 트리거 한 문장</b>을 모든 문제에 쓴다. 그 격차가 산술 평균 0.9%p에 불과하다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 7. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 비교 분석</span>
+    <h2>네 가지 프롬프팅 전략, 무엇이 다른가</h2>
+    <p class="lead">추론 프롬프팅을 “<b>사람 손이 얼마나 드나</b>”와 “<b>추론을 얼마나 구조화하나</b>”로 비교하면 PS+의 위치가 분명해진다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">항목</th>
+            <th>Zero-shot</th>
+            <th>Zero-shot-CoT</th>
+            <th style="color:var(--brand-ink)">Plan-and-Solve+</th>
+            <th>Manual-CoT</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">예시(demonstration)</td>
+            <td><span class="tick">✓</span> 불필요</td>
+            <td><span class="tick">✓</span> 불필요</td>
+            <td><span class="tick">✓</span> <b>불필요</b></td>
+            <td><span class="cross">✕</span> 문제마다 수작업 필요</td>
+          </tr>
+          <tr>
+            <td class="name">추론 유도(CoT)</td>
+            <td><span class="cross">✕</span> 없음 (바로 답)</td>
+            <td><span class="tick">✓</span> 있음</td>
+            <td><span class="tick">✓</span> 있음</td>
+            <td><span class="tick">✓</span> 있음</td>
+          </tr>
+          <tr>
+            <td class="name">추론 구조화</td>
+            <td>—</td>
+            <td><span class="tilde">~</span> 뭉뚱그린 “step by step”</td>
+            <td><span class="tick">✓</span> <b>계획→실행 + 변수·계산</b></td>
+            <td><span class="tick">✓</span> 예시가 형식을 규정</td>
+          </tr>
+          <tr>
+            <td class="name">사람 노력</td>
+            <td>거의 없음</td>
+            <td>거의 없음</td>
+            <td><b>트리거 문장 1개</b></td>
+            <td><span class="cross">✕</span> 예시 설계·검증 부담</td>
+          </tr>
+          <tr>
+            <td class="name">과제 이식성</td>
+            <td>높음</td>
+            <td>높음</td>
+            <td><b>높음</b> (같은 문장 재사용)</td>
+            <td><span class="tilde">~</span> 과제별 예시 재작성</td>
+          </tr>
+          <tr>
+            <td class="name">산술 평균 정확도</td>
+            <td class="num">— (낮음)</td>
+            <td class="num">70.4</td>
+            <td class="num" style="color:var(--brand-ink);font-weight:800">76.7</td>
+            <td class="num">77.6</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">해석 — “공짜 점심”에 가장 가깝다</h3>
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin-top:0">Zero-shot-CoT 대비</h3>
+        <p style="margin:0">같은 <b>제로샷·같은 비용</b>인데 문장만 더 구조적이다. 추가 자원 없이 정확도를 <b>+6.3%p</b> 얻으니, 사실상 <b>Zero-shot-CoT의 상위 호환</b>이다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">Manual(Few-shot)-CoT 대비</h3>
+        <p style="margin:0">Few-shot이 조금 더 높지만, 그 대가로 <b>과제마다 예시를 손수 제작·관리</b>해야 한다. PS+는 <b>단일 문장</b>으로 그 성능의 대부분을 <b>공짜에 가깝게</b> 회수한다.</p>
+      </div>
+    </div>
+
+    <div class="callout accent">
+      <span class="k">한 줄 정리</span>
+      <p>Manual-CoT가 “<b>예시로 형식을 보여주는</b>” 방식이라면, Plan-and-Solve는 “<b>지시로 형식을 요구하는</b>” 방식이다. 예시를 만들 수 없거나 과제가 자주 바뀌는 상황에서 특히 실용적이다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 8. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">08</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 한계</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 강하다</h3>
+        <ul class="plain">
+          <li><b>예시를 만들기 어렵거나</b> 과제가 자주 바뀌는 상황</li>
+          <li><b>다단계 추론</b>(수학·논리)에서 단계 누락·계산 실수를 줄이고 싶을 때</li>
+          <li>Zero-shot-CoT를 이미 쓰고 있어 <b>문장만 교체</b>해 개선하고 싶을 때</li>
+          <li>능력 있는 <b>대형 모델(instruction-tuned)</b>에 적용할 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li><b>의미 오해(27%)</b>는 거의 개선하지 못한다 (구조로 풀 수 없는 오류)</li>
+          <li>여전히 <b>Few-shot CoT엔 소폭 못 미친다</b></li>
+          <li>프롬프트가 길고 지시적이라 <b>작은/약한 모델</b>에선 효과가 제한적</li>
+          <li>답 추출 등 <b>후처리·파싱</b>이 필요 (2단계 호출)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout accent" style="margin-top:22px">
+      <span class="k">LangGraph로 구현한다면</span>
+      <p>Plan-and-Solve는 <b>Plan → Execute 그래프</b>의 원형이다 — 노드: <code>planner</code>(문제 이해·계획 수립) → <code>executor</code>(단계별 실행·계산) → <code>answer_extractor</code>(최종 답 파싱). 이 “계획 후 실행” 패턴은 <b>Plan-and-Execute 에이전트</b>(LangGraph 대표 예제)의 사상적 뿌리로, 복잡한 도구 사용 태스크에서 계획을 먼저 세우고 단계를 실행하는 구조로 확장된다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>Plan-and-Solve Prompting: Improving Zero-Shot Chain-of-Thought Reasoning by Large Language Models</b></p>
+    <p class="mono" style="margin:0 0 4px">Lei Wang, Wanyu Xu, Yihuai Lan, Zhiqiang Hu, Yunshi Lan, Roy Ka-Wei Lee, Ee-Peng Lim · ACL 2023 · arXiv:2305.04091</p>
+    <p class="mono" style="margin:0"><a href="https://arxiv.org/abs/2305.04091" target="_blank" rel="noopener">arxiv.org/abs/2305.04091</a> · 논문 내용을 한국어로 정리한 학습 자료 · 자매편: <a href="Self-RAG-Guide.html">Self-RAG</a> · <a href="CRAG-Corrective-RAG-Guide.html">CRAG</a></p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+    drawChart();
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['problem','idea','prompts','trace','process','results','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+
+/* ---------- grouped bar chart ---------- */
+var DATA=[
+  {name:'MultiArith', z:83.8, p:91.8, m:93.6},
+  {name:'GSM8K',      z:56.4, p:59.3, m:58.4},
+  {name:'AddSub',     z:85.3, p:92.2, m:91.6},
+  {name:'AQuA',       z:38.9, p:46.0, m:48.4},
+  {name:'SingleEq',   z:88.1, p:94.7, m:93.5},
+  {name:'SVAMP',      z:69.9, p:75.7, m:80.3}
+];
+var SERIES=[
+  {key:'z', label:'Zero-shot-CoT', col:'--slate-2'},
+  {key:'p', label:'PS+',           col:'--brand'},
+  {key:'m', label:'Manual-CoT',    col:'--slate'}
+];
+function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+function drawChart(){
+  var svg=document.getElementById('chart'); if(!svg) return;
+  var W=820,H=380, pad={l:40,r:16,t:24,b:52};
+  var iw=W-pad.l-pad.r, ih=H-pad.t-pad.b, yMax=100;
+  var grid=cssv('--grid'), ink=cssv('--ink'), ink3=cssv('--ink-3'), surf=cssv('--panel');
+  var cols=SERIES.map(function(s){return cssv(s.col);});
+  var y=function(v){ return pad.t+ih-(v/yMax)*ih; };
+  var out='';
+
+  [0,25,50,75,100].forEach(function(t){
+    var yy=y(t);
+    out+='<line x1="'+pad.l+'" y1="'+yy+'" x2="'+(W-pad.r)+'" y2="'+yy+'" stroke="'+grid+'" stroke-width="1"/>';
+    out+='<text x="'+(pad.l-8)+'" y="'+(yy+4)+'" text-anchor="end" font-size="11" fill="'+ink3+'">'+t+'</text>';
+  });
+
+  var gw=iw/DATA.length, n=SERIES.length, bw=Math.min(26,(gw*0.66)/n), gap=4;
+  var groupW=bw*n+gap*(n-1);
+  DATA.forEach(function(d,i){
+    var cx=pad.l+gw*i+gw/2;
+    var x0=cx-groupW/2;
+    SERIES.forEach(function(s,j){
+      var bv=d[s.key], bx=x0+j*(bw+gap), by=y(bv), bh=pad.t+ih-by;
+      out+='<rect x="'+bx+'" y="'+by+'" width="'+bw+'" height="'+bh+'" rx="4" fill="'+cols[j]+'"'+
+           ' stroke="'+surf+'" stroke-width="1" class="bar" data-n="'+d.name+'" data-s="'+s.label+'" data-v="'+bv+'"/>';
+      // direct label only for the hero series (PS+)
+      if(s.key==='p'){
+        out+='<text x="'+(bx+bw/2)+'" y="'+(by-6)+'" text-anchor="middle" font-size="10.5" font-weight="700" fill="'+ink+'">'+bv.toFixed(1)+'</text>';
+      }
+    });
+    out+='<text x="'+cx+'" y="'+(H-pad.b+22)+'" text-anchor="middle" font-size="12" fill="'+ink+'" font-weight="600">'+d.name+'</text>';
+  });
+  out+='<line x1="'+pad.l+'" y1="'+y(0)+'" x2="'+(W-pad.r)+'" y2="'+y(0)+'" stroke="'+cssv('--border-strong')+'" stroke-width="1.5"/>';
+  svg.innerHTML=out;
+
+  var tip=document.getElementById('tip');
+  [].slice.call(svg.querySelectorAll('.bar')).forEach(function(r){
+    r.style.cursor='pointer';
+    r.addEventListener('mousemove',function(ev){
+      var host=svg.parentElement.getBoundingClientRect();
+      tip.style.left=(ev.clientX-host.left)+'px';
+      tip.style.top=(ev.clientY-host.top)+'px';
+      tip.innerHTML='<b>'+r.getAttribute('data-s')+'</b> · '+r.getAttribute('data-n')+'<br>정확도 <b>'+r.getAttribute('data-v')+'%</b>';
+      tip.style.opacity='1';
+    });
+    r.addEventListener('mouseleave',function(){ tip.style.opacity='0'; });
+  });
+}
+drawChart();
+</script>
+</body>
+</html>
