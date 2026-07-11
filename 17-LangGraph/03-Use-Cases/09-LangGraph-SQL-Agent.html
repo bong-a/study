@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LangGraph SQL Agent 정리</title>
+<style>
+  :root {
+    --bg: #f3f5f8;
+    --surface: #ffffff;
+    --surface-2: #e9edf2;
+    --ink: #16202b;
+    --ink-muted: #5a6674;
+    --line: #d6dde5;
+    --accent: #2c6fb3;          /* 스키마 탐색 – 스틸 블루 */
+    --accent-soft: #d9e7f5;
+    --good: #2f9e6f;            /* 최종 답변 – 그린 */
+    --good-soft: #d6f0e4;
+    --warn: #c07a12;            /* 검수·실행 루프 – 앰버 */
+    --warn-soft: #f6e7cc;
+    --bad: #c0455c;             /* 오류 재생성 – 로즈 */
+    --bad-soft: #f6dde2;
+    --code-bg: #16202b;
+    --code-ink: #dbe2ea;
+    --code-key: #8ec2ff;
+    --code-str: #7bd9ac;
+    --code-com: #6b7787;
+    --shadow: 0 1px 2px rgba(22, 32, 43, 0.05), 0 6px 20px rgba(22, 32, 43, 0.06);
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f151c;
+    --surface: #18212c;
+    --surface-2: #212c38;
+    --ink: #e6edf3;
+    --ink-muted: #9aa7b4;
+    --line: #2b3743;
+    --accent: #6ea8dd;
+    --accent-soft: #17293b;
+    --good: #52c797;
+    --good-soft: #16352a;
+    --warn: #e0a94e;
+    --warn-soft: #3a2c16;
+    --bad: #e08199;
+    --bad-soft: #3a2028;
+    --code-bg: #0b1219;
+    --code-ink: #dbe2ea;
+    --code-key: #8ec2ff;
+    --code-str: #7bd9ac;
+    --code-com: #6b7787;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151c;
+      --surface: #18212c;
+      --surface-2: #212c38;
+      --ink: #e6edf3;
+      --ink-muted: #9aa7b4;
+      --line: #2b3743;
+      --accent: #6ea8dd;
+      --accent-soft: #17293b;
+      --good: #52c797;
+      --good-soft: #16352a;
+      --warn: #e0a94e;
+      --warn-soft: #3a2c16;
+      --bad: #e08199;
+      --bad-soft: #3a2028;
+      --code-bg: #0b1219;
+      --code-ink: #dbe2ea;
+      --code-key: #8ec2ff;
+      --code-str: #7bd9ac;
+      --code-com: #6b7787;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+      "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 780px; margin: 0 auto; padding: 56px 24px 96px; }
+
+  .eyebrow {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+  }
+
+  h1 {
+    font-size: 32px;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+
+  .subhead {
+    font-size: 16.5px;
+    color: var(--ink-muted);
+    margin: 0 0 22px;
+    max-width: 64ch;
+    text-wrap: balance;
+  }
+
+  .source-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 5px 10px 5px 9px;
+    margin-bottom: 44px;
+  }
+
+  h2 {
+    font-size: 21px;
+    margin: 0 0 6px;
+    letter-spacing: -0.005em;
+    font-weight: 700;
+  }
+  h2 .num {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    color: var(--accent);
+    font-weight: 600;
+    margin-right: 9px;
+    font-size: 18px;
+  }
+
+  .section { margin-top: 56px; }
+  .section-lede {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 22px;
+    max-width: 66ch;
+  }
+
+  p { margin: 0 0 14px; }
+  strong { font-weight: 650; }
+  code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  /* ---------- Callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .callout code { background: var(--accent-soft); }
+
+  /* ---------- Step list ---------- */
+  .steplist { list-style: none; margin: 20px 0 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 8px; }
+  .steplist li {
+    counter-increment: step;
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 16px; box-shadow: var(--shadow);
+    font-size: 14.5px;
+  }
+  .steplist li::before {
+    content: counter(step);
+    flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 12.5px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
+  .steplist b { color: var(--ink); }
+
+  /* ---------- Diagram ---------- */
+  .diagram-scroll { overflow-x: auto; margin: 28px 0 12px; padding: 4px; }
+  .flow { position: relative; width: 680px; height: 860px; margin: 0 auto; }
+  .flow svg { position: absolute; inset: 0; width: 680px; height: 860px; overflow: visible; }
+
+  .fnode {
+    position: absolute;
+    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    padding: 8px 14px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .fnode .t { font-weight: 700; font-size: 14px; }
+  .fnode .s {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    color: var(--ink-muted);
+    line-height: 1.35;
+  }
+
+  .fnode.start { top: 0px;   left: 270px; width: 140px; height: 42px; background: var(--surface-2); }
+  .fnode.end   { top: 700px; left: 280px; width: 120px; height: 42px; background: var(--surface-2); }
+
+  .fnode.first  { top: 64px;  left: 190px; width: 300px; height: 58px; border-color: var(--accent); }
+  .fnode.first .t { color: var(--accent); }
+  .fnode.list   { top: 146px; left: 190px; width: 300px; height: 58px; border-color: var(--accent); }
+  .fnode.list .t { color: var(--accent); }
+  .fnode.pick   { top: 228px; left: 180px; width: 320px; height: 64px; border-color: var(--accent); }
+  .fnode.pick .t { color: var(--accent); }
+  .fnode.getddl { top: 316px; left: 190px; width: 300px; height: 58px; border-color: var(--accent); }
+  .fnode.getddl .t { color: var(--accent); }
+
+  .fnode.gen {
+    top: 402px; left: 170px; width: 340px; height: 74px;
+    border: 2px solid var(--ink-muted);
+  }
+  .fnode.gen .t { font-size: 15px; }
+
+  .fnode.check { top: 520px; left: 440px; width: 190px; height: 54px; border-color: var(--warn); background: var(--warn-soft); }
+  .fnode.check .t { color: var(--warn); }
+  .fnode.exec  { top: 598px; left: 440px; width: 190px; height: 54px; border-color: var(--warn); background: var(--warn-soft); }
+  .fnode.exec .t { color: var(--warn); }
+
+  .flabel {
+    position: absolute;
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 10.5px;
+    background: var(--bg);
+    padding: 1px 6px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .flabel.warn { color: var(--warn); }
+  .flabel.bad  { color: var(--bad); }
+  .flabel.good { color: var(--good); }
+
+  .legend {
+    display: flex;
+    gap: 8px 20px;
+    justify-content: center;
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    flex-wrap: wrap;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  figure.ref-img { margin: 20px 0 4px; text-align: center; }
+  figure.ref-img img {
+    max-width: 100%; border-radius: 10px; border: 1px solid var(--line);
+    box-shadow: var(--shadow); display: inline-block;
+  }
+  figure.ref-img figcaption { font-size: 12px; color: var(--ink-muted); margin-top: 8px; }
+
+  /* ---------- Cards grid ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .card .ch {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; margin-bottom: 6px;
+  }
+  .card .ch .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .card .d { font-size: 13.8px; color: var(--ink); margin: 0; }
+  .card .fn {
+    display: inline-block;
+    font-family: ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--ink-muted);
+    margin-top: 8px;
+  }
+
+  /* ---------- Schema cards ---------- */
+  .schema { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 20px; }
+  .fld {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+  }
+  .fld .k {
+    font-family: ui-monospace, monospace; font-weight: 700; font-size: 14px; color: var(--accent);
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  }
+  .fld .ty { font-size: 11px; color: var(--ink-muted); font-weight: 500; }
+  .fld .d { font-size: 13.5px; color: var(--ink); margin-top: 6px; }
+
+  /* ---------- Table ---------- */
+  .table-wrap { overflow-x: auto; margin: 18px 0 4px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 15px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ink-muted); background: var(--surface-2); font-weight: 700;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.mono, th.mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace; font-size: 13px; }
+  .tag {
+    display: inline-block; font-size: 11.5px; font-weight: 700;
+    padding: 2px 8px; border-radius: 6px; white-space: nowrap;
+  }
+  .tag.blue { background: var(--accent-soft); color: var(--accent); }
+  .tag.good { background: var(--good-soft); color: var(--good); }
+  .tag.warn { background: var(--warn-soft); color: var(--warn); }
+  .tag.bad  { background: var(--bad-soft); color: var(--bad); }
+
+  /* ---------- Run cards (examples) ---------- */
+  .runcard {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-top: 16px;
+  }
+  .runcard .rbar {
+    padding: 12px 18px;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+    border-bottom: 1px solid var(--line);
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .runcard .rbody { padding: 16px 18px; }
+  .runcard .q { font-size: 14.5px; margin: 0 0 14px; }
+  .runcard .q b { color: var(--ink); }
+
+  .steps { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-bottom: 14px; }
+  .steps .st {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .steps .st.blue { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .steps .st.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); }
+  .steps .st.good { border-color: var(--good); color: var(--good); background: var(--good-soft); }
+  .steps .arw { color: var(--ink-muted); font-size: 13px; }
+  .runcard .res {
+    font-size: 13.8px; margin: 0;
+    padding: 11px 14px; border-radius: 9px;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .runcard .res b { color: var(--ink); }
+
+  /* ---------- Code panel ---------- */
+  .code-panel {
+    background: var(--code-bg);
+    border-radius: 9px;
+    margin: 14px 0 4px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .code-panel .bar {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+    font-size: 11px; color: #7f8b98; padding: 8px 14px 0;
+  }
+  .code-panel pre { margin: 0; padding: 10px 14px 14px; overflow-x: auto; }
+  .code-panel code {
+    font-family: ui-monospace, "JetBrains Mono", "SF Mono", "D2Coding", monospace;
+    font-size: 12.8px; color: var(--code-ink); line-height: 1.6; white-space: pre;
+    background: none; padding: 0;
+  }
+  .code-panel .k { color: var(--code-key); }
+  .code-panel .s { color: var(--code-str); }
+  .code-panel .c { color: var(--code-com); }
+
+  /* ---------- Recap ---------- */
+  .recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .recap li {
+    display: flex; gap: 12px; font-size: 15px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px; padding: 13px 16px; box-shadow: var(--shadow);
+  }
+  .recap li::before { content: "✓"; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+  hr.divider { border: none; border-top: 1px solid var(--line); margin: 56px 0 0; }
+
+  footer { margin-top: 40px; font-size: 12.5px; color: var(--ink-muted); text-align: center; }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 26px; }
+    .page { padding: 40px 16px 72px; }
+    .cards, .schema { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <p class="eyebrow">LangGraph · 03-Use-Cases · 09</p>
+  <h1>SQL 데이터베이스와 대화하며 스스로 오류를 고치는 에이전트</h1>
+  <p class="subhead">
+    질문만 던지면 <strong>테이블을 찾고 → 스키마를 확인하고 → SQL을 작성·검수·실행</strong>한 뒤 답을 만드는
+    LangGraph 에이전트입니다. 쿼리가 틀리면 에러 메시지를 스스로 읽고 <strong>다시 쓰는 재시도 루프</strong>가
+    핵심이며, LangSmith로 답변 정확도까지 평가합니다.
+  </p>
+  <span class="source-tag">📓 09-LangGraph-SQL-Agent.ipynb</span>
+
+  <!-- 개요 -->
+  <div class="section">
+    <div class="callout">
+      <span class="label">한눈에 보기</span>
+      <p>
+        이 에이전트는 <code>chinook</code>(디지털 음원 스토어) SQLite 데이터베이스를 대상으로,
+        사람이 자연어로 묻는 질문을 <strong>SQL 쿼리로 번역해 실행</strong>하고 결과를 다시 자연어로 설명합니다.
+      </p>
+      <p>
+        일반 SQL 에이전트와 다른 점은 <strong>쿼리를 실행 전에 LLM이 한 번 더 검수</strong>하고,
+        실행 중 오류가 나면 <strong>같은 노드로 되돌아가 쿼리를 고쳐 다시 시도</strong>한다는 것입니다.
+        즉, 그래프 자체에 "실수 → 인지 → 수정"의 루프가 내장돼 있습니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- 1. 7단계 -->
+  <div class="section">
+    <h2><span class="num">01</span>에이전트가 따르는 7단계</h2>
+    <p class="section-lede">
+      튜토리얼 서두에서 제시하는 전체 흐름입니다. 이 7단계가 그대로 아래 그래프의 노드들로 구현됩니다.
+    </p>
+    <ol class="steplist">
+      <li><span><b>데이터베이스 스키마 파악</b> — 사용 가능한 테이블 목록을 가져온다.</span></li>
+      <li><span><b>관련 테이블 선택</b> — 질문과 연관된 테이블만 고른다.</span></li>
+      <li><span><b>DDL 조회</b> — 선택된 테이블의 스키마 정의(DDL)를 가져온다.</span></li>
+      <li><span><b>쿼리 생성</b> — 질문과 DDL을 근거로 SQL 쿼리를 작성한다.</span></li>
+      <li><span><b>쿼리 점검</b> — LLM으로 흔한 SQL 실수를 검토·수정한다.</span></li>
+      <li><span><b>쿼리 실행 및 오류 처리</b> — 실행하고, 오류가 나면 고쳐서 재시도한다.</span></li>
+      <li><span><b>응답 생성</b> — 쿼리 결과를 바탕으로 최종 답을 만든다.</span></li>
+    </ol>
+  </div>
+
+  <!-- 2. 도구 -->
+  <div class="section">
+    <h2><span class="num">02</span>준비물 — DB와 4가지 도구</h2>
+    <p class="section-lede">
+      실습은 <code>.env</code>로 API 키를 불러오고 LangSmith 프로젝트(<code>CH17-LangGraph-Use-Cases</code>)로 트레이싱을 켠 뒤,
+      <code>GPT-4o</code>(<code>MODEL_NAME</code>) 모델과 공개 URL에서 내려받은 <code>Chinook.db</code> SQLite 파일로 시작합니다.
+    </p>
+    <p class="section-lede">
+      <code>SQLDatabaseToolkit</code>이 제공하는 도구 2종과, 직접 정의한 도구·체인 2종을 조합해 사용합니다.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>list_tables_tool</div>
+        <p class="d">데이터베이스에 존재하는 <strong>모든 테이블 이름</strong>을 나열. 그래프의 <strong>첫 번째</strong> 강제 호출 대상.</p>
+        <span class="fn">sql_db_list_tables</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>get_schema_tool</div>
+        <p class="d">지정한 테이블(들)의 <strong>DDL(CREATE TABLE 정의)</strong>을 반환. 컬럼명·타입을 정확히 알기 위해 필요.</p>
+        <span class="fn">sql_db_schema</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--warn)"></span>db_query_tool</div>
+        <p class="d">쿼리를 실제로 실행하는 <strong>커스텀 도구</strong>. 결과가 없거나 실패하면 예외 대신 <code>"Error: ..."</code> 문자열을 반환해 에이전트가 읽을 수 있게 한다.</p>
+        <span class="fn">@tool db_query_tool(query: str)</span>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--warn)"></span>query_check</div>
+        <p class="d">쿼리를 실행하기 <strong>직전</strong>, NULL 비교·JOIN 컬럼 오류 등 흔한 SQL 실수를 LLM이 검토·수정. 도구는 아니고 그래프 노드로 쓰인다.</p>
+        <span class="fn">query_check_prompt | llm.bind_tools([db_query_tool])</span>
+      </div>
+    </div>
+    <p class="section-lede" style="margin-top:22px">
+      또한 <code>create_tool_node_with_fallback()</code>이 모든 <code>ToolNode</code>를 감싸,
+      도구 실행 중 예외가 나도 그래프가 멈추지 않고 <strong>오류 내용을 <code>ToolMessage</code>로 에이전트에 되돌려주도록</strong> 합니다.
+    </p>
+  </div>
+
+  <!-- 3. State -->
+  <div class="section">
+    <h2><span class="num">03</span>상태(State) — 메시지 하나로 충분</h2>
+    <p class="section-lede">
+      CRAG처럼 여러 키를 나누지 않고, <strong>대화 메시지 리스트 하나</strong>에 도구 호출·결과·중간 판단을
+      전부 누적하는 방식입니다. 다음에 무엇을 할지는 <strong>마지막 메시지의 내용</strong>으로 판단합니다.
+    </p>
+    <div class="schema">
+      <div class="fld">
+        <div class="k">messages <span class="ty">Annotated[list[AnyMessage], add_messages]</span></div>
+        <div class="d">
+          사용자 질문 → 도구 호출 → 도구 결과 → 생성된 쿼리 → 실행 결과 → 최종 답변까지,
+          <strong>모든 단계가 이 하나의 리스트에 순서대로 쌓인다.</strong> <code>add_messages</code>가 새 메시지를 자동으로 append.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 그래프 흐름 -->
+  <div class="section">
+    <h2><span class="num">04</span>전체 그래프 흐름</h2>
+    <p class="section-lede">
+      위쪽 4단계(회색·파랑)는 <strong>스키마를 파악하는 준비 과정</strong>이고, 가운데 <code>query_gen</code>이
+      전체를 지휘하는 <strong>허브</strong>입니다. 마지막 메시지가 무엇이냐에 따라 세 갈래 중 하나로 흐릅니다.
+    </p>
+
+    <div class="diagram-scroll">
+      <div class="flow">
+        <svg viewBox="0 0 680 860" aria-hidden="true">
+          <defs>
+            <marker id="a-ink" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-muted)"></path>
+            </marker>
+            <marker id="a-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"></path>
+            </marker>
+            <marker id="a-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--warn)"></path>
+            </marker>
+            <marker id="a-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"></path>
+            </marker>
+          </defs>
+
+          <!-- 준비 단계 체인 -->
+          <path d="M 340 42 L 340 64"   stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <path d="M 340 122 L 340 146" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <path d="M 340 204 L 340 228" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <path d="M 340 292 L 340 316" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+          <path d="M 340 374 L 340 402" stroke="var(--ink-muted)" stroke-width="1.6" fill="none" marker-end="url(#a-ink)"></path>
+
+          <!-- query_gen -> correct_query (else: SQL문) -->
+          <path d="M 510 432 C 590 452, 590 500, 535 520" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- correct_query -> execute_query -->
+          <path d="M 535 574 L 535 598" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- execute_query -> query_gen (loop back) -->
+          <path d="M 630 620 C 675 620, 675 452, 512 452" stroke="var(--warn)" stroke-width="1.7" fill="none" marker-end="url(#a-warn)"></path>
+          <!-- query_gen self-loop (Error: 재생성) -->
+          <path d="M 172 420 C 108 426, 108 462, 172 460" stroke="var(--bad)" stroke-width="1.7" fill="none" marker-end="url(#a-bad)"></path>
+          <!-- query_gen -> END (Answer:) -->
+          <path d="M 340 476 L 340 700" stroke="var(--good)" stroke-width="1.7" fill="none" marker-end="url(#a-good)"></path>
+        </svg>
+
+        <div class="fnode start"><div class="t">START</div></div>
+
+        <div class="fnode first">
+          <div class="t">first_tool_call</div>
+          <div class="s">sql_db_list_tables 호출을 강제로 삽입</div>
+        </div>
+
+        <div class="fnode list">
+          <div class="t">list_tables_tool</div>
+          <div class="s">DB의 전체 테이블 목록 반환</div>
+        </div>
+
+        <div class="fnode pick">
+          <div class="t">model_get_schema</div>
+          <div class="s">질문 + 테이블 목록 → 조회할 테이블 결정 후 get_schema_tool 호출</div>
+        </div>
+
+        <div class="fnode getddl">
+          <div class="t">get_schema_tool</div>
+          <div class="s">선택된 테이블의 DDL(스키마) 반환</div>
+        </div>
+
+        <div class="fnode gen">
+          <div class="t">query_gen · 분기 허브</div>
+          <div class="s">마지막 메시지를 보고 새 쿼리 작성 / 오류 재작성 / 최종 답변 중 하나를 결정</div>
+        </div>
+
+        <div class="fnode check">
+          <div class="t">correct_query</div>
+          <div class="s">query_check로 쿼리 재검수</div>
+        </div>
+
+        <div class="fnode exec">
+          <div class="t">execute_query</div>
+          <div class="s">db_query_tool로 실제 실행</div>
+        </div>
+
+        <div class="fnode end"><div class="t">END</div></div>
+
+        <div class="flabel warn" style="top:463px; left:545px;">그 외(SQL문) → 검수</div>
+        <div class="flabel warn" style="top:520px; left:640px;">실행 결과 → 재검토</div>
+        <div class="flabel bad" style="top:432px; left:8px;">Error: → 재생성</div>
+        <div class="flabel good" style="top:565px; left:350px;">Answer: → 완료</div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>스키마 탐색 단계</span>
+      <span><i style="border:2px solid var(--ink-muted); background:var(--surface)"></i>query_gen (분기 허브)</span>
+      <span><i style="background:var(--warn)"></i>검수 · 실행 루프</span>
+      <span><i style="background:var(--bad)"></i>오류 재생성</span>
+      <span><i style="background:var(--good)"></i>최종 답변</span>
+    </div>
+
+    <figure class="ref-img">
+      <img src="./assets/langgraph-sql-agent.png" alt="노트북에 실린 원본 SQL Agent 그래프 다이어그램">
+      <figcaption>노트북이 <code>visualize_graph(app, xray=True)</code>로 직접 그려서 보여주는 원본 그래프 다이어그램 (langgraph-sql-agent.png)</figcaption>
+    </figure>
+  </div>
+
+  <!-- 5. 노드 구성 -->
+  <div class="section">
+    <h2><span class="num">05</span>노드 구성 한눈에 보기</h2>
+    <p class="section-lede">각 노드가 정확히 무엇을 하는지 표로 정리했습니다.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>노드</th><th>하는 일</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="tag blue">first_tool_call</span></td>
+            <td>실제 LLM 호출 없이, <code>sql_db_list_tables</code>를 호출하는 <code>AIMessage</code>를 직접 만들어 넣는다 (첫 단계 고정)</td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">list_tables_tool</span></td>
+            <td><code>ToolNode</code>로 감싼 <code>list_tables_tool</code> 실행 → 테이블 목록 확보</td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">model_get_schema</span></td>
+            <td><code>get_schema_tool</code>에 <code>bind_tools</code>한 LLM. 질문과 테이블 목록을 보고 <strong>어떤 테이블의 DDL이 필요한지</strong> 판단해 도구를 호출</td>
+          </tr>
+          <tr>
+            <td><span class="tag blue">get_schema_tool</span></td>
+            <td><code>ToolNode</code>로 감싼 <code>get_schema_tool</code> 실행 → 선택된 테이블의 DDL 확보</td>
+          </tr>
+          <tr>
+            <td><span class="tag bad" style="background:var(--surface-2); color:var(--ink)">query_gen</span></td>
+            <td>지금까지의 메시지를 바탕으로 <strong>SQL 쿼리 생성</strong>, <strong>오류 메시지 그대로 반환</strong>, 또는 <strong>최종 답변(<code>Answer: ...</code>)</strong> 중 하나를 출력</td>
+          </tr>
+          <tr>
+            <td><span class="tag warn">correct_query</span></td>
+            <td><code>model_check_query</code> 실행 — <code>query_check</code> 체인으로 쿼리를 한 번 더 검수하고 <code>db_query_tool</code> 호출을 강제</td>
+          </tr>
+          <tr>
+            <td><span class="tag warn">execute_query</span></td>
+            <td><code>ToolNode</code>로 감싼 <code>db_query_tool</code> 실행 → 쿼리 결과 또는 <code>"Error: ..."</code> 반환</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 6. 라우팅 로직 -->
+  <div class="section">
+    <h2><span class="num">06</span>라우팅 로직 — <code>query_gen</code>이 갈림길을 정하는 법</h2>
+    <p class="section-lede">
+      프롬프트(<code>QUERY_GEN_INSTRUCTION</code>)는 <code>query_gen</code>에게 아래 4가지 규칙 중 하나로만 응답하라고 지시합니다.
+      그 응답의 <strong>내용 접두어</strong>를 <code>should_continue</code>가 읽어 다음 노드를 정합니다.
+    </p>
+    <div class="cards">
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>규칙 1 · 새 쿼리 작성</div>
+        <p class="d">쓸 만한 실행 결과가 아직 없다면 SQLite 쿼리를 새로 만든다. <strong>DML(INSERT/UPDATE/DELETE/DROP 등)은 절대 금지.</strong></p>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--accent)"></span>규칙 2 · 쿼리만 출력</div>
+        <p class="d">쿼리를 만들었다면 다른 말 없이 <strong>쿼리 문자열만</strong> 응답한다 — 도구 호출 형태가 아니라 <strong>일반 텍스트</strong>로.</p>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--bad)"></span>규칙 3 · 오류 그대로 반환</div>
+        <p class="d">직전 실행이 실패했다면 <strong>같은 오류 메시지</strong>를 그대로 응답한다. 예: <code>"Error: Pets table doesn't exist"</code>.</p>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="dot" style="background:var(--good)"></span>규칙 4 · 최종 답변</div>
+        <p class="d">쿼리 결과가 이미 있다면 이를 해석해 <code>"Answer: ..."</code> 형태로 응답한다.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:20px">
+      <span class="label">참고 · SubmitFinalAnswer와 잘못된 도구 호출</span>
+      <p>
+        <code>query_gen</code>은 실제로는 <code>final_answer: str</code> 필드 하나짜리 <code>SubmitFinalAnswer</code> 라는
+        pydantic 도구와 <code>model_check_query</code>를 <code>bind_tools([SubmitFinalAnswer, model_check_query])</code>로
+        함께 바인딩하고 있습니다. <code>query_gen_node</code>는 모델이 <strong><code>SubmitFinalAnswer</code>가 아닌 다른 도구를
+        호출</strong>하면 "잘못된 도구가 호출됐다"는 <code>ToolMessage</code> 오류를 즉시 만들어 붙여 되돌립니다.
+      </p>
+      <p>
+        다만 실제 분기(<code>should_continue</code>)는 이 도구 호출 여부가 아니라, 위 규칙대로 만들어진
+        <strong>메시지 내용의 <code>Answer:</code>/<code>Error:</code> 접두어</strong>로 판단합니다 — 이 노트북에서 조금 헷갈리기 쉬운 지점입니다.
+      </p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:30%">query_gen의 응답</th><th>다음 노드</th><th>의미</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">쿼리 문자열 그대로</td>
+            <td><span class="tag warn">correct_query</span></td>
+            <td>아직 실행할 만한 결과가 없음 → 새로 만든 SQL을 검수 단계로 보낸다</td>
+          </tr>
+          <tr>
+            <td class="mono">"Error: ..."</td>
+            <td><span class="tag bad">query_gen (재시도)</span></td>
+            <td>직전 실행이 실패 → 같은 노드로 돌아가 <strong>고친 쿼리를 다시 생성</strong></td>
+          </tr>
+          <tr>
+            <td class="mono">"Answer: ..."</td>
+            <td><span class="tag good">END</span></td>
+            <td>쿼리 결과 해석 완료 → 최종 답변으로 그래프 종료</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="code-panel">
+      <div class="bar">should_continue() · query_gen 뒤의 조건부 라우팅</div>
+      <pre><code><span class="k">def</span> should_continue(state: State) -> Literal[END, <span class="s">"correct_query"</span>, <span class="s">"query_gen"</span>]:
+    last_message = state[<span class="s">"messages"</span>][-<span class="k">1</span>]
+
+    <span class="k">if</span> last_message.content.startswith(<span class="s">"Answer:"</span>):
+        <span class="c"># 최종 답변 완료 → 종료</span>
+        <span class="k">return</span> END
+    <span class="k">if</span> last_message.content.startswith(<span class="s">"Error:"</span>):
+        <span class="c"># 직전 실행 실패 → query_gen으로 되돌아가 재작성</span>
+        <span class="k">return</span> <span class="s">"query_gen"</span>
+    <span class="c"># 그 외(= 새 SQL 쿼리) → 실행 전 검수 단계로</span>
+    <span class="k">return</span> <span class="s">"correct_query"</span></code></pre>
+    </div>
+    <p class="section-lede" style="margin-top:18px">
+      주의할 점은 <code>execute_query → query_gen</code> 엣지가 <strong>조건 없이 항상 연결</strong>되어 있다는 것입니다.
+      즉 실행이 성공하든 실패하든 일단 <code>query_gen</code>으로 돌아가고, <code>query_gen</code>이 그 결과(정상 데이터 또는
+      <code>"Error: ..."</code>)를 보고 새로 만든 응답을 <code>should_continue</code>가 <strong>다시 읽어서</strong> 다음 길을 정합니다.
+      "실행 → 바로 분기"가 아니라 <strong>"실행 → query_gen 재호출 → 그 결과로 분기"</strong>인 2단계 흐름인 셈이죠.
+    </p>
+  </div>
+
+  <!-- 7. 그래프 조립 -->
+  <div class="section">
+    <h2><span class="num">07</span>그래프 조립 코드</h2>
+    <p class="section-lede">
+      준비 단계는 순차적 <code>add_edge</code>로, <code>query_gen</code> 이후만 <code>add_conditional_edges</code>로 갈라집니다.
+    </p>
+    <div class="code-panel">
+      <div class="bar">workflow 구성 · StateGraph</div>
+      <pre><code>workflow.add_edge(START, <span class="s">"first_tool_call"</span>)
+workflow.add_edge(<span class="s">"first_tool_call"</span>, <span class="s">"list_tables_tool"</span>)
+workflow.add_edge(<span class="s">"list_tables_tool"</span>, <span class="s">"model_get_schema"</span>)
+workflow.add_edge(<span class="s">"model_get_schema"</span>, <span class="s">"get_schema_tool"</span>)
+workflow.add_edge(<span class="s">"get_schema_tool"</span>, <span class="s">"query_gen"</span>)
+
+<span class="c"># query_gen 이후에만 세 갈래로 분기 (END / correct_query / query_gen)</span>
+workflow.add_conditional_edges(<span class="s">"query_gen"</span>, should_continue)
+
+workflow.add_edge(<span class="s">"correct_query"</span>, <span class="s">"execute_query"</span>)
+workflow.add_edge(<span class="s">"execute_query"</span>, <span class="s">"query_gen"</span>)  <span class="c"># 실행 후 다시 query_gen으로</span>
+
+app = workflow.compile(checkpointer=MemorySaver())</code></pre>
+    </div>
+  </div>
+
+  <!-- 8. 실행 & 평가 -->
+  <div class="section">
+    <h2><span class="num">08</span>실행 예시 &amp; LangSmith 평가</h2>
+    <p class="section-lede">
+      <code>run_graph()</code>로 질문 두 가지를 직접 실행해보고, 이어서 <strong>LangSmith 데이터셋 + LLM-as-judge</strong>로
+      에이전트 응답의 정확도를 채점합니다.
+    </p>
+    <p class="section-lede">
+      <code>run_graph()</code>는 내부적으로 <code>RunnableConfig(recursion_limit=30, configurable={"thread_id": random_uuid()})</code>를
+      구성해 재귀 한도와 <code>MemorySaver</code> 체크포인트용 대화 스레드를 지정하고, 한도를 넘으면
+      <code>GraphRecursionError</code>를 잡아 그 시점까지의 상태를 반환합니다. 재시도 루프가 있는 그래프이기 때문에 필요한 안전장치입니다.
+    </p>
+
+    <div class="runcard">
+      <div class="rbar">실행 예시 1 — 특정 레코드 조회</div>
+      <div class="rbody">
+        <p class="q">질문: <b>"Andrew Adam 직원의 인적정보를 모두 조회해줘"</b></p>
+        <div class="steps">
+          <span class="st blue">list_tables</span>
+          <span class="arw">→</span>
+          <span class="st blue">get_schema(Employee)</span>
+          <span class="arw">→</span>
+          <span class="st bad" style="border-color:var(--ink-muted);color:var(--ink);background:var(--surface-2)">query_gen</span>
+          <span class="arw">→</span>
+          <span class="st warn">correct_query</span>
+          <span class="arw">→</span>
+          <span class="st warn">execute_query</span>
+          <span class="arw">→</span>
+          <span class="st good">Answer</span>
+        </div>
+        <p class="res">
+          <code>Employee</code> 테이블 스키마만 확인하면 되는 <strong>단일 테이블 조회</strong>라, 재시도 없이 한 번에 정상 경로를 통과하기 쉬운 케이스입니다.
+        </p>
+      </div>
+    </div>
+
+    <div class="runcard">
+      <div class="rbar">실행 예시 2 — 집계·조인이 필요한 질문</div>
+      <div class="rbody">
+        <p class="q">질문: <b>"2009년도에 어느 국가의 고객이 가장 많이 지출했을까요? 그리고 얼마를 지출했을까요?"</b></p>
+        <div class="steps">
+          <span class="st blue">list_tables</span>
+          <span class="arw">→</span>
+          <span class="st blue">get_schema(Customer, Invoice ...)</span>
+          <span class="arw">→</span>
+          <span class="st bad" style="border-color:var(--ink-muted);color:var(--ink);background:var(--surface-2)">query_gen</span>
+          <span class="arw">→</span>
+          <span class="st warn">correct_query → execute_query</span>
+          <span class="arw">→</span>
+          <span class="st good">Answer</span>
+        </div>
+        <p class="res">
+          날짜 필터(<code>2009</code>)와 <strong>여러 테이블 조인 + 그룹 집계</strong>가 필요해 쿼리가 복잡해지고,
+          컬럼명을 잘못 짚으면 <code>query_gen</code>이 <code>Error:</code>를 받아 <strong>재시도 루프</strong>를 타기 쉬운 케이스입니다.
+        </p>
+      </div>
+    </div>
+
+    <p class="section-lede" style="margin-top:28px">
+      이후 LangSmith에 데이터셋 <code>"SQL Agent Response"</code>를 만들어, 노트북의 <code>examples</code> 리스트에 있는
+      아래 5개 질문·정답 쌍(원문 그대로 인용)으로 <code>answer_evaluator</code>(LLM-as-judge,
+      <code>langchain-ai/rag-answer-vs-reference</code> 프롬프트 사용)가 에이전트 응답과 정답을 비교 채점합니다.
+    </p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>질문 (input)</th><th>정답 (reference)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Which country's customers spent the most? And how much did they spend?</td><td>The country whose customers spent the most is the USA, with a total spending of 523.06.</td></tr>
+          <tr><td>What was the most purchased track of 2013?</td><td>The most purchased track of 2013 was Hot Girl.</td></tr>
+          <tr><td>How many albums does the artist Led Zeppelin have?</td><td>Led Zeppelin has 14 albums</td></tr>
+          <tr><td>What is the total price for the album &ldquo;Big Ones&rdquo;?</td><td>The total price for the album 'Big Ones' is 14.85</td></tr>
+          <tr><td>Which sales agent made the most in sales in 2009?</td><td>Steve Johnson made the most sales in 2009</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-lede" style="margin-top:14px">
+      평가는 <code>evaluate()</code>로 <code>num_repetitions=3</code>회 반복 실행되어, 에이전트의 <strong>답변 재현성</strong>까지 함께 확인합니다.
+    </p>
+    <figure class="ref-img">
+      <img src="./assets/langgraph-sql-agent-evaluation.png" alt="LangSmith에서 확인한 SQL Agent 평가 실험 결과 화면">
+      <figcaption>LangSmith 실험 결과 화면 (langgraph-sql-agent-evaluation.png)</figcaption>
+    </figure>
+  </div>
+
+  <!-- Recap -->
+  <div class="section">
+    <h2><span class="num">09</span>핵심 정리</h2>
+    <ul class="recap">
+      <li>이 에이전트는 <strong>스키마 탐색(4단계) → 쿼리 생성·검수·실행 루프</strong> 두 부분으로 이루어진다.</li>
+      <li>상태는 <code>messages</code> 리스트 하나뿐이며, 다음 행동은 <strong>마지막 메시지의 내용</strong>으로 결정된다.</li>
+      <li><code>query_gen</code>은 응답을 <code>Answer:</code> / <code>Error:</code> / 그 외(쿼리)로 나눠 세 갈래 경로를 만드는 <strong>분기 허브</strong>다.</li>
+      <li>실행 실패는 그래프를 멈추지 않고 <strong><code>query_gen</code>으로 되돌아가는 재시도 루프</strong>로 흡수된다.</li>
+      <li><code>create_tool_node_with_fallback</code>이 도구 예외를 <code>ToolMessage</code>로 바꿔주기 때문에 이 루프가 가능하다.</li>
+      <li>완성된 에이전트는 LangSmith 데이터셋 + LLM-as-judge로 <strong>답변 정확도를 정량 평가</strong>한다.</li>
+    </ul>
+  </div>
+
+  <hr class="divider">
+  <footer>
+    LangGraph 03-Use-Cases · SQL Agent 학습 정리 · 09-LangGraph-SQL-Agent.ipynb
+  </footer>
+
+</div>
+
+</body>
+</html>

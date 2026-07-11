@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LangGraph Research Assistant — STORM 방식 멀티 에이전트 연구 자동화 정리</title>
+<style>
+/* ============================================================
+   STORM Research Console — LangGraph Research Assistant explainer
+   Palette shared with CRAG-Corrective-RAG-Guide.html / Multi-Agent-Supervisor-Guide.html (validated)
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F3F5F7;
+  --panel:#FFFFFF;
+  --panel-2:#FAFBFC;
+  --border:#E2E6EB;
+  --border-strong:#CDD4DC;
+  --ink:#111721;
+  --ink-2:#48515E;
+  --ink-3:#78828F;
+
+  --teal:#0D9488;
+  --teal-ink:#0B7A70;
+  --teal-tint:#E4F5F2;
+  --indigo:#6366F1;
+  --indigo-tint:#ECEDFE;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 28px rgba(16,24,40,.06);
+  --shadow-lg:0 2px 6px rgba(16,24,40,.06), 0 18px 48px rgba(16,24,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --grid:#E7EBEF;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0D1014;
+  --panel:#161A21;
+  --panel-2:#1A1F28;
+  --border:#28303B;
+  --border-strong:#3A4552;
+  --ink:#E8ECF2;
+  --ink-2:#A7B0BD;
+  --ink-3:#6E7885;
+
+  --teal:#2DD4BF;
+  --teal-ink:#5AE0D0;
+  --teal-tint:#0E2A2A;
+  --indigo:#8B93F8;
+  --indigo-tint:#1B1E3A;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --grid:#242C36;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1014; --panel:#161A21; --panel-2:#1A1F28; --border:#28303B; --border-strong:#3A4552;
+    --ink:#E8ECF2; --ink-2:#A7B0BD; --ink-3:#6E7885;
+    --teal:#2DD4BF; --teal-ink:#5AE0D0; --teal-tint:#0E2A2A; --indigo:#8B93F8; --indigo-tint:#1B1E3A;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --grid:#242C36;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;
+  overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--teal-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:50%;
+  background:conic-gradient(from 210deg,var(--teal) 0 50%,var(--indigo) 0);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--teal-ink);background:var(--teal-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+@media (max-width:820px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:center}
+@media (max-width:860px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(38px,7.4vw,66px);line-height:1.02;letter-spacing:-.03em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--teal);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.sig-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.sig-row:first-of-type{border-top:none}
+.sig-ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-family:var(--mono);font-size:14px}
+.sig-ic.s{background:var(--teal-tint);color:var(--teal-ink);border:1px solid var(--teal)}
+.sig-ic.r{background:var(--indigo-tint);color:var(--indigo);border:1px solid var(--indigo)}
+.sig-ic.c{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd)}
+.sig-row .t{font-weight:700;font-size:14.5px;color:var(--ink)}
+.sig-row .d{font-size:12.5px;color:var(--ink-3);line-height:1.4}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:760px}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams (HTML/CSS) ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--teal);background:var(--teal-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* orbit diagram container (reuses triage look) */
+.orbit{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 22px 18px;box-shadow:var(--shadow-lg);margin:22px 0}
+.orbit svg{width:100%;height:auto;display:block}
+@media (max-width:640px){
+  .orbit{overflow-x:auto;padding:16px}
+  .orbit svg{min-width:720px}
+}
+
+/* image cards */
+.imgcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);text-align:center}
+.imgcard img{max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto}
+.imgcard .cap{margin-top:10px;font-size:12.5px;color:var(--ink-3);font-family:var(--mono)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-row td{background:var(--teal-tint)!important}
+.hl-row td.name{color:var(--teal-ink)}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+
+/* ---------- code block ---------- */
+pre.code{background:var(--panel-2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;
+  overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.65;color:var(--ink-2);margin:14px 0}
+pre.code b{color:var(--teal-ink);font-weight:700}
+pre.code .c{color:var(--ink-3);font-style:italic}
+
+/* ---------- timeline (execution trace) ---------- */
+.timeline{display:flex;flex-direction:column;gap:0;margin:18px 0}
+.tl-item{display:flex;gap:16px;padding:16px 4px;border-top:1px solid var(--border)}
+.tl-item:first-child{border-top:none}
+.tl-step{flex:none;width:34px;height:34px;border-radius:50%;background:var(--teal-tint);color:var(--teal-ink);
+  display:grid;place-items:center;font-family:var(--mono);font-weight:800;font-size:14px;border:1px solid var(--teal)}
+.tl-item.finish .tl-step{background:var(--red-tint);color:var(--red-mark);border-color:var(--red-bd)}
+.tl-body .who{font-family:var(--mono);font-size:11px;color:var(--teal-ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-block;font-weight:700}
+.tl-item.finish .tl-body .who{color:var(--red-mark)}
+.tl-body h4{margin:0 0 4px;font-size:15px;color:var(--ink);font-weight:750}
+.tl-body p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:30px;font-weight:750;letter-spacing:-.02em;color:var(--teal-ink);line-height:1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* takeaway list */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--teal)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>STORM</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#background">배경</a>
+      <a href="#setup">설정</a>
+      <a href="#analysts">분석가</a>
+      <a href="#interview">인터뷰</a>
+      <a href="#parallel">병렬화</a>
+      <a href="#report">보고서</a>
+      <a href="#graph">전체그래프</a>
+      <a href="#trace">실행흐름</a>
+      <a href="#compare">비교</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">LangGraph · 17-LangGraph/03-Use-Cases · 10</span>
+      <h1>Research Assistant</h1>
+      <div class="sub">STORM 방식의 멀티 에이전트 연구 자동화 — 분석가 팀과 병렬 인터뷰로 보고서를 완성한다</div>
+      <p class="thesis">“좋은 보고서는 한 번의 프롬프트가 아니라 <b>여러 관점의 대화</b>에서 나온다.” STORM 논문의 통찰을 빌려, 서로 다른 관점을 가진 AI 분석가 팀이 전문가를 병렬로 인터뷰하고, 그 결과를 서론·본문·결론을 갖춘 하나의 보고서로 합친다.</p>
+      <div class="chips">
+        <span class="chip">파일 <b>10-LangGraph-Research-Assistant.ipynb</b></span>
+        <span class="chip">STORM 논문 <b>arXiv:2402.14207</b></span>
+        <span class="chip"><code>interrupt_before</code> HITL</span>
+        <span class="chip"><code>Send()</code> map-reduce</span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="세 가지 핵심 테마">
+      <div class="cap">Core Themes — 세 가지 핵심 테마</div>
+      <div class="sig-row">
+        <div class="sig-ic s" aria-hidden="true">M</div>
+        <div><div class="t">Memory — 메모리</div><div class="d">체크포인터로 그래프 상태를 스레드별로 유지</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic r" aria-hidden="true">H</div>
+        <div><div class="t">Human-in-the-loop</div><div class="d">분석가 팀 구성을 사람이 검토·수정</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic c" aria-hidden="true">C</div>
+        <div><div class="t">Controllability — 제어성</div><div class="d"><code>interrupt_before</code> / <code>update_state</code>로 실행 흐름 제어</div></div>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">원시 LLM에 한 번 프롬프트를 던져 만든 보고서는 <b>얕고 일반적인 내용</b>에 그치기 쉽다. 다양한 관점과 충분한 근거 조사 없이는 실제 의사결정 워크플로우에 쓰기 어렵다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0">연구 주제를 하위 관점으로 쪼개 <b>AI 분석가 팀</b>을 만들고(Human-in-the-loop로 팀 구성 검토), 각 분석가가 전문가 역할 LLM과 <b>병렬로 인터뷰</b>하며 웹·Arxiv에서 근거를 수집한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">모든 인터뷰 결과가 <b>map-reduce</b>로 병합되어 출처가 인용된 서론-본문-결론 보고서가 자동 완성된다. <code>max_analysts</code>만 늘리면 조사 폭이 그대로 확장된다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. BACKGROUND ========== -->
+<section class="section" id="background">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 배경</span>
+    <h2>STORM — 관점 기반 대화 시뮬레이션으로 리서치를 자동화</h2>
+    <p class="lead">연구는 종종 분석가에게 위임되는 노동 집약적인 작업이다. 그러나 원시 LLM 출력은 실제 의사 결정 워크플로우에 적합하지 않은 경우가 많다. <a href="https://arxiv.org/abs/2402.14207" target="_blank" rel="noopener">STORM 논문</a>은 이 문제를 두 가지 아이디어로 해결한다.</p>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">유사 주제 조회</h3>
+        <p style="margin:0">관련된 다른 주제들을 조사해, 질문할 만한 <b>흥미로운 관점</b>을 넓힌다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">다양한 관점의 대화 시뮬레이션</h3>
+        <p style="margin:0">서로 다른 관점을 가진 여러 화자가 주제를 놓고 대화하며, <b>참고 출처 사용 빈도와 정보 밀도</b>를 함께 끌어올린다.</p>
+      </div>
+    </div>
+
+    <div class="imgcard" style="margin-top:18px">
+      <img src="./assets/langgraph-storm-concept.png" alt="원시 LLM 출력에서 맞춤형 AI 기반 연구 및 보고서 생성 워크플로우로 나아가는 STORM 개념 다이어그램">
+      <div class="cap">노트북 원본 다이어그램 — assets/langgraph-storm-concept.png</div>
+    </div>
+
+    <h3 style="margin-top:30px">이 튜토리얼이 다루는 세 가지 테마</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">테마</th><th>이 노트북에서의 구현</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Memory</td><td><code>MemorySaver</code> 체크포인터로 <code>thread_id</code>별 그래프 상태를 저장하고 이어서 실행</td></tr>
+          <tr><td class="name">Human-in-the-loop</td><td><code>interrupt_before=["human_feedback"]</code>로 분석가 생성을 멈추고, 사람이 <code>human_analyst_feedback</code>을 주입</td></tr>
+          <tr><td class="name">Controllability</td><td><code>graph.update_state(..., as_node="human_feedback")</code>로 특정 노드의 역할을 대신 수행하며 흐름을 조종</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1.5 SETUP ========== -->
+<section class="section" id="setup">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01.5</span> · 실행 전 설정</span>
+    <h2>노트북이 먼저 준비하는 것들</h2>
+    <p class="lead">그래프 구조를 이해하는 데 핵심은 아니지만, 원본 노트북을 그대로 실행하려면 환경 변수, LangSmith 추적, 모델명 설정이 먼저 필요하다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">단계</th><th>원본 코드</th><th>역할</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">API 키 로드</td><td class="mono">load_dotenv()</td><td><code>.env</code>에 있는 OpenAI/Tavily 등 API 키를 환경 변수로 읽는다.</td></tr>
+          <tr><td class="name">LangSmith 추적</td><td class="mono">logging.langsmith("CH17-LangGraph-Use-Cases")</td><td>그래프 실행 과정을 LangSmith 프로젝트에 기록한다.</td></tr>
+          <tr><td class="name">모델명 선택</td><td class="mono">GPT4o = get_model_name(LLMs.GPT4o)</td><td>이후 분석가 생성·인터뷰·보고서 작성에 쓸 ChatOpenAI 모델명을 정한다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">from dotenv import load_dotenv
+from langchain_teddynote import logging
+from langchain_teddynote.models import get_model_name, LLMs
+from langchain_openai import ChatOpenAI
+
+load_dotenv()
+logging.langsmith("CH17-LangGraph-Use-Cases")
+
+GPT4o = get_model_name(LLMs.GPT4o)
+llm = ChatOpenAI(model=GPT4o)</pre>
+  </div>
+</section>
+
+<!-- ========== 2. ANALYSTS (HITL) ========== -->
+<section class="section" id="analysts">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 분석가 생성 (Human-in-the-loop)</span>
+    <h2>Analyst 페르소나 팀을 만들고 사람이 검토한다</h2>
+    <p class="lead">연구의 첫 단계는 주제를 여러 하위 관점으로 나누는 것이다. <code>Perspectives</code> 스키마로 LLM에게 구조화된 출력을 강제해, 서로 다른 소속·역할을 가진 분석가 목록을 만든다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">Analyst 필드</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">affiliation</td><td class="mono">str</td><td>분석가의 주요 소속 정보</td></tr>
+          <tr><td class="name">name</td><td class="mono">str</td><td>분석가 이름</td></tr>
+          <tr><td class="name">role</td><td class="mono">str</td><td>주제 맥락에서 분석가가 맡는 역할</td></tr>
+          <tr><td class="name">description</td><td class="mono">str</td><td>분석가의 중점, 우려 사항, 동기에 대한 설명</td></tr>
+          <tr><td class="name">persona</td><td class="mono">@property → str</td><td>위 필드를 한 문자열로 합쳐 프롬프트에 주입할 때 사용</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">class Analyst(BaseModel):
+    affiliation: str = Field(description="Primary affiliation of the analyst.")
+    name: str = Field(description="Name of the analyst.")
+    role: str = Field(description="Role of the analyst in the context of the topic.")
+    description: str = Field(description="Description of the analyst focus, concerns, and motives.")
+
+    @property
+    def persona(self) -> str:
+        return f"Name: {self.name}\nRole: {self.role}\nAffiliation: {self.affiliation}\nDescription: {self.description}\n"
+
+class Perspectives(BaseModel):
+    analysts: List[Analyst] = Field(description="Comprehensive list of analysts with their roles and affiliations.")</pre>
+
+    <h3>GenerateAnalystsState — 분석가 생성 그래프의 상태</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">필드</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">topic</td><td class="mono">str</td><td>연구 주제</td></tr>
+          <tr><td class="name">max_analysts</td><td class="mono">int</td><td>생성할 분석가의 최대 수</td></tr>
+          <tr><td class="name">human_analyst_feedback</td><td class="mono">str</td><td>사람이 주입하는 피드백 (없으면 그대로 종료)</td></tr>
+          <tr><td class="name">analysts</td><td class="mono">List[Analyst]</td><td>생성된 분석가 목록</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>create_analysts 노드 — 프롬프트 5단계</h3>
+    <p><code>analyst_instructions</code>는 LLM에게 다음 순서를 지시한다: <b>① 주제 확인 → ② 피드백 검토 → ③ 흥미로운 테마 결정 → ④ 상위 <code>max_analysts</code>개 테마 선정 → ⑤ 테마마다 분석가 1명 배정</b>.</p>
+
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Input</div><div class="val">topic + max_analysts<br>+ human_analyst_feedback</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">llm.with_structured_<br>output(Perspectives)</div><div class="val">스키마 강제 출력</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Output</div><div class="val">state["analysts"]<br>= analysts.analysts</div></div>
+    </div>
+
+    <pre class="code">def create_analysts(state: GenerateAnalystsState):
+    topic = state["topic"]
+    max_analysts = state["max_analysts"]
+    human_analyst_feedback = state.get("human_analyst_feedback", "")
+
+    structured_llm = llm.with_structured_output(Perspectives)
+    system_message = analyst_instructions.format(
+        topic=topic, human_analyst_feedback=human_analyst_feedback, max_analysts=max_analysts
+    )
+    analysts = structured_llm.invoke(
+        [SystemMessage(content=system_message)] + [HumanMessage(content="Generate the set of analysts.")]
+    )
+    return {"analysts": analysts.analysts}
+
+def human_feedback(state: GenerateAnalystsState):
+    """사용자 피드백을 받기 위한 중단점 노드 — 본문은 비워 둔다"""
+    pass
+
+def should_continue(state: GenerateAnalystsState):
+    human_analyst_feedback = state.get("human_analyst_feedback", None)
+    if human_analyst_feedback:
+        return "create_analysts"
+    return END</pre>
+
+    <div class="callout teal">
+      <span class="k">human_feedback 노드가 비어 있는 이유</span>
+      <p><code>human_feedback</code>는 실행 로직이 없는 <b>중단점 전용 노드</b>다. 그래프를 <code>interrupt_before=["human_feedback"]</code>로 컴파일하면, LangGraph는 이 노드를 실행하기 <i>직전</i>에 멈춘다. 이때 <code>graph.update_state(..., as_node="human_feedback")</code>로 사람이 대신 상태를 채워 넣고, <code>should_continue</code>가 피드백 유무에 따라 재생성 또는 종료를 결정한다.</p>
+    </div>
+
+    <h3 style="margin-top:30px">분석가 생성 그래프 — Human-in-the-loop 루프</h3>
+    <div class="orbit">
+      <svg viewBox="0 0 900 380" role="img" aria-label="START에서 create_analysts, human_feedback을 거쳐 END로 가되, 피드백이 있으면 human_feedback에서 create_analysts로 되돌아가는 루프 다이어그램">
+        <defs>
+          <marker id="arrowGrey1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+          <marker id="arrowIndigo1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--indigo)"/>
+          </marker>
+          <marker id="arrowRed1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--red-mark)"/>
+          </marker>
+        </defs>
+
+        <text x="450" y="14" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">START</text>
+        <line x1="450" y1="18" x2="450" y2="50" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey1)"/>
+
+        <rect x="350" y="50" width="200" height="70" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="82" text-anchor="middle" font-size="15" font-weight="800" fill="var(--teal-ink)">create_analysts</text>
+        <text x="450" y="102" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">LLM → Perspectives 생성</text>
+
+        <line x1="450" y1="120" x2="450" y2="180" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey1)"/>
+
+        <rect x="350" y="180" width="200" height="70" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="212" text-anchor="middle" font-size="15" font-weight="750" fill="var(--ink)">human_feedback</text>
+        <text x="450" y="232" text-anchor="middle" font-size="11.5" fill="var(--ink-3)">🛑 interrupt_before 중단점</text>
+
+        <line x1="450" y1="250" x2="450" y2="310" stroke="var(--red-mark)" stroke-width="2.5" marker-end="url(#arrowRed1)"/>
+        <text x="466" y="285" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--red-mark)">피드백 없음</text>
+
+        <rect x="370" y="310" width="160" height="52" rx="12" fill="var(--red-tint)" stroke="var(--red-bd)" stroke-width="1.5"/>
+        <text x="450" y="342" text-anchor="middle" font-size="14" font-weight="800" fill="var(--red-mark)">END</text>
+
+        <path d="M350,215 C 140,215 140,85 350,85" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowIndigo1)"/>
+        <text x="150" y="120" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">피드백 있음</text>
+        <text x="150" y="134" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">→ 재생성</text>
+      </svg>
+    </div>
+    <p class="caption">실선(회색/빨강) = 고정 엣지 · 점선(indigo) = should_continue 조건부 엣지 · 피드백이 있는 한 create_analysts ↔ human_feedback 루프가 반복된다.</p>
+
+    <h3 style="margin-top:30px">그래프 구성 코드</h3>
+    <pre class="code">builder = StateGraph(GenerateAnalystsState)
+builder.add_node("create_analysts", create_analysts)
+builder.add_node("human_feedback", human_feedback)
+
+builder.add_edge(START, "create_analysts")
+builder.add_edge("create_analysts", "human_feedback")
+builder.add_conditional_edges("human_feedback", should_continue, ["create_analysts", END])
+
+memory = MemorySaver()
+graph = builder.compile(interrupt_before=["human_feedback"], checkpointer=memory)</pre>
+
+    <h3 style="margin-top:30px">단독 실행 예시 — 피드백을 두 번 주고받기</h3>
+    <p class="lead">이 데모는 <code>topic</code>과 <code>max_analysts=3</code>만 넣고 실행한 뒤, 두 차례에 걸쳐 <code>human_feedback</code> 노드의 역할을 사람이 대신 수행한다. 노트북에는 실제 LLM 호출 결과가 저장되어 있지 않으므로, 아래는 <b>코드가 만드는 제어 흐름</b>이다.</p>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-step">1</div>
+        <div class="tl-body">
+          <span class="who">invoke_graph(graph, inputs, config)</span>
+          <h4>첫 인터럽트까지 실행</h4>
+          <p><code>topic="Modular RAG 가 기존의 Naive RAG 와 어떤 차이가 있는지..."</code>, <code>max_analysts=3</code>으로 실행하면 <code>create_analysts</code>가 끝난 뒤 <code>human_feedback</code> 직전에 <code>__interrupt__</code>가 출력되며 멈춘다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">2</div>
+        <div class="tl-body">
+          <span class="who">graph.get_state(config).next</span>
+          <h4>다음 실행 노드 확인</h4>
+          <p><code>state.next</code>가 <code>('human_feedback',)</code>로 나오면, 사람이 피드백을 넣을 준비가 된 것이다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">3</div>
+        <div class="tl-body">
+          <span class="who">graph.update_state(..., as_node="human_feedback")</span>
+          <h4>피드백 주입</h4>
+          <p><code>human_analyst_feedback="Add in someone named Teddy Lee from a startup to add an entrepreneur perspective"</code>를 넣고, <code>as_node="human_feedback"</code>로 그 노드가 방금 이 값을 반환한 것처럼 상태를 갱신한다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">4</div>
+        <div class="tl-body">
+          <span class="who">invoke_graph(graph, None, config)</span>
+          <h4>재개 → 재생성 → 다시 인터럽트</h4>
+          <p>입력에 <code>None</code>을 주면 그래프가 이어서 진행된다. <code>should_continue</code>가 피드백이 있음을 확인해 <code>create_analysts</code>로 돌아가 분석가를 다시 만들고, 다시 <code>human_feedback</code>에서 멈춘다.</p>
+        </div>
+      </div>
+      <div class="tl-item finish">
+        <div class="tl-step">5</div>
+        <div class="tl-body">
+          <span class="who">human_analyst_feedback = None → 재개</span>
+          <h4>추가 피드백 없이 종료</h4>
+          <p>이번에는 <code>human_analyst_feedback</code>에 <code>None</code>을 넣고 재개하면 <code>should_continue</code>가 <code>END</code>를 반환한다. <code>final_state.next</code>는 빈 튜플 <code>()</code>이 되어 모든 작업이 끝났음을 나타낸다.</p>
+        </div>
+      </div>
+    </div>
+
+    <pre class="code">config = RunnableConfig(recursion_limit=10, configurable={"thread_id": random_uuid()})
+inputs = {"topic": topic, "max_analysts": 3}
+invoke_graph(graph, inputs, config)                      <span class="c"># → __interrupt__ 로 정지</span>
+
+graph.update_state(
+    config,
+    {"human_analyst_feedback": "Add in someone named Teddy Lee from a startup to add an entrepreneur perspective"},
+    as_node="human_feedback",
+)
+invoke_graph(graph, None, config)                          <span class="c"># 재생성 후 다시 정지</span>
+
+graph.update_state(config, {"human_analyst_feedback": None}, as_node="human_feedback")
+invoke_graph(graph, None, config)                          <span class="c"># 종료 (END)</span></pre>
+    <p class="small">※ 재개 시 입력을 <code>None</code>으로 주는 것은 "새 값 없이 중단된 지점부터 계속 진행하라"는 신호다.</p>
+  </div>
+</section>
+
+<!-- ========== 3. INTERVIEW ========== -->
+<section class="section" id="interview">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 인터뷰 수행</span>
+    <h2>분석가가 전문가를 인터뷰한다</h2>
+    <p class="lead">분석가 팀이 확정되면, 각 분석가는 전문가 역할을 맡은 LLM과 대화하며 질문 → 검색 → 답변을 반복한다. 이 서브그래프가 전체 시스템의 핵심 엔진이다.</p>
+
+    <h3>InterviewState — 인터뷰 한 건의 상태</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">필드</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">messages</td><td class="mono">MessagesState 상속</td><td>질문·답변 대화 메시지 (자동 누적)</td></tr>
+          <tr><td class="name">max_num_turns</td><td class="mono">int</td><td>전문가 답변 최대 허용 턴수</td></tr>
+          <tr><td class="name">context</td><td class="mono">Annotated[list, operator.add]</td><td>웹·Arxiv에서 수집한 소스 문서 (누적)</td></tr>
+          <tr><td class="name">analyst</td><td class="mono">Analyst</td><td>이 인터뷰를 진행하는 분석가</td></tr>
+          <tr><td class="name">interview</td><td class="mono">str</td><td>전체 대화를 문자열로 직렬화한 결과</td></tr>
+          <tr><td class="name">sections</td><td class="mono">list</td><td>이 인터뷰로부터 작성된 보고서 섹션</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>generate_question — 분석가의 질문 생성</h3>
+    <p><code>question_instructions</code>는 분석가에게 두 가지 기준으로 질문하라고 지시한다: <b>Interesting</b>(사람들이 놀랄 만한 통찰), <b>Specific</b>(전문가의 구체적 사례를 포함). 이해가 충분해지면 <code>"Thank you so much for your help!"</code>로 인터뷰를 마무리하라고 명시되어 있다.</p>
+
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Input</div><div class="val">analyst.persona<br>(goals) + messages</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">llm.invoke</div><div class="val">페르소나를 유지한<br>질문 생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Output</div><div class="val">messages 에 질문 추가</div></div>
+    </div>
+
+    <h3 style="margin-top:30px">도구 — 웹 검색과 Arxiv 검색을 병렬로</h3>
+    <p>전문가는 질문에 답하기 위해 여러 소스에서 정보를 <b>동시에</b> 수집한다. 이 튜토리얼은 Tavily(웹)와 Arxiv(논문) 두 가지를 사용한다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">노드</th><th>도구</th><th>파라미터</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">search_web</td><td class="mono">TavilySearch</td><td class="mono">max_results=3</td><td>대화의 마지막 질문을 검색 쿼리로 변환 후 웹 검색</td></tr>
+          <tr><td class="name">search_arxiv</td><td class="mono">ArxivRetriever</td><td class="mono">load_max_docs=2 (호출 시 재지정)</td><td><span class="tilde">⚠</span> 초기화 시 기본값은 <code>load_max_docs=3</code>이지만, 노드 내부 호출에서 <code>2</code>로 다시 지정한다</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout amber">
+      <span class="k">search_arxiv 의 예외 처리</span>
+      <p>Arxiv 검색은 외부 API 호출이라 실패할 수 있다. <code>search_arxiv</code>는 <code>try/except</code>로 감싸, 실패 시 <code>&lt;Error&gt;Arxiv 검색 결과를 가져오는데 실패했습니다.&lt;/Error&gt;</code>를 <code>context</code>에 넣어 그래프 전체가 멈추지 않도록 한다.</p>
+    </div>
+
+    <pre class="code">def search_web(state: InterviewState):
+    structured_llm = llm.with_structured_output(SearchQuery)
+    search_query = structured_llm.invoke([search_instructions] + state["messages"])
+    search_docs = tavily_search.invoke(search_query.search_query)
+    formatted_search_docs = "\n\n---\n\n".join(
+        [f'&lt;Document href="{doc["url"]}"/&gt;\n{doc["content"]}\n&lt;/Document&gt;' for doc in search_docs]
+    )
+    return {"context": [formatted_search_docs]}
+
+def search_arxiv(state: InterviewState):
+    structured_llm = llm.with_structured_output(SearchQuery)
+    search_query = structured_llm.invoke([search_instructions] + state["messages"])
+    try:
+        arxiv_search_results = arxiv_retriever.invoke(
+            search_query.search_query, load_max_docs=2,
+            load_all_available_meta=True, get_full_documents=True,
+        )
+        formatted_search_docs = "\n\n---\n\n".join([
+            f'&lt;Document source="{d.metadata["entry_id"]}" ...&gt;\n&lt;Title&gt;{d.metadata["Title"]}&lt;/Title&gt;\n'
+            f'&lt;Summary&gt;{d.metadata["Summary"]}&lt;/Summary&gt;\n&lt;Content&gt;{d.page_content}&lt;/Content&gt;\n&lt;/Document&gt;'
+            for d in arxiv_search_results
+        ])
+        return {"context": [formatted_search_docs]}
+    except Exception as e:
+        return {"context": ["&lt;Error&gt;Arxiv 검색 결과를 가져오는데 실패했습니다.&lt;/Error&gt;"]}</pre>
+
+    <h3 style="margin-top:30px">generate_answer — 인용을 포함한 답변</h3>
+    <p><code>answer_instructions</code>는 전문가 역할의 LLM에게 엄격한 인용 규칙을 지시한다.</p>
+    <ul class="plain">
+      <li><code>context</code>에 제공된 정보만 사용하고, 외부 지식이나 추측을 도입하지 않는다</li>
+      <li>관련 문장 옆에 <code>[1]</code>, <code>[2]</code>처럼 출처 번호를 표기한다</li>
+      <li>답변 하단에 <code>[1] 출처1</code>, <code>[2] 출처2</code> 순서로 출처 목록을 정리한다</li>
+      <li>같은 출처는 중복 없이 하나로 합친다</li>
+    </ul>
+
+    <h3 style="margin-top:24px">route_messages — 인터뷰를 언제 끝낼지 판단</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">조건</th><th>판정 방법</th><th>결과</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">최대 턴 초과</td><td>이름이 <code>"expert"</code>인 <code>AIMessage</code> 개수가 <code>max_num_turns</code>(기본 2) 이상</td><td class="mono">save_interview</td></tr>
+          <tr><td class="name">분석가가 종료 신호</td><td>마지막 질문에 <code>"Thank you so much for your help"</code> 포함</td><td class="mono">save_interview</td></tr>
+          <tr><td class="name">그 외</td><td>위 두 조건 모두 해당 없음</td><td class="mono">ask_question (질문 계속)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:24px">write_section — 인터뷰를 보고서 섹션으로</h3>
+    <p><code>section_writer_instructions</code>는 마크다운 구조와 분량을 구체적으로 지정한다.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">섹션</th><th>헤더</th><th>분량 가이드</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Title</td><td class="mono">## (분석가 focus 기반 제목)</td><td>—</td></tr>
+          <tr><td class="name">Summary</td><td class="mono">### Summary</td><td>최대 약 400단어, <code>[1]</code>식 인용 포함</td></tr>
+          <tr><td class="name">Comprehensive analysis</td><td class="mono">### Comprehensive analysis</td><td>최소 약 800단어, 근거·인용 포함</td></tr>
+          <tr><td class="name">Sources</td><td class="mono">### Sources</td><td>중복 없는 출처 목록, 줄마다 공백 2칸으로 개행</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:30px">인터뷰 서브그래프 — 질문↔검색↔답변 루프</h3>
+    <div class="orbit">
+      <svg viewBox="0 0 900 640" role="img" aria-label="ask_question에서 search_web과 search_arxiv로 동시에 분기했다가 answer_question에서 합류하고, 종료 조건에 따라 ask_question으로 돌아가거나 save_interview와 write_section을 거쳐 종료되는 다이어그램">
+        <defs>
+          <marker id="arrowGrey2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+          <marker id="arrowTeal2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+          </marker>
+          <marker id="arrowIndigo2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--indigo)"/>
+          </marker>
+        </defs>
+
+        <text x="450" y="14" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">START</text>
+        <line x1="450" y1="18" x2="450" y2="50" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey2)"/>
+
+        <rect x="350" y="50" width="200" height="66" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="80" text-anchor="middle" font-size="15" font-weight="800" fill="var(--teal-ink)">ask_question</text>
+        <text x="450" y="100" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">분석가가 질문 생성</text>
+
+        <text x="450" y="146" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--ink-3)">동시 실행 (fan-out)</text>
+        <line x1="392" y1="116" x2="215" y2="175" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal2)"/>
+        <line x1="508" y1="116" x2="685" y2="175" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal2)"/>
+
+        <rect x="90" y="175" width="230" height="65" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="205" y="204" text-anchor="middle" font-size="14.5" font-weight="750" fill="var(--ink)">search_web</text>
+        <text x="205" y="222" text-anchor="middle" font-size="11" fill="var(--ink-3)">TavilySearch(max_results=3)</text>
+
+        <rect x="580" y="175" width="230" height="65" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="695" y="204" text-anchor="middle" font-size="14.5" font-weight="750" fill="var(--ink)">search_arxiv</text>
+        <text x="695" y="222" text-anchor="middle" font-size="11" fill="var(--ink-3)">ArxivRetriever(load_max_docs=2)</text>
+
+        <line x1="230" y1="240" x2="410" y2="300" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal2)"/>
+        <line x1="680" y1="240" x2="490" y2="300" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal2)"/>
+
+        <rect x="350" y="300" width="200" height="65" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="329" text-anchor="middle" font-size="15" font-weight="800" fill="var(--teal-ink)">answer_question</text>
+        <text x="450" y="348" text-anchor="middle" font-size="11" fill="var(--ink-2)">context 기반 전문가 답변</text>
+
+        <path d="M350,332 C 110,332 110,82 350,82" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowIndigo2)"/>
+        <text x="120" y="205" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">질문 계속</text>
+        <text x="120" y="219" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">(ask_question)</text>
+
+        <line x1="450" y1="365" x2="450" y2="428" stroke="var(--teal)" stroke-width="2.5" marker-end="url(#arrowTeal2)"/>
+        <text x="466" y="400" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--teal-ink)">종료 조건 충족</text>
+
+        <rect x="350" y="430" width="200" height="58" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="455" text-anchor="middle" font-size="14.5" font-weight="750" fill="var(--ink)">save_interview</text>
+        <text x="450" y="474" text-anchor="middle" font-size="11" fill="var(--ink-3)">messages → interview 문자열</text>
+
+        <line x1="450" y1="488" x2="450" y2="518" stroke="var(--ink-3)" stroke-width="2.2" marker-end="url(#arrowGrey2)"/>
+
+        <rect x="350" y="520" width="200" height="62" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="546" text-anchor="middle" font-size="14.5" font-weight="750" fill="var(--ink)">write_section</text>
+        <text x="450" y="564" text-anchor="middle" font-size="11" fill="var(--ink-3)">Title/Summary/Analysis/Sources</text>
+
+        <line x1="450" y1="582" x2="450" y2="610" stroke="var(--ink-3)" stroke-width="2.2" marker-end="url(#arrowGrey2)"/>
+        <text x="450" y="628" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">END</text>
+      </svg>
+    </div>
+    <p class="caption">실선(teal) = 고정/조건 충족 엣지 · 점선(indigo) = route_messages 조건부 루프 · search_web과 search_arxiv는 동시에 실행되어 answer_question에서 합류한다.</p>
+
+    <pre class="code">interview_builder = StateGraph(InterviewState)
+interview_builder.add_node("ask_question", generate_question)
+interview_builder.add_node("search_web", search_web)
+interview_builder.add_node("search_arxiv", search_arxiv)
+interview_builder.add_node("answer_question", generate_answer)
+interview_builder.add_node("save_interview", save_interview)
+interview_builder.add_node("write_section", write_section)
+
+interview_builder.add_edge(START, "ask_question")
+interview_builder.add_edge("ask_question", "search_web")
+interview_builder.add_edge("ask_question", "search_arxiv")
+interview_builder.add_edge("search_web", "answer_question")
+interview_builder.add_edge("search_arxiv", "answer_question")
+interview_builder.add_conditional_edges("answer_question", route_messages, ["ask_question", "save_interview"])
+interview_builder.add_edge("save_interview", "write_section")
+interview_builder.add_edge("write_section", END)
+
+interview_graph = interview_builder.compile(checkpointer=MemorySaver()).with_config(run_name="Conduct Interviews")</pre>
+
+    <div class="callout">
+      <span class="k">단일 분석가로 미리 실행해 보기</span>
+      <p>전체 그래프에 연결하기 전에, 노트북은 <code>analysts[0]</code> 하나만 골라 인터뷰 서브그래프를 단독으로 실행한다. <code>max_num_turns=5</code>를 명시적으로 지정하고, 결과 <code>sections[0]</code>를 <code>Markdown</code>으로 출력해 완성된 섹션을 미리 확인한다.</p>
+    </div>
+    <pre class="code">messages = [HumanMessage(f"So you said you were writing an article on {topic}?")]
+config = RunnableConfig(recursion_limit=100, configurable={"thread_id": random_uuid()})
+
+invoke_graph(interview_graph, {"analyst": analysts[0], "messages": messages, "max_num_turns": 5}, config)
+Markdown(interview_graph.get_state(config).values["sections"][0])</pre>
+  </div>
+</section>
+
+<!-- ========== 4. PARALLEL ========== -->
+<section class="section" id="parallel">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 인터뷰 병렬화</span>
+    <h2>Send() 로 모든 분석가의 인터뷰를 동시에 시작 (map)</h2>
+    <p class="lead">분석가가 3명이면 인터뷰도 3건이 필요하다. 이를 순차 실행하는 대신, LangGraph의 <a href="https://langchain-ai.github.io/langgraph/concepts/low_level/#send" target="_blank" rel="noopener"><code>Send()</code></a>로 <b>동적으로 N개의 병렬 브랜치</b>를 만든다 — map-reduce의 map 단계다.</p>
+
+    <h3>ResearchGraphState — 전체 그래프의 상태</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">필드</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">topic</td><td class="mono">str</td><td>연구 주제</td></tr>
+          <tr><td class="name">max_analysts</td><td class="mono">int</td><td>생성할 분석가 최대 수</td></tr>
+          <tr><td class="name">human_analyst_feedback</td><td class="mono">str</td><td>사람의 피드백</td></tr>
+          <tr><td class="name">analysts</td><td class="mono">List[Analyst]</td><td>질문하는 분석가 목록</td></tr>
+          <tr><td class="name">sections</td><td class="mono">Annotated[list, operator.add]</td><td><code>Send()</code>로 병렬 실행된 각 인터뷰의 섹션 결과가 <b>누적</b></td></tr>
+          <tr><td class="name">introduction / content / conclusion</td><td class="mono">str</td><td>최종 보고서의 서론 / 본문 / 결론</td></tr>
+          <tr><td class="name">final_report</td><td class="mono">str</td><td>모두 합쳐진 최종 보고서</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:26px">initiate_all_interviews — map 단계 함수</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">확인</div><div class="val">human_analyst_<br>feedback 존재?</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">있음</div><div class="val">"create_analysts"<br>로 되돌아가 재생성</div></div>
+    </div>
+    <div class="flow" style="margin:8px 0 6px">
+      <div class="node"><div class="lbl">확인</div><div class="val">human_analyst_<br>feedback 없음</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">Send() × N</div><div class="val">분석가마다<br>conduct_interview 병렬 시작</div></div>
+    </div>
+
+    <pre class="code">def initiate_all_interviews(state: ResearchGraphState):
+    human_analyst_feedback = state.get("human_analyst_feedback")
+    if human_analyst_feedback:
+        return "create_analysts"
+    else:
+        topic = state["topic"]
+        return [
+            Send(
+                "conduct_interview",
+                {"analyst": analyst, "messages": [HumanMessage(content=f"So you said you were writing an article on {topic}?")]},
+            )
+            for analyst in state["analysts"]
+        ]</pre>
+
+    <div class="callout amber">
+      <span class="k">주의 — max_num_turns 가 빠져 있다</span>
+      <p><code>Send()</code>가 넘기는 페이로드에는 <code>max_num_turns</code> 키가 없다. 따라서 병렬 인터뷰는 <code>route_messages</code>의 기본값(<code>state.get("max_num_turns", 2)</code>)인 <b>2턴</b>에서 종료된다 — 앞서 단독 실행한 데모(5턴)보다 더 짧게 끝난다는 점이 실제 코드에서 확인되는 차이다.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="big">N</div>
+        <div class="lab">병렬 브랜치 수</div>
+        <div class="sub"><code>max_analysts</code> 값만큼 동적으로 생성</div>
+      </div>
+      <div class="stat">
+        <div class="big">2턴</div>
+        <div class="lab">병렬 인터뷰 기본 종료 턴</div>
+        <div class="sub">Send() 페이로드에 max_num_turns 없음</div>
+      </div>
+      <div class="stat">
+        <div class="big">operator.add</div>
+        <div class="lab">sections 병합 방식</div>
+        <div class="sub">병렬 결과가 리스트로 누적(reduce)</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 5. REPORT ========== -->
+<section class="section" id="report">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 최종 보고서 작성</span>
+    <h2>흩어진 메모를 하나의 보고서로 (reduce)</h2>
+    <p class="lead">모든 인터뷰가 끝나 <code>sections</code>에 메모가 쌓이면, <b>본문 · 서론 · 결론</b>을 각각 독립적으로 작성하는 세 개의 병렬 노드가 실행된다.</p>
+
+    <h3>write_report — 본문 통합</h3>
+    <p><code>report_writer_instructions</code>는 모든 분석가 메모를 검토해 아래 섹션들로 재구성하도록 지시한다 (섹션마다 약 250단어, 최종 제목은 <code>## Insights</code> 고정, 서브헤딩 없이 <code>### Section Name</code>만 사용).</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">섹션 후보</th><th>내용</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Background</td><td>이론적 배경, 핵심 개념, 사전 정보</td></tr>
+          <tr><td class="name">Related Work</td><td>선행 연구와의 비교</td></tr>
+          <tr><td class="name">Problem Definition</td><td>연구 문제의 정의</td></tr>
+          <tr><td class="name">Methodology</td><td>방법론, 알고리즘, 실험 설계</td></tr>
+          <tr><td class="name">Implementation Details</td><td>구현 세부사항, 프레임워크, 파라미터</td></tr>
+          <tr><td class="name">Experiments / Results</td><td>실험 프로토콜과 결과</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">def write_report(state: ResearchGraphState):
+    sections = state["sections"]
+    formatted_str_sections = "\n\n".join([f"{section}" for section in sections])
+    system_message = report_writer_instructions.format(topic=state["topic"], context=formatted_str_sections)
+    report = llm.invoke([SystemMessage(content=system_message)] + [HumanMessage(content="Write a report based upon these memos.")])
+    return {"content": report.content}</pre>
+
+    <h3 style="margin-top:26px">write_introduction / write_conclusion — 서론과 결론</h3>
+    <p>같은 <code>intro_conclusion_instructions</code> 템플릿을 공유하지만, 마지막 사용자 메시지("Write the report introduction" / "...conclusion")로 어떤 파트를 쓸지 구분한다. 약 200단어, 서론에만 <code>#</code> 제목 헤더를 포함한다.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">함수</th><th>헤더</th><th>분량</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">write_introduction</td><td class="mono"># 제목<br>## Introduction</td><td>약 200단어, 전체 섹션을 미리보기(preview)</td></tr>
+          <tr><td class="name">write_conclusion</td><td class="mono">## Conclusion</td><td>약 200단어, 전체 섹션을 요약(recap)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:26px">finalize_report — 세 결과를 하나로 조립</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">content 정리</div><div class="val">"## Insights" 제거<br>"## Sources" 분리</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">문자열 결합</div><div class="val">introduction + "---"<br>+ "## Main Idea" + content<br>+ "---" + conclusion</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Output</div><div class="val">final_report<br>(+ Sources 있으면 append)</div></div>
+    </div>
+    <pre class="code">def finalize_report(state: ResearchGraphState):
+    content = state["content"]
+    if content.startswith("## Insights"):
+        content = content.strip("## Insights")
+    if "## Sources" in content:
+        content, sources = content.split("\n## Sources\n")
+    else:
+        sources = None
+
+    final_report = (
+        state["introduction"] + "\n\n---\n\n## Main Idea\n\n" + content + "\n\n---\n\n" + state["conclusion"]
+    )
+    if sources is not None:
+        final_report += "\n\n## Sources\n" + sources
+    return {"final_report": final_report}</pre>
+  </div>
+</section>
+
+<!-- ========== 6. FULL GRAPH ========== -->
+<section class="section" id="graph">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 전체 그래프 조립</span>
+    <h2>분석가 생성부터 최종 보고서까지 — 하나의 그래프로</h2>
+    <p class="lead">지금까지 만든 모든 노드와 인터뷰 서브그래프를 하나의 <code>ResearchGraphState</code> 그래프에 연결한다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">엣지 종류</th><th>연결</th><th>결정 방식</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">시작 엣지</td><td class="mono">START → create_analysts → human_feedback</td><td>고정</td></tr>
+          <tr><td class="name">조건부 엣지 (map)</td><td class="mono">human_feedback → {create_analysts | conduct_interview × N}</td><td><code>initiate_all_interviews</code> — 피드백 있으면 재생성, 없으면 <code>Send()</code></td></tr>
+          <tr><td class="name">팬아웃 엣지</td><td class="mono">conduct_interview → {write_report, write_introduction, write_conclusion}</td><td>인터뷰 완료 후 세 작성 작업이 병렬 실행</td></tr>
+          <tr><td class="name">조인 엣지 (reduce)</td><td class="mono">[write_conclusion, write_report, write_introduction] → finalize_report</td><td>세 노드가 <b>모두</b> 끝나야 실행 (barrier)</td></tr>
+          <tr><td class="name">종료 엣지</td><td class="mono">finalize_report → END</td><td>고정</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="orbit">
+      <svg viewBox="0 0 900 800" role="img" aria-label="create_analysts와 human_feedback을 거친 뒤 Send()로 여러 conduct_interview 브랜치가 병렬 실행되고, sections에 결과가 누적된 뒤 write_report, write_introduction, write_conclusion이 병렬 실행되어 finalize_report에서 합쳐지는 전체 그래프 다이어그램">
+        <defs>
+          <marker id="arrowGrey3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+          <marker id="arrowTeal3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+          </marker>
+          <marker id="arrowIndigo3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--indigo)"/>
+          </marker>
+          <marker id="arrowRed3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--red-mark)"/>
+          </marker>
+        </defs>
+
+        <text x="450" y="14" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">START</text>
+        <line x1="450" y1="18" x2="450" y2="50" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey3)"/>
+
+        <rect x="350" y="50" width="200" height="65" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="78" text-anchor="middle" font-size="14.5" font-weight="800" fill="var(--teal-ink)">create_analysts</text>
+        <text x="450" y="97" text-anchor="middle" font-size="11" fill="var(--ink-2)">LLM → Perspectives 생성</text>
+
+        <line x1="450" y1="115" x2="450" y2="150" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey3)"/>
+
+        <rect x="350" y="150" width="200" height="65" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="178" text-anchor="middle" font-size="14.5" font-weight="750" fill="var(--ink)">human_feedback</text>
+        <text x="450" y="197" text-anchor="middle" font-size="11" fill="var(--ink-3)">🛑 interrupt_before</text>
+
+        <path d="M350,182 C 130,182 130,82 350,82" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowIndigo3)"/>
+        <text x="140" y="135" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="var(--indigo)">피드백 있음</text>
+
+        <text x="450" y="250" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--ink-3)">Send() 로 분석가별 병렬 실행 (map)</text>
+        <line x1="410" y1="215" x2="165" y2="280" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal3)"/>
+        <line x1="450" y1="215" x2="450" y2="280" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal3)"/>
+        <line x1="490" y1="215" x2="735" y2="280" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowTeal3)"/>
+
+        <rect x="50" y="280" width="220" height="70" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="160" y="309" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--ink)">conduct_interview</text>
+        <text x="160" y="327" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">Analyst #1 서브그래프</text>
+
+        <rect x="340" y="280" width="220" height="70" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="309" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--ink)">conduct_interview</text>
+        <text x="450" y="327" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">Analyst #2 서브그래프</text>
+
+        <rect x="630" y="280" width="220" height="70" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="740" y="309" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--ink)">conduct_interview</text>
+        <text x="740" y="327" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">Analyst #N 서브그래프</text>
+
+        <line x1="160" y1="350" x2="160" y2="400" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+        <line x1="450" y1="350" x2="450" y2="400" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+        <line x1="740" y1="350" x2="740" y2="400" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+
+        <rect x="150" y="400" width="600" height="38" rx="9" fill="var(--indigo-tint)" stroke="var(--indigo)" stroke-width="1.3"/>
+        <text x="450" y="424" text-anchor="middle" font-size="12" font-family="ui-monospace,monospace" fill="var(--indigo)">sections: Annotated[list, operator.add]</text>
+
+        <line x1="160" y1="438" x2="160" y2="478" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+        <line x1="450" y1="438" x2="450" y2="478" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+        <line x1="740" y1="438" x2="740" y2="478" stroke="var(--teal)" stroke-width="2" marker-end="url(#arrowTeal3)"/>
+
+        <rect x="50" y="480" width="220" height="66" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="160" y="507" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--teal-ink)">write_report</text>
+        <text x="160" y="525" text-anchor="middle" font-size="10.5" fill="var(--ink-2)">본문 종합 → content</text>
+
+        <rect x="340" y="480" width="220" height="66" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="507" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--teal-ink)">write_introduction</text>
+        <text x="450" y="525" text-anchor="middle" font-size="10.5" fill="var(--ink-2)">서론 작성 → introduction</text>
+
+        <rect x="630" y="480" width="220" height="66" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="740" y="507" text-anchor="middle" font-size="13.5" font-weight="750" fill="var(--teal-ink)">write_conclusion</text>
+        <text x="740" y="525" text-anchor="middle" font-size="10.5" fill="var(--ink-2)">결론 작성 → conclusion</text>
+
+        <line x1="160" y1="546" x2="410" y2="600" stroke="var(--indigo)" stroke-width="2.2" marker-end="url(#arrowIndigo3)"/>
+        <line x1="450" y1="546" x2="450" y2="600" stroke="var(--indigo)" stroke-width="2.2" marker-end="url(#arrowIndigo3)"/>
+        <line x1="740" y1="546" x2="490" y2="600" stroke="var(--indigo)" stroke-width="2.2" marker-end="url(#arrowIndigo3)"/>
+        <text x="450" y="580" text-anchor="middle" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">모두 완료 후 (join edge)</text>
+
+        <rect x="350" y="600" width="200" height="65" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="450" y="628" text-anchor="middle" font-size="14.5" font-weight="800" fill="var(--ink)">finalize_report</text>
+        <text x="450" y="647" text-anchor="middle" font-size="11" fill="var(--ink-3)">introduction+content+conclusion 결합</text>
+
+        <line x1="450" y1="665" x2="450" y2="700" stroke="var(--red-mark)" stroke-width="2.5" marker-end="url(#arrowRed3)"/>
+
+        <rect x="370" y="700" width="160" height="52" rx="12" fill="var(--red-tint)" stroke="var(--red-bd)" stroke-width="1.5"/>
+        <text x="450" y="732" text-anchor="middle" font-size="14" font-weight="800" fill="var(--red-mark)">END</text>
+      </svg>
+    </div>
+    <p class="caption">teal 실선 = map 단계(Send) 및 팬아웃 · indigo 점선 = 조건부/조인 엣지 · 빨간선 = 종료. finalize_report는 세 작성 노드가 모두 끝나야 실행되는 barrier다.</p>
+
+    <pre class="code">builder = StateGraph(ResearchGraphState)
+builder.add_node("create_analysts", create_analysts)
+builder.add_node("human_feedback", human_feedback)
+builder.add_node("conduct_interview", interview_builder.compile())
+builder.add_node("write_report", write_report)
+builder.add_node("write_introduction", write_introduction)
+builder.add_node("write_conclusion", write_conclusion)
+builder.add_node("finalize_report", finalize_report)
+
+builder.add_edge(START, "create_analysts")
+builder.add_edge("create_analysts", "human_feedback")
+builder.add_conditional_edges("human_feedback", initiate_all_interviews, ["create_analysts", "conduct_interview"])
+
+builder.add_edge("conduct_interview", "write_report")
+builder.add_edge("conduct_interview", "write_introduction")
+builder.add_edge("conduct_interview", "write_conclusion")
+builder.add_edge(["write_conclusion", "write_report", "write_introduction"], "finalize_report")
+builder.add_edge("finalize_report", END)
+
+memory = MemorySaver()
+graph = builder.compile(interrupt_before=["human_feedback"], checkpointer=memory)</pre>
+    <p class="small">※ <code>add_edge([...], "finalize_report")</code>처럼 소스를 리스트로 주면, 나열된 노드가 <b>모두</b> 끝난 뒤에야 대상 노드가 실행되는 조인(barrier) 엣지가 된다.</p>
+  </div>
+</section>
+
+<!-- ========== 7. EXECUTION TRACE ========== -->
+<section class="section" id="trace">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 전체 실행 흐름</span>
+    <h2>Modular RAG 보고서를 만드는 전 과정</h2>
+    <p class="lead">입력: <b>"Explain how Modular RAG differs from traditional Naive RAG and the benefits of using it at the production level."</b>, <code>max_analysts=3</code>. 노트북은 실행 결과 로그를 저장하지 않으므로, 아래는 코드가 실제로 만드는 제어 흐름이다.</p>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-step">1</div>
+        <div class="tl-body">
+          <span class="who">invoke_graph(graph, inputs, config)</span>
+          <h4>분석가 생성 후 첫 중단</h4>
+          <p><code>recursion_limit=30</code>으로 실행하면 <code>create_analysts</code>가 3명의 분석가를 만들고, <code>human_feedback</code> 직전에 멈춘다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">2</div>
+        <div class="tl-body">
+          <span class="who">update_state(..., as_node="human_feedback")</span>
+          <h4>Hinton 교수 추가 요청</h4>
+          <p><code>human_analyst_feedback="Add Prof. Jeffrey Hinton as a head of AI analyst"</code>를 주입하고 <code>invoke_graph(graph, None, config)</code>로 재개 → <code>create_analysts</code>가 이 피드백을 반영해 재생성한 뒤 다시 <code>human_feedback</code>에서 멈춘다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">3</div>
+        <div class="tl-body">
+          <span class="who">human_analyst_feedback = None → 재개</span>
+          <h4>분석가 팀 확정, 인터뷰 단계로 진입</h4>
+          <p><code>initiate_all_interviews</code>가 피드백이 없음을 확인하고, 분석가마다 <code>Send("conduct_interview", ...)</code>를 발행해 인터뷰들을 동시에 시작한다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">4</div>
+        <div class="tl-body">
+          <span class="who">conduct_interview × N (병렬)</span>
+          <h4>각 분석가가 독립적으로 인터뷰</h4>
+          <p>분석가마다 <code>ask_question → {search_web, search_arxiv} → answer_question</code>이 반복되고(기본 2턴), 조건 충족 시 <code>save_interview → write_section</code>으로 섹션이 만들어져 <code>sections</code>에 누적된다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">5</div>
+        <div class="tl-body">
+          <span class="who">write_report / write_introduction / write_conclusion (병렬)</span>
+          <h4>본문·서론·결론 동시 작성</h4>
+          <p>모든 인터뷰가 끝나면 누적된 <code>sections</code>를 입력으로 세 노드가 동시에 실행되어 각각 <code>content</code>, <code>introduction</code>, <code>conclusion</code>을 만든다.</p>
+        </div>
+      </div>
+      <div class="tl-item finish">
+        <div class="tl-step">6</div>
+        <div class="tl-body">
+          <span class="who">finalize_report → END</span>
+          <h4>최종 보고서 완성</h4>
+          <p>세 결과를 문자열로 결합해 <code>final_report</code>를 만들고 그래프가 종료된다. <code>display(Markdown(final_state.values.get("final_report")))</code>로 확인한다.</p>
+        </div>
+      </div>
+    </div>
+
+    <pre class="code">max_analysts = 3
+topic = "Explain how Modular RAG differs from traditional Naive RAG and the benefits of using it at the production level."
+config = RunnableConfig(recursion_limit=30, configurable={"thread_id": random_uuid()})
+
+invoke_graph(graph, {"topic": topic, "max_analysts": max_analysts}, config)      <span class="c"># 1차 중단</span>
+
+graph.update_state(config, {"human_analyst_feedback": "Add Prof. Jeffrey Hinton as a head of AI analyst"}, as_node="human_feedback")
+invoke_graph(graph, None, config)                                                <span class="c"># 재생성 후 2차 중단</span>
+
+graph.update_state(config, {"human_analyst_feedback": None}, as_node="human_feedback")
+invoke_graph(graph, None, config)                                                <span class="c"># 병렬 인터뷰 → 보고서 작성 → 종료</span>
+
+final_state = graph.get_state(config)
+report = final_state.values.get("final_report")
+display(Markdown(report))</pre>
+  </div>
+</section>
+
+<!-- ========== 8. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">08</span> · 비교 분석</span>
+    <h2>단일 프롬프트 LLM vs STORM 멀티 에이전트</h2>
+    <p class="lead">같은 주제를 두고 "LLM에게 한 번에 써 달라고 요청"하는 방식과, 이 튜토리얼의 분석가 팀 + 병렬 인터뷰 방식을 나란히 비교하면 차이가 분명해진다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">항목</th>
+            <th>단일 프롬프트 LLM</th>
+            <th style="color:var(--teal-ink)">STORM 멀티 에이전트 (이 튜토리얼)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">관점 다양성</td>
+            <td><span class="cross">✕</span> 하나의 시각으로만 서술</td>
+            <td><span class="tick">✓</span> 서로 다른 소속·역할의 분석가 여럿</td>
+          </tr>
+          <tr>
+            <td class="name">근거 수집</td>
+            <td><span class="cross">✕</span> 모델 내부 지식에 의존, 환각 위험</td>
+            <td><span class="tick">✓</span> 웹(Tavily) + 논문(Arxiv) 실시간 검색으로 근거 확보</td>
+          </tr>
+          <tr>
+            <td class="name">사람의 개입</td>
+            <td><span class="cross">✕</span> 한 번에 생성, 중간 수정 불가</td>
+            <td><span class="tick">✓</span> <code>interrupt_before</code>로 분석가 팀 구성을 검토·수정</td>
+          </tr>
+          <tr>
+            <td class="name">출력 구조</td>
+            <td><span class="tilde">~</span> 형식·일관성이 매번 달라짐</td>
+            <td><span class="tick">✓</span> 서론 - 본문(섹션별 인용) - 결론 구조 고정</td>
+          </tr>
+          <tr>
+            <td class="name">처리 비용·지연</td>
+            <td><span class="tick">✓</span> LLM 호출 1회, 빠르고 저렴</td>
+            <td><span class="cross">✕</span> 분석가 수 × 인터뷰 턴 수만큼 호출 필요 (단, 병렬 실행으로 지연은 완화)</td>
+          </tr>
+          <tr>
+            <td class="name">확장성</td>
+            <td><span class="tilde">~</span> 주제가 복잡할수록 한계</td>
+            <td><span class="tick">✓</span> <code>max_analysts</code>만 늘리면 조사 폭이 확장</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 9. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">09</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 유의점</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 쓰면 좋다</h3>
+        <ul class="plain">
+          <li>주제를 <b>여러 하위 관점</b>으로 자연스럽게 쪼갤 수 있는 리서치</li>
+          <li>인용·출처가 <b>중요한 보고서</b>를 작성해야 할 때</li>
+          <li>분석가 팀 구성을 <b>사람이 검토</b>하고 조정하고 싶을 때</li>
+          <li>웹과 논문 등 <b>복수 소스</b>를 병렬로 조사해야 할 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li>분석가 수 × 인터뷰 턴 수만큼 <b>LLM 호출 비용</b>이 발생한다</li>
+          <li>Tavily·Arxiv 등 <b>외부 API 의존</b> — <code>search_arxiv</code>처럼 실패 처리가 필요하다</li>
+          <li><code>interrupt_before</code> 구조상 <b>완전 자동화는 아니며</b>, 사람 개입 지점이 필요하다</li>
+          <li>병렬 인터뷰의 기본 종료 턴(2턴)이 짧아, 필요하면 <code>Send()</code> 페이로드에 <code>max_num_turns</code>를 명시적으로 추가하는 것이 좋다</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout teal" style="margin-top:22px">
+      <span class="k">한 줄 정리</span>
+      <p>STORM 패턴은 "누가 무엇을 물어볼 것인가"를 사람과 LLM이 함께 설계하고, "정보 수집"은 <b>병렬(map)</b>로 흩어졌다가 "글쓰기"에서 다시 <b>하나(reduce)</b>로 모이는 구조로 연구 자동화를 구현한다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>LangGraph Research Assistant — STORM 멀티 에이전트</b></p>
+    <p class="mono" style="margin:0 0 4px">17-LangGraph/03-Use-Cases/10-LangGraph-Research-Assistant.ipynb</p>
+    <p class="mono" style="margin:0"><a href="https://arxiv.org/abs/2402.14207" target="_blank" rel="noopener">STORM 논문 (arXiv:2402.14207)</a> · <a href="https://langchain-ai.github.io/langgraph/concepts/low_level/#send" target="_blank" rel="noopener">LangGraph Send() 개념 문서</a> · 노트북 내용을 시각화하여 정리한 학습 자료</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['background','setup','analysts','interview','parallel','report','graph','trace','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+</script>
+</body>
+</html>

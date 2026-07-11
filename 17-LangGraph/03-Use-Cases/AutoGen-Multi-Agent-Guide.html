@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoGen — Multi-Agent Conversation 논문 정리</title>
+<style>
+/* ============================================================
+   Conversable Agent Console — AutoGen paper explainer
+   Palette validated with dataviz validate_palette.js
+   (CRAG-Corrective-RAG-Guide.html 과 동일한 디자인 시스템 재사용)
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F3F5F7;
+  --panel:#FFFFFF;
+  --panel-2:#FAFBFC;
+  --border:#E2E6EB;
+  --border-strong:#CDD4DC;
+  --ink:#111721;
+  --ink-2:#48515E;
+  --ink-3:#78828F;
+
+  --teal:#0D9488;        /* primary accent + AutoGen 시리즈 */
+  --teal-ink:#0B7A70;
+  --teal-tint:#E4F5F2;
+  --indigo:#6366F1;      /* secondary accent + 비교대상(baseline) 시리즈 */
+  --indigo-tint:#ECEDFE;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 28px rgba(16,24,40,.06);
+  --shadow-lg:0 2px 6px rgba(16,24,40,.06), 0 18px 48px rgba(16,24,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --grid:#E7EBEF;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0D1014;
+  --panel:#161A21;
+  --panel-2:#1A1F28;
+  --border:#28303B;
+  --border-strong:#3A4552;
+  --ink:#E8ECF2;
+  --ink-2:#A7B0BD;
+  --ink-3:#6E7885;
+
+  --teal:#2DD4BF;
+  --teal-ink:#5AE0D0;
+  --teal-tint:#0E2A2A;
+  --indigo:#8B93F8;
+  --indigo-tint:#1B1E3A;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --grid:#242C36;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1014; --panel:#161A21; --panel-2:#1A1F28; --border:#28303B; --border-strong:#3A4552;
+    --ink:#E8ECF2; --ink-2:#A7B0BD; --ink-3:#6E7885;
+    --teal:#2DD4BF; --teal-ink:#5AE0D0; --teal-tint:#0E2A2A; --indigo:#8B93F8; --indigo-tint:#1B1E3A;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --grid:#242C36;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;
+  overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--teal-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:50%;
+  background:conic-gradient(from 210deg,var(--teal) 0 50%,var(--indigo) 0);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--teal-ink);background:var(--teal-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+@media (max-width:820px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:center}
+@media (max-width:860px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(46px,9vw,86px);line-height:.94;letter-spacing:-.04em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--teal);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+/* hero signal card */
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.sig-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.sig-row:first-of-type{border-top:none}
+.sig-ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-family:var(--mono);font-size:15px}
+.sig-ic.g{background:var(--green-tint);color:var(--green);border:1px solid var(--green-bd)}
+.sig-ic.a{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd)}
+.sig-ic.r{background:var(--red-tint);color:var(--red);border:1px solid var(--red-bd)}
+.sig-row .t{font-weight:700;font-size:14.5px;color:var(--ink)}
+.sig-row .d{font-size:12.5px;color:var(--ink-3);line-height:1.4}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:760px}
+
+/* cards / panels */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--teal);background:var(--teal-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* triage / legend cards (재사용: human-in-the-loop 3모드) */
+.triage{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:26px 24px 22px;box-shadow:var(--shadow-lg);margin:22px 0}
+.triage-legend{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:760px){.triage-legend{grid-template-columns:1fr}}
+.tl{border-radius:12px;padding:15px 16px;border:1px solid var(--border)}
+.tl.g{background:var(--green-tint);border-color:var(--green-bd)}
+.tl.a{background:var(--amber-tint);border-color:var(--amber-bd)}
+.tl.r{background:var(--red-tint);border-color:var(--red-bd)}
+.tl .tag{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.08em;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;margin-bottom:9px}
+.tl.g .tag{color:var(--green);background:color-mix(in srgb,var(--green-mark) 16%,transparent)}
+.tl.a .tag{color:var(--amber);background:color-mix(in srgb,var(--amber-mark) 16%,transparent)}
+.tl.r .tag{color:var(--red);background:color-mix(in srgb,var(--red-mark) 16%,transparent)}
+.tl h4{margin:0 0 6px;font-size:15px;color:var(--ink);font-weight:750}
+.tl p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.55}
+
+/* ---------- chat transcript (concrete conversation examples) ---------- */
+.turns{display:flex;flex-direction:column;gap:9px;margin:18px 0}
+.turn{display:flex;gap:14px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--panel);box-shadow:var(--shadow)}
+.turn .who{flex:none;width:118px;font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--teal-ink);line-height:1.4}
+.turn .who span{display:block;font-weight:400;color:var(--ink-3);font-size:10.5px;margin-top:2px}
+.turn .msg{font-size:13.5px;color:var(--ink-2);line-height:1.65}
+.turn .msg code{display:inline-block;margin-top:4px;white-space:pre-wrap;font-size:12.5px}
+.turn.exec{background:var(--panel-2)}
+.turn.exec .who{color:var(--ink-3)}
+.turn.err{background:var(--red-tint);border-color:var(--red-bd)}
+.turn.err .who{color:var(--red)}
+.turn.ok{background:var(--green-tint);border-color:var(--green-bd)}
+.turn.ok .who{color:var(--green)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-row td{background:var(--teal-tint)!important}
+.hl-row td.name{color:var(--teal-ink)}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:32px;font-weight:750;letter-spacing:-.02em;color:var(--teal-ink);line-height:1.1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* app cards (6가지 응용사례) */
+.appcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);height:100%}
+.appcard .tag{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--teal-ink);
+  background:var(--teal-tint);display:inline-block;padding:3px 9px;border-radius:999px;margin-bottom:10px}
+.appcard h4{margin:0 0 6px;font-size:16px;color:var(--ink);font-weight:750}
+.appcard .agents{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-bottom:8px}
+.appcard p{margin:0;font-size:13.5px;line-height:1.6}
+
+/* takeaway list */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--teal)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>AutoGen</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#problem">문제</a>
+      <a href="#framework">프레임워크</a>
+      <a href="#agents">에이전트</a>
+      <a href="#code">코드실행</a>
+      <a href="#apps">응용사례</a>
+      <a href="#compare">비교분석</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">arXiv:2308.08155 · 2023</span>
+      <h1>AutoGen</h1>
+      <div class="sub">Enabling Next-Gen LLM Applications via Multi-Agent Conversation<br>대화하는 에이전트들로 복잡한 작업을 푸는 프레임워크</div>
+      <p class="thesis">“하나의 거대한 에이전트 대신, 대화하는 여러 개의 작은 에이전트를.” 역할이 다른 <b>대화형 에이전트(Conversable Agent)</b>를 자유롭게 조합하고, 그 <b>대화 흐름 자체</b>를 자연어와 코드로 프로그래밍해 다양한 작업을 해결한다.</p>
+      <div class="chips">
+        <span class="chip">저자 <b>Qingyun Wu 외 13인</b></span>
+        <span class="chip">Microsoft Research 외</span>
+        <span class="chip">오픈소스 프레임워크</span>
+        <span class="chip">응용사례 <b>6개</b> 검증</span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="Conversable Agent를 이루는 3가지 재료">
+      <div class="cap">Conversable Agent — 세 가지 재료</div>
+      <div class="sig-row">
+        <div class="sig-ic g" aria-hidden="true">L</div>
+        <div><div class="t">LLM 기반</div><div class="d">역할극, 상태 추론, 피드백 기반 진전, 코드 생성</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic a" aria-hidden="true">H</div>
+        <div><div class="t">Human 기반</div><div class="d">참여 빈도·조건을 설정 가능한 human input</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic r" aria-hidden="true">T</div>
+        <div><div class="t">Tool 기반</div><div class="d">코드 실행, 함수 호출로 외부 세계와 연결</div></div>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">단일 에이전트(AutoGPT)는 <b>혼자 다 해야</b> 하고, LangChain 같은 프레임워크는 <b>단일-에이전트 파이프라인</b> 중심이라 서로 다른 역할이 유연하게 협업하는 구조를 만들기 어렵다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0">역할이 다른 <b>대화형 에이전트</b>(LLM+Human+Tool 조합)를 정의하고, 에이전트 간 <b>“대화”자체</b>를 프로그래밍 대상으로 삼아 정적·동적 워크플로우를 모두 표현한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">수학 문제풀이·RAG·의사결정·코딩·그룹챗·체스 등 <b>6개 응용</b>에서 기존 대비 뚜렷한 개선을 확인했다(예: MATH 69.48% vs GPT-4 단독 55.18%).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. PROBLEM ========== -->
+<section class="section" id="problem">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 동기</span>
+    <h2>왜 “대화”를 프로그래밍해야 하는가</h2>
+    <p class="lead">2023년 당시 LLM 애플리케이션은 크게 두 갈래였다. 하나는 <b>혼자서 계획·실행·평가를 다 떠맡는 단일 에이전트</b>, 다른 하나는 <b>미리 정해진 순서를 따르는 정적 파이프라인</b>이다. 둘 다 “역할이 다른 여러 주체가 상황에 따라 유연하게 협업”하는 패턴을 표현하기 어렵다.</p>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">단일 에이전트 — AutoGPT류</h3>
+        <p style="margin:0">계획, 도구 사용, 자기 평가를 <b>한 에이전트가 전부</b> 수행한다. 복잡한 작업일수록 방향을 잃기 쉽고, 역할을 나눠 서로 검증하게 만들 방법이 없다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">정적 파이프라인 — LangChain·CAMEL·MetaGPT류</h3>
+        <p style="margin:0">LangChain의 에이전트는 기본적으로 <b>단일-에이전트 패러다임</b>이고, CAMEL·MetaGPT의 멀티에이전트는 <b>역할과 대화 순서가 고정</b>돼 있어 상황에 맞춰 협업 방식을 바꾸기 어렵다.</p>
+      </div>
+    </div>
+
+    <div class="callout teal">
+      <span class="k">AutoGen의 관점</span>
+      <p>정답은 “더 똑똑한 한 에이전트”가 아니라, <b>서로 다른 역할의 에이전트들이 나누는 대화</b> 그 자체를 프로그래밍 가능한 매체로 다루는 것이다. 누가 언제 무엇을 말할지를 <b>자연어 프롬프트 + 코드</b>로 유연하게 정의할 수 있어야 한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 2. FRAMEWORK ========== -->
+<section class="section" id="framework">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 프레임워크</span>
+    <h2>두 가지 핵심 설계 원칙</h2>
+    <p class="lead">AutoGen은 <b>Conversable Agent</b>를 “특정 역할을 가지고, 다른 대화형 에이전트와 메시지를 주고받으며 내부 컨텍스트를 유지하는 개체”로 정의한다. 이 위에 두 가지 설계 원칙이 올라간다. 비유하자면, 서로 다른 직무를 맡은 팀원들이 <b>하나의 채팅방</b>에서 협업하는 모습과 비슷하다 — 다만 팀원 중 일부는 사람이고 일부는 LLM이며, 코드를 실행할 수 있는 팀원도 있다.</p>
+
+    <h3>① Customizable Conversable Agents</h3>
+    <p>하나의 에이전트는 아래 세 가지 능력을 <b>자유롭게 조합</b>해서 만들어진다. 역할마다 어떤 능력을 얼마나 섞을지가 곧 에이전트 설계다.</p>
+    <div class="grid3" style="margin:14px 0 6px">
+      <div class="card">
+        <h4 style="margin:0 0 6px;color:var(--ink)">LLM-based</h4>
+        <p style="margin:0;font-size:13.5px">역할극(role-play), 상태 추론, 피드백을 받아 진전시키기, 코드 작성</p>
+      </div>
+      <div class="card">
+        <h4 style="margin:0 0 6px;color:var(--ink)">Human-based</h4>
+        <p style="margin:0;font-size:13.5px">사람의 개입 빈도와 조건을 설정 가능한(configurable) human input</p>
+      </div>
+      <div class="card">
+        <h4 style="margin:0 0 6px;color:var(--ink)">Tool-based</h4>
+        <p style="margin:0;font-size:13.5px">코드 실행, 함수 호출로 외부 환경과 상호작용</p>
+      </div>
+    </div>
+    <div class="callout">
+      <span class="k">논문 정의</span>
+      <p>“An entity with a specific role that can pass messages to send and receive information to and from other conversable agents.”</p>
+    </div>
+
+    <h3 style="margin-top:32px">② Conversation Programming</h3>
+    <p>대화 흐름을 두 요소로 나눠 프로그래밍한다. <b>Computation</b>(무엇을 말할지)과 <b>Control Flow</b>(다음에 누가 말할지)다. 이 둘을 자연어와 파이썬 코드로 섞어 짤 수 있다는 게 핵심이다.</p>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node accent"><div class="lbl">Computation</div><div class="val">대화 중심 액션<br>→ 메시지 전달</div></div>
+      <div class="arrow">+</div>
+      <div class="node accent"><div class="lbl">Control Flow</div><div class="val">다음 발화자 결정<br>→ 대화의 함수</div></div>
+      <div class="arrow">=</div>
+      <div class="node"><div class="lbl">결과</div><div class="val">정적 순서 &amp;<br>동적 분기 모두 표현</div></div>
+    </div>
+    <div class="callout">
+      <span class="k">논문 인용</span>
+      <p>Computation — “conversation-centric actions that result in message passing.”</p>
+      <p style="margin-top:8px">Control Flow — “agent decisions on which agents to send messages to are functions of inter-agent conversation.”</p>
+    </div>
+
+    <h3 style="margin-top:26px">실제로는 이렇게 대화한다 — 예시</h3>
+    <p>말로만 들으면 추상적이니, 짧은 대화 하나로 두 원칙을 동시에 보자. 사람이 계산을 요청하면 <b>Assistant</b>가 코드를 쓰고(Computation), 그 코드를 실행할 차례가 되면 자동으로 <b>UserProxy</b>에게 발화권이 넘어간다(Control Flow).</p>
+    <div class="turns">
+      <div class="turn">
+        <div class="who">Human</div>
+        <div class="msg">"10에서 3을 뺀 값을 제곱해서 알려줘."</div>
+      </div>
+      <div class="turn">
+        <div class="who">Assistant<span>(LLM)</span></div>
+        <div class="msg">코드로 계산할게요.<br><code>result = (10 - 3) ** 2
+print(result)</code></div>
+      </div>
+      <div class="turn exec">
+        <div class="who">UserProxy<span>(코드 실행)</span></div>
+        <div class="msg">실행 결과 → <code>49</code>를 다시 대화에 회신</div>
+      </div>
+      <div class="turn ok">
+        <div class="who">Assistant<span>(LLM)</span></div>
+        <div class="msg">"계산 결과, 정답은 <b>49</b>입니다."</div>
+      </div>
+    </div>
+    <p class="caption">※ 이해를 돕기 위해 구성한 예시(논문에 실린 코드 원문은 아님). 4턴 모두 "메시지 전달"(Computation)이고, 각 턴이 끝날 때마다 "다음은 누구 차례인가"(Control Flow)가 자동으로 결정된다.</p>
+
+    <p class="small">이 두 원칙 덕분에 같은 프레임워크로 “정해진 순서의 파이프라인”도, “상황에 따라 발화자가 바뀌는 그룹챗”도 만들 수 있다.</p>
+  </div>
+</section>
+
+<!-- ========== 3. AGENTS & HUMAN-IN-THE-LOOP ========== -->
+<section class="section" id="agents">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 에이전트 구성</span>
+    <h2>내장 에이전트 종류와 Human-in-the-loop</h2>
+    <p class="lead">AutoGen은 바로 쓸 수 있는 몇 가지 내장 에이전트를 제공한다. 이들을 조합하면 별도 학습 없이도 다양한 워크플로우를 만들 수 있다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">에이전트</th><th>역할</th><th>특징</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">ConversableAgent</td><td>최상위 추상화</td><td>LLM·Human·Tool을 자유롭게 혼합 가능한 기반 클래스</td></tr>
+          <tr><td class="name">AssistantAgent</td><td>AI 어시스턴트</td><td>LLM 기반으로 문제 해결·코드 작성을 담당</td></tr>
+          <tr><td class="name">UserProxyAgent</td><td>사람 대리인</td><td>human input을 요청하거나, 대신 <b>코드를 실행</b>하고 결과를 회신</td></tr>
+          <tr><td class="name">GroupChatManager</td><td>그룹 대화 조율자</td><td>다음 발화자를 동적으로 선택해 그룹챗을 진행</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:30px">human_input_mode — 세 가지 자율성 수준</h3>
+    <p>UserProxyAgent가 사람에게 얼마나 자주 확인을 받을지는 하나의 설정값으로 조절한다.</p>
+    <div class="triage">
+      <div class="triage-legend">
+        <div class="tl g">
+          <span class="tag">ALWAYS</span>
+          <h4>매 라운드 확인</h4>
+          <p>매 턴마다 human input을 요청한다. 가장 안전하지만 자동화 정도는 낮다.</p>
+        </div>
+        <div class="tl a">
+          <span class="tag">TERMINATE</span>
+          <h4>종료 조건에서만 확인</h4>
+          <p>대화가 끝나려 할 때만 사람에게 확인을 받는다. 자동화와 안전의 중간 지점.</p>
+        </div>
+        <div class="tl r">
+          <span class="tag">NEVER</span>
+          <h4>완전 자동화</h4>
+          <p>사람 개입 없이 끝까지 자동으로 진행한다. 자유롭지만 위험도 가장 크다.</p>
+        </div>
+      </div>
+    </div>
+    <div class="callout amber">
+      <span class="k">논문의 가이드라인 (Appendix B.1)</span>
+      <p>“start with <code>human_input_mode='ALWAYS'</code>, even if target is autonomous.” — 최종 목표가 완전 자동화라도, 우선 사람이 매번 확인하는 모드로 시작해 동작을 검증한 뒤 점진적으로 자동화 수준을 높이라고 권고한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. CODE EXECUTOR ========== -->
+<section class="section" id="code">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 코드 실행</span>
+    <h2>Code Executor — 코드를 매개로 한 대화</h2>
+    <p class="lead">AutoGen에서 “도구 사용”의 가장 대표적인 형태는 <b>코드 실행</b>이다. AssistantAgent가 코드를 작성하면, UserProxyAgent가 이를 <b>실행하고 결과를 대화에 그대로 되돌려준다</b>. 실패하면 그 결과가 다음 프롬프트가 되어 자연스럽게 수정 루프가 만들어진다.</p>
+
+    <div class="flow" style="margin:18px 0 6px">
+      <div class="node accent"><div class="lbl">1 · AssistantAgent</div><div class="val">LLM이 Python<br>코드 생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">2 · UserProxyAgent</div><div class="val">code_execution_config<br>기준으로 실행</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">3 · Feedback</div><div class="val">실행 결과·에러를<br>대화에 회신</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">4 · Retry</div><div class="val">실패 시 AssistantAgent가<br>수정 코드 재생성</div></div>
+    </div>
+    <p class="caption">4번 결과는 다시 1번으로 돌아가는 대화 루프 — 별도 컨트롤러 없이 “대화”만으로 재시도가 구현된다.</p>
+
+    <h3 style="margin-top:30px">에러가 나면 실제로 이런 대화가 오간다 — 예시</h3>
+    <p>핵심은 <b>실행 에러 메시지 자체가 다음 프롬프트가 된다</b>는 점이다. 별도의 디버깅 로직 없이, "대화"의 다음 턴에 에러가 그대로 들어가는 것만으로 수정이 일어난다.</p>
+    <div class="turns">
+      <div class="turn">
+        <div class="who">Human</div>
+        <div class="msg">"리스트 [1, 2, 0, 4]의 평균을 구해줘."</div>
+      </div>
+      <div class="turn">
+        <div class="who">Assistant<span>(LLM)</span></div>
+        <div class="msg"><code>nums = [1, 2, 0, 4]
+avg = sum(nums) / len(numbers)</code></div>
+      </div>
+      <div class="turn err">
+        <div class="who">UserProxy<span>(코드 실행)</span></div>
+        <div class="msg"><code>NameError: name 'numbers' is not defined</code> → 에러 메시지를 그대로 대화에 회신</div>
+      </div>
+      <div class="turn">
+        <div class="who">Assistant<span>(LLM)</span></div>
+        <div class="msg">에러를 보고 오타를 수정.<br><code>nums = [1, 2, 0, 4]
+avg = sum(nums) / len(nums)</code></div>
+      </div>
+      <div class="turn ok">
+        <div class="who">UserProxy<span>(코드 실행)</span></div>
+        <div class="msg">실행 결과 → <code>1.75</code></div>
+      </div>
+    </div>
+    <p class="caption">※ 이해를 돕기 위해 구성한 예시. 실제 논문의 A2 사례(FLAML+Spark)도 같은 원리 — 존재하지 않는 <code>spark=True</code> 파라미터를 생성했다가, 검색된 문서를 참고해 <code>use_spark=True</code>로 스스로 고친다.</p>
+
+    <h3 style="margin-top:30px">Enhanced LLM inference layer</h3>
+    <ul class="clean">
+      <li><b>result caching</b> — 동일 요청 재호출 비용 절감</li>
+      <li><b>error handling</b> — API 오류·rate limit에 대한 재시도 처리</li>
+      <li><b>message templating</b> — 프롬프트 조립을 표준화</li>
+    </ul>
+    <p class="small">※ 코드 실행은 제한된(sandboxed) 환경에서 이뤄지며, 안전성이 중요한 워크플로우에서는 이후 소개할 <b>Safeguard 에이전트</b>처럼 별도 검증 단계를 추가하는 패턴이 쓰인다.</p>
+  </div>
+</section>
+
+<!-- ========== 5. APPLICATIONS ========== -->
+<section class="section" id="apps">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 응용 사례</span>
+    <h2>6가지 응용으로 검증하다</h2>
+    <p class="lead">논문은 서로 다른 도전 과제를 지닌 6개 응용에서 AutoGen을 실증한다. 같은 프레임워크로 “정적 2-에이전트 협업”부터 “동적 그룹챗”까지 모두 구현할 수 있음을 보여주는 것이 목적이다.</p>
+
+    <div class="grid3" style="margin-top:18px">
+      <div class="appcard">
+        <span class="tag">A1</span>
+        <h4>수학 문제 풀이</h4>
+        <div class="agents">AssistantAgent + UserProxyAgent</div>
+        <p>MATH 데이터셋에서 내장 에이전트만으로 GPT-4 단독, LangChain ReAct, Multi-Agent Debate 등을 모두 능가.</p>
+      </div>
+      <div class="appcard">
+        <span class="tag">A2</span>
+        <h4>검색증강 생성·QA</h4>
+        <div class="agents">Retrieval-augmented UserProxy + Assistant</div>
+        <p>컨텍스트가 부족하면 스스로 <b>“UPDATE CONTEXT”</b>를 요청하는 Interactive Retrieval 도입.</p>
+      </div>
+      <div class="appcard">
+        <span class="tag">A3</span>
+        <h4>텍스트 세계 의사결정</h4>
+        <div class="agents">Assistant + Executor (+ Grounding)</div>
+        <p>ALFWorld 134개 미지 과제. 예: "사과를 확인하라"는 지시에 Executor가 물건을 집지도 않고 바로 살펴보려다 실패 → Grounding 에이전트가 <i>“You must find and take the object before examining it”</i>라고 알려줘 성공. 이 3-Agent 설계가 평균 약 15% 성능 향상을 냄.</p>
+      </div>
+      <div class="appcard">
+        <span class="tag">A4</span>
+        <h4>멀티에이전트 코딩 (OptiGuide)</h4>
+        <div class="agents">Commander + Writer + Safeguard</div>
+        <p>최적화 솔루션 해석 시스템. 코드량을 430줄→100줄로 줄이면서 안전성 검증까지 분리.</p>
+      </div>
+      <div class="appcard">
+        <span class="tag">A5</span>
+        <h4>동적 그룹챗</h4>
+        <div class="agents">GroupChatManager + N개 에이전트</div>
+        <p>여러 전문가가 모인 <b>단체 대화방</b>을 떠올리면 쉽다 — 정해진 발언 순서 없이, 사회자(GroupChatManager)가 매 순간 대화 맥락을 보고 "지금 누가 답할 차례인지"를 정한다. Role-play 프롬프트가 순수 과제형 프롬프트보다 성공률이 높았다.</p>
+      </div>
+      <div class="appcard">
+        <span class="tag">A6</span>
+        <h4>대화형 체스</h4>
+        <div class="agents">Player agents + Board agent</div>
+        <p>예: Player가 규칙에 어긋나는 수를 제안 → Board agent가 즉시 반려 → Player가 합법적인 수로 다시 제안(grounding). Board agent를 빼면 반칙으로 게임이 중단되는 사례가 다수 관찰됐다.</p>
+      </div>
+    </div>
+
+    <h3 style="margin-top:34px">숫자로 보는 하이라이트</h3>
+    <div class="stats">
+      <div class="stat">
+        <div class="big">69.48% <span style="font-size:16px;color:var(--ink-3)">vs 55.18%</span></div>
+        <div class="lab">MATH Level-5 (100문제)</div>
+        <div class="sub">AutoGen(내장 에이전트) vs GPT-4 단독</div>
+      </div>
+      <div class="stat">
+        <div class="big">≈ +15%</div>
+        <div class="lab">ALFWorld 평균 성능 향상</div>
+        <div class="sub">2-Agent → Grounding 추가한 3-Agent 설계</div>
+      </div>
+      <div class="stat">
+        <div class="big">430 → 100줄</div>
+        <div class="lab">OptiGuide Writer 코드량</div>
+        <div class="sub">사용자 개입 3~5배, 소요 시간 3배 감소</div>
+      </div>
+    </div>
+    <p class="caption">출처: 논문 각 응용 사례(A1·A3·A4) 섹션. 정확한 baseline·설정은 원문 표를 참고.</p>
+
+    <div class="grid2" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">A2 — Interactive Retrieval 예시</h3>
+        <p style="margin:0">Natural Questions 6,775개 질의 중 약 <b>19.4%</b>가 “UPDATE CONTEXT”를 트리거해 추가 검색을 유도했다. 예: “who carried the usa flag in opening ceremony” — 1차 컨텍스트로는 답을 못 찾다가 컨텍스트를 갱신한 뒤 정답에 도달.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">A4 — Safeguard의 역할</h3>
+        <p style="margin:0">Writer가 작성한 코드의 안전성을 Safeguard가 별도로 판정한다. 안전 여부 식별 F1 점수가 GPT-4 기준 <b>+8%p</b>, GPT-3.5 기준 <b>+35%p</b> 개선 — “코드 작성”과 “안전성 검증”을 다른 에이전트로 분리한 효과다.</p>
+      </div>
+    </div>
+    <div class="callout teal" style="margin-top:8px">
+      <span class="k">논문 인용 (A1)</span>
+      <p>“built-in agents from AutoGen already yield better performance out of the box” — 별도 튜닝 없이 기본 제공 에이전트 조합만으로도 경쟁 방법들을 앞선다는 점을 강조한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 6. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 비교 분석</span>
+    <h2>기존 접근과 무엇이 다른가</h2>
+    <p class="lead">AutoGen을 “단일 에이전트/도구형” 계열과 “멀티에이전트” 계열 두 그룹과 각각 비교하면 설계 의도가 분명해진다.</p>
+
+    <h3>단일 에이전트·도구형과 비교</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">시스템</th><th>다중 에이전트</th><th>코드 실행</th><th>Human 참여</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">AutoGPT</td><td><span class="cross">✕</span></td><td><span class="cross">✕</span></td><td><span class="cross">✕</span></td></tr>
+          <tr><td class="name">ChatGPT + Plugin</td><td><span class="cross">✕</span></td><td><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+          <tr><td class="name">LangChain ReAct</td><td><span class="cross">✕</span></td><td><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+          <tr class="hl-row"><td class="name">AutoGen</td><td><span class="tick">✓</span></td><td><span class="tick">✓</span></td><td><span class="tick">✓</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:30px">멀티에이전트 계열과 비교</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">시스템</th><th>범용 인프라</th><th>대화 유연성</th><th>코드 실행</th><th>Human 참여</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">CAMEL</td><td><span class="tick">✓</span></td><td>Static</td><td><span class="cross">✕</span></td><td><span class="cross">✕</span></td></tr>
+          <tr><td class="name">BabyAGI</td><td><span class="cross">✕</span></td><td>Static</td><td><span class="cross">✕</span></td><td><span class="cross">✕</span></td></tr>
+          <tr><td class="name">MetaGPT</td><td><span class="cross">✕</span></td><td>Static</td><td><span class="tick">✓</span></td><td><span class="cross">✕</span></td></tr>
+          <tr class="hl-row"><td class="name">AutoGen</td><td><span class="tick">✓</span></td><td><b>Flexible</b></td><td><span class="tick">✓</span></td><td><b>Flexible</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid2" style="margin-top:22px">
+      <div class="card">
+        <h3 style="margin-top:0">CAMEL: 정해진 역할극</h3>
+        <p style="margin:0">두 에이전트가 미리 정한 역할(예: AI User / AI Assistant)로 대화하지만, 도구 사용을 지원하지 않는다. 논문 인용: “CAMEL does not natively support tool usage.”</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">LangChain: 단일 에이전트 패러다임</h3>
+        <p style="margin:0">대부분의 에이전트가 하나의 실행 루프를 도는 구조라 협업 모드를 염두에 두지 않는다. 논문 인용: “All agents follow single-agent paradigm, not inherently designed for collaborative modes.”</p>
+      </div>
+    </div>
+
+    <div class="callout teal">
+      <span class="k">한 줄 정리</span>
+      <p>다른 프레임워크들은 <b>역할이나 순서를 미리 못박아 두는</b> 반면, AutoGen은 “대화”라는 <b>프로그래밍 가능한 매체</b> 위에서 정적 워크플로우와 즉흥적인 협업을 모두 표현한다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 7. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 한계</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 쓰면 좋다</h3>
+        <ul class="plain">
+          <li>서로 다른 <b>역할을 분리</b>해 검증·협업시키고 싶을 때 (작성자/검토자 등)</li>
+          <li>코드 실행 결과를 <b>대화 루프로 자연스럽게 되먹임</b>하고 싶을 때</li>
+          <li><b>정적 파이프라인과 동적 그룹챗</b>을 같은 프레임워크로 다루고 싶을 때</li>
+          <li>완전 자동화 전, <b>human-in-the-loop 단계별 검증</b>이 필요할 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li>에이전트가 늘수록 “<b>이해 불가능한 잡담</b>”이 될 위험 — “risk resulting in incomprehensible, unintelligible chatter among agents”</li>
+          <li>높은 자율성은 그 자체로 위험 — “high level of autonomy can pose potential risks”</li>
+          <li>코드 실행·함수 호출로 <b>외부 환경을 바꾸는 것 자체가 리스크</b> — “allowing LLM agents to make changes in external environments could be risky”</li>
+          <li>에이전트 수·역할·상호작용 방식에 대한 <b>“정답 설계”가 없음</b> — “no one-fits-all answer”</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:22px">
+      <span class="k">LangGraph로 본다면</span>
+      <p>AutoGen의 <code>ConversableAgent</code> + <code>GroupChatManager</code> 패턴은 LangGraph의 그래프 구조와 자연스럽게 대응된다 — <b>에이전트 = 노드</b>, <b>“다음 발화자 선택”(control flow) = 조건부 엣지(conditional edge)</b>, 대화 히스토리 = 그래프의 상태(state)로 볼 수 있다. AutoGen이 “대화”라는 런타임 개념으로 표현한 것을, LangGraph는 명시적인 <b>상태 머신</b>으로 컴파일해 더 예측 가능하게 만든 구조라고 이해하면 두 프레임워크의 관계가 선명해진다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>AutoGen — Enabling Next-Gen LLM Applications via Multi-Agent Conversation</b></p>
+    <p class="mono" style="margin:0 0 4px">Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Beibin Li, Erkang Zhu, Li Jiang, Xiaoyun Zhang, Shaokun Zhang, Jiale Liu, Ahmed Awadallah, Ryen W. White, Doug Burger, Chi Wang · arXiv:2308.08155 (2023)</p>
+    <p class="mono" style="margin:0"><a href="https://arxiv.org/abs/2308.08155" target="_blank" rel="noopener">arxiv.org/abs/2308.08155</a> · 논문 내용을 한국어로 정리한 학습 자료</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['problem','framework','agents','code','apps','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LangGraph Multi-Agent Supervisor — 멀티 에이전트 감독자 패턴 정리</title>
+<style>
+/* ============================================================
+   Supervisor Console — LangGraph Multi-Agent Supervisor explainer
+   Palette shared with CRAG-Corrective-RAG-Guide.html (validated)
+   ============================================================ */
+
+/* ---- tokens: light (default) ---- */
+:root{
+  --bg:#F3F5F7;
+  --panel:#FFFFFF;
+  --panel-2:#FAFBFC;
+  --border:#E2E6EB;
+  --border-strong:#CDD4DC;
+  --ink:#111721;
+  --ink-2:#48515E;
+  --ink-3:#78828F;
+
+  --teal:#0D9488;
+  --teal-ink:#0B7A70;
+  --teal-tint:#E4F5F2;
+  --indigo:#6366F1;
+  --indigo-tint:#ECEDFE;
+
+  --green:#15935A; --green-mark:#1AA968; --green-tint:#E7F6EE; --green-bd:#B5E2CA;
+  --amber:#9A6A12; --amber-mark:#D3960F; --amber-tint:#FBF1DA; --amber-bd:#EAD09A;
+  --red:#C33A34;   --red-mark:#DB574A;   --red-tint:#FBE8E5;   --red-bd:#F0C0B9;
+
+  --shadow:0 1px 2px rgba(16,24,40,.04), 0 8px 28px rgba(16,24,40,.06);
+  --shadow-lg:0 2px 6px rgba(16,24,40,.06), 0 18px 48px rgba(16,24,40,.10);
+  --radius:14px;
+  --maxw:1080px;
+
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+
+  --grid:#E7EBEF;
+}
+
+/* ---- tokens: dark ---- */
+:root[data-theme="dark"]{
+  --bg:#0D1014;
+  --panel:#161A21;
+  --panel-2:#1A1F28;
+  --border:#28303B;
+  --border-strong:#3A4552;
+  --ink:#E8ECF2;
+  --ink-2:#A7B0BD;
+  --ink-3:#6E7885;
+
+  --teal:#2DD4BF;
+  --teal-ink:#5AE0D0;
+  --teal-tint:#0E2A2A;
+  --indigo:#8B93F8;
+  --indigo-tint:#1B1E3A;
+
+  --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+  --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+  --red:#F28B80;   --red-mark:#F0766A;   --red-tint:#2A1512;   --red-bd:#5A2A24;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+
+  --grid:#242C36;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1014; --panel:#161A21; --panel-2:#1A1F28; --border:#28303B; --border-strong:#3A4552;
+    --ink:#E8ECF2; --ink-2:#A7B0BD; --ink-3:#6E7885;
+    --teal:#2DD4BF; --teal-ink:#5AE0D0; --teal-tint:#0E2A2A; --indigo:#8B93F8; --indigo-tint:#1B1E3A;
+    --green:#4BD68C; --green-mark:#34C77B; --green-tint:#0F241A; --green-bd:#1F4A34;
+    --amber:#E6B85A; --amber-mark:#E0A93B; --amber-tint:#2A2110; --amber-bd:#4E3D18;
+    --red:#F28B80; --red-mark:#F0766A; --red-tint:#2A1512; --red-bd:#5A2A24;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.45);
+    --grid:#242C36;
+  }
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.72;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:16.5px;
+  overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+/* ---------- typography ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--teal-ink);font-weight:600;display:inline-flex;align-items:center;gap:8px;
+}
+h2{font-size:clamp(24px,3.4vw,34px);line-height:1.18;letter-spacing:-.02em;font-weight:800;margin:14px 0 10px}
+h3{font-size:19px;letter-spacing:-.01em;font-weight:750;margin:26px 0 8px}
+p{margin:0 0 14px;color:var(--ink-2)}
+p strong,li strong{color:var(--ink);font-weight:700}
+a{color:var(--teal-ink);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+code{font-family:var(--mono);font-size:.86em;background:var(--panel-2);border:1px solid var(--border);
+  padding:.1em .42em;border-radius:6px;color:var(--ink)}
+.lead{font-size:18px;color:var(--ink-2)}
+.mono{font-family:var(--mono)}
+
+/* ---------- top nav ---------- */
+.topbar{
+  position:sticky;top:0;z-index:50;background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.topbar .wrap{display:flex;align-items:center;gap:20px;height:58px}
+.brand{font-family:var(--mono);font-weight:700;letter-spacing:.02em;font-size:15px;color:var(--ink);
+  display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:9px;height:9px;border-radius:50%;
+  background:conic-gradient(from 210deg,var(--teal) 0 50%,var(--indigo) 0);}
+.navlinks{display:flex;gap:2px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlinks a{font-size:13.5px;color:var(--ink-3);padding:6px 10px;border-radius:8px;border-bottom:none;white-space:nowrap}
+.navlinks a:hover{color:var(--ink);background:var(--panel-2)}
+.navlinks a.active{color:var(--teal-ink);background:var(--teal-tint)}
+.theme-btn{flex:none;border:1px solid var(--border);background:var(--panel);color:var(--ink-2);
+  width:38px;height:34px;border-radius:9px;cursor:pointer;display:grid;place-items:center;font-size:15px}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+@media (max-width:820px){.navlinks{display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:64px 0 34px;border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.hero-grid{display:grid;grid-template-columns:1.35fr .95fr;gap:44px;align-items:center}
+@media (max-width:860px){.hero-grid{grid-template-columns:1fr;gap:30px}}
+.hero h1{font-size:clamp(38px,7.4vw,66px);line-height:1.02;letter-spacing:-.03em;margin:16px 0 6px;font-weight:850}
+.hero .sub{font-size:clamp(17px,2.4vw,21px);color:var(--ink-2);font-weight:600;letter-spacing:-.01em;margin-bottom:20px}
+.thesis{font-size:18px;color:var(--ink);border-left:3px solid var(--teal);padding:2px 0 2px 16px;margin:20px 0 24px;font-weight:600;line-height:1.6}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-family:var(--mono);font-size:12px;color:var(--ink-2);background:var(--panel);border:1px solid var(--border);
+  padding:5px 10px;border-radius:999px;display:inline-flex;gap:6px;align-items:center}
+.chip b{color:var(--ink);font-weight:700}
+
+.signal-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:20px;box-shadow:var(--shadow-lg)}
+.signal-card .cap{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.sig-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border)}
+.sig-row:first-of-type{border-top:none}
+.sig-ic{flex:none;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-family:var(--mono);font-size:14px}
+.sig-ic.s{background:var(--teal-tint);color:var(--teal-ink);border:1px solid var(--teal)}
+.sig-ic.r{background:var(--indigo-tint);color:var(--indigo);border:1px solid var(--indigo)}
+.sig-ic.c{background:var(--amber-tint);color:var(--amber);border:1px solid var(--amber-bd)}
+.sig-row .t{font-weight:700;font-size:14.5px;color:var(--ink)}
+.sig-row .d{font-size:12.5px;color:var(--ink-3);line-height:1.4}
+
+/* ---------- sections ---------- */
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section .num{font-family:var(--mono);color:var(--ink-3);font-weight:600}
+.section > .wrap > .lead{max-width:760px}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:1fr}}
+
+.callout{border-radius:12px;padding:16px 18px;border:1px solid var(--border);background:var(--panel-2);margin:18px 0}
+.callout.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.callout.amber{background:var(--amber-tint);border-color:var(--amber-bd)}
+.callout .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600;display:block;margin-bottom:5px}
+.callout p:last-child{margin-bottom:0}
+
+/* ---------- flow diagrams (HTML/CSS) ---------- */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.node{flex:1 1 0;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:11px;
+  padding:13px 14px;text-align:center;box-shadow:var(--shadow)}
+.node .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.node .val{font-weight:700;font-size:14.5px;color:var(--ink);line-height:1.35}
+.node.accent{border-color:var(--teal);background:var(--teal-tint)}
+.node.warn{border-color:var(--red-bd);background:var(--red-tint)}
+.arrow{flex:0 0 34px;display:grid;place-items:center;color:var(--ink-3);font-size:20px;font-weight:700}
+@media (max-width:640px){
+  .flow{flex-direction:column}
+  .arrow{flex:0 0 26px;transform:rotate(90deg)}
+  .node{width:100%}
+}
+
+/* orbit diagram container (reuses triage look) */
+.orbit{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 22px 18px;box-shadow:var(--shadow-lg);margin:22px 0}
+.orbit svg{width:100%;height:auto;display:block}
+@media (max-width:640px){
+  .orbit{overflow-x:auto;padding:16px}
+  .orbit svg{min-width:720px}
+}
+
+/* image cards */
+.imgcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);text-align:center}
+.imgcard img{max-width:100%;height:auto;border-radius:8px;display:block;margin:0 auto}
+.imgcard .cap{margin-top:10px;font-size:12.5px;color:var(--ink-3);font-family:var(--mono)}
+
+/* ---------- tables ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14.5px}
+thead th{background:var(--panel-2);color:var(--ink-3);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);position:sticky;top:0}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--ink-2);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--panel-2)}
+td.name,th.name{color:var(--ink);font-weight:700}
+td.num{font-family:var(--mono);text-align:right;color:var(--ink)}
+.hl-row td{background:var(--teal-tint)!important}
+.hl-row td.name{color:var(--teal-ink)}
+.tick{color:var(--green);font-weight:800}
+.cross{color:var(--red);font-weight:800}
+.tilde{color:var(--amber);font-weight:800}
+.cellnote{display:block;font-size:12px;color:var(--ink-3);font-weight:400;margin-top:2px}
+.caption{font-size:12.5px;color:var(--ink-3);margin:8px 2px 0;font-family:var(--mono)}
+
+/* ---------- code block ---------- */
+pre.code{background:var(--panel-2);border:1px solid var(--border);border-radius:12px;padding:16px 18px;
+  overflow-x:auto;font-family:var(--mono);font-size:12.8px;line-height:1.65;color:var(--ink-2);margin:14px 0}
+pre.code b{color:var(--teal-ink);font-weight:700}
+pre.code .c{color:var(--ink-3);font-style:italic}
+
+/* ---------- timeline (execution trace) ---------- */
+.timeline{display:flex;flex-direction:column;gap:0;margin:18px 0}
+.tl-item{display:flex;gap:16px;padding:16px 4px;border-top:1px solid var(--border)}
+.tl-item:first-child{border-top:none}
+.tl-step{flex:none;width:34px;height:34px;border-radius:50%;background:var(--teal-tint);color:var(--teal-ink);
+  display:grid;place-items:center;font-family:var(--mono);font-weight:800;font-size:14px;border:1px solid var(--teal)}
+.tl-item.finish .tl-step{background:var(--red-tint);color:var(--red-mark);border-color:var(--red-bd)}
+.tl-body .who{font-family:var(--mono);font-size:11px;color:var(--teal-ink);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:inline-block;font-weight:700}
+.tl-item.finish .tl-body .who{color:var(--red-mark)}
+.tl-body h4{margin:0 0 4px;font-size:15px;color:var(--ink);font-weight:750}
+.tl-body p{margin:0;font-size:13.5px;color:var(--ink-2)}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+.stat .big{font-family:var(--mono);font-size:30px;font-weight:750;letter-spacing:-.02em;color:var(--teal-ink);line-height:1}
+.stat .lab{font-size:13px;color:var(--ink-2);margin-top:8px;font-weight:600}
+.stat .sub{font-size:12px;color:var(--ink-3);margin-top:3px}
+
+/* takeaway list */
+ul.clean{list-style:none;padding:0;margin:10px 0}
+ul.clean li{position:relative;padding:8px 0 8px 26px;color:var(--ink-2);border-top:1px solid var(--border)}
+ul.clean li:first-child{border-top:none}
+ul.clean li::before{content:"";position:absolute;left:2px;top:16px;width:8px;height:8px;border-radius:2px;background:var(--teal)}
+ul.plain{margin:8px 0 8px 2px;padding-left:18px}
+ul.plain li{margin:5px 0;color:var(--ink-2)}
+
+/* footer */
+.footer{padding:40px 0 70px;color:var(--ink-3);font-size:13.5px}
+.footer a{color:var(--ink-2)}
+.footer .mono{font-size:12px;color:var(--ink-3)}
+
+.small{font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>MAS</div>
+    <nav class="navlinks" aria-label="섹션">
+      <a href="#background">배경</a>
+      <a href="#setup">설정</a>
+      <a href="#overview">개요</a>
+      <a href="#state">상태</a>
+      <a href="#agents">에이전트</a>
+      <a href="#helper">유틸리티</a>
+      <a href="#supervisor">감독자</a>
+      <a href="#graph">그래프</a>
+      <a href="#trace">실행흐름</a>
+      <a href="#compare">비교</a>
+      <a href="#takeaways">정리</a>
+    </nav>
+    <button class="theme-btn" id="themeBtn" title="라이트/다크 전환" aria-label="테마 전환">◐</button>
+  </div>
+</div>
+
+<!-- ========== HERO ========== -->
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">LangGraph · 17-LangGraph/03-Use-Cases · 07</span>
+      <h1>Multi-Agent Supervisor</h1>
+      <div class="sub">멀티 에이전트 감독자 패턴 — 여러 에이전트를 LLM이 직접 지휘한다</div>
+      <p class="thesis">“누가 다음에 일할지, 규칙이 아니라 <b>LLM 감독자</b>가 매번 판단하게 하라.” 에이전트가 늘어날수록 if-else 분기는 무너지지만, Supervisor 패턴은 워커 등록과 멤버 목록 갱신만으로 확장된다.</p>
+      <div class="chips">
+        <span class="chip">파일 <b>07-LangGraph-Multi-Agent-Supervisor.ipynb</b></span>
+        <span class="chip"><code>create_react_agent</code></span>
+        <span class="chip">Structured Output <b>(Pydantic)</b></span>
+        <span class="chip">Tavily + Python REPL</span>
+      </div>
+    </div>
+
+    <aside class="signal-card" aria-label="세 가지 역할 요약">
+      <div class="cap">Team Roster — 팀 구성</div>
+      <div class="sig-row">
+        <div class="sig-ic s" aria-hidden="true">S</div>
+        <div><div class="t">Supervisor — 감독자</div><div class="d">대화 상태를 보고 다음 작업자를 선택</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic r" aria-hidden="true">R</div>
+        <div><div class="t">Researcher — 조사원</div><div class="d">Tavily로 웹 검색을 수행</div></div>
+      </div>
+      <div class="sig-row">
+        <div class="sig-ic c" aria-hidden="true">C</div>
+        <div><div class="t">Coder — 개발자</div><div class="d">Python REPL로 코드를 실행</div></div>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<main>
+
+<!-- ========== TL;DR ========== -->
+<section class="section" id="tldr" style="padding-top:44px">
+  <div class="wrap">
+    <span class="eyebrow">한 문단 요약</span>
+    <h2>세 줄 정리</h2>
+    <div class="grid3" style="margin-top:18px">
+      <div class="card">
+        <h3 style="margin-top:0">① 문제</h3>
+        <p style="margin:0">에이전트가 2~3개를 넘어가면, 이전 결과에 따라 다음 노드를 <b>하드코딩된 조건문</b>으로 분기하는 방식은 규칙이 기하급수적으로 늘어나 관리가 어려워진다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">② 해법</h3>
+        <p style="margin:0"><b>Supervisor</b>라는 별도의 LLM 노드가 대화 흐름 전체를 보고, <b>구조화된 출력(Literal)</b>으로 다음에 일할 작업자를 매번 새로 판단한다.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">③ 효과</h3>
+        <p style="margin:0">새 전문 에이전트를 추가해도 라우팅 조건문을 다시 짤 필요 없이 워커 노드를 등록하고 <code>members</code> 목록과 Supervisor 프롬프트만 갱신하면 된다 — <b>확장 가능한 패턴</b>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1. BACKGROUND ========== -->
+<section class="section" id="background">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01</span> · 배경</span>
+    <h2>왜 단순 분기 로직으로는 부족한가</h2>
+    <p class="lead">이전 튜토리얼(에이전트 협업, Agent Collaboration)에서는 <b>Researcher 에이전트의 출력</b>을 보고 조건부 엣지로 다음 노드를 결정했다. 에이전트가 하나 더 늘어날 때마다 분기 조건도 함께 늘어나는 구조다.</p>
+
+    <h3>규칙 기반 라우팅의 한계</h3>
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Agent A 실행</div><div class="val">출력 생성</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">if / else</div><div class="val">출력 내용으로<br>분기 조건 판단</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">Agent 추가 시</div><div class="val">분기 조건<br>재작성 필요</div></div>
+      <div class="arrow">→</div>
+      <div class="node warn"><div class="lbl">확장</div><div class="val">조건 폭발<br>유지보수 어려움</div></div>
+    </div>
+    <p class="caption">문제 지점: "누가 다음에 일할지"를 결정하는 로직이 코드에 하드코딩되어 있어, 팀 구성이 바뀔 때마다 그래프 로직을 뜯어고쳐야 한다.</p>
+
+    <div class="callout teal">
+      <span class="k">Supervisor 아이디어</span>
+      <p>다음 작업자를 결정하는 책임을 <b>별도의 LLM 노드(Supervisor)</b>에게 위임한다. Supervisor는 지금까지의 대화(<code>messages</code>)를 보고 "누가 다음에 일할지, 혹은 끝낼지"를 구조화된 출력으로 답한다. 새 에이전트가 늘어나도 새 워커 노드를 등록한 뒤 <b>Supervisor의 멤버 목록</b>을 갱신하면 라우팅 구조는 그대로 유지된다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1.5 SETUP ========== -->
+<section class="section" id="setup">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">01.5</span> · 실행 전 설정</span>
+    <h2>노트북이 먼저 준비하는 것들</h2>
+    <p class="lead">Supervisor 구조를 이해하는 데 핵심은 아니지만, 원본 노트북을 그대로 실행하려면 환경 변수, LangSmith 추적, 모델명 설정이 먼저 필요하다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">단계</th><th>원본 코드</th><th>역할</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">API 키 로드</td><td class="mono">load_dotenv()</td><td><code>.env</code>에 있는 OpenAI/Tavily 등 API 키를 환경 변수로 읽는다.</td></tr>
+          <tr><td class="name">LangSmith 추적</td><td class="mono">logging.langsmith("CH17-LangGraph-Use-Cases")</td><td>그래프 실행 과정을 LangSmith 프로젝트에 기록한다.</td></tr>
+          <tr><td class="name">모델명 선택</td><td class="mono">MODEL_NAME = get_model_name(LLMs.GPT4)</td><td>최종 그래프에서 Supervisor와 워커 에이전트가 공유할 ChatOpenAI 모델명을 정한다. 중간의 Researcher 단독 테스트 셀은 별도로 <code>gpt-4o</code>를 직접 지정한다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">from dotenv import load_dotenv
+from langchain_teddynote import logging
+from langchain_teddynote.models import get_model_name, LLMs
+
+load_dotenv()
+logging.langsmith("CH17-LangGraph-Use-Cases")
+MODEL_NAME = get_model_name(LLMs.GPT4)</pre>
+    <p class="small">※ 원본 노트북은 <code>research_node</code>를 먼저 단독으로 테스트할 때 <code>ChatOpenAI(model="gpt-4o")</code>를 쓰고, 이후 최종 그래프 구성 단계에서는 <code>llm = ChatOpenAI(model=MODEL_NAME, temperature=0)</code>를 Researcher·Coder·Supervisor가 함께 사용한다.</p>
+  </div>
+</section>
+
+<!-- ========== 2. OVERVIEW ========== -->
+<section class="section" id="overview">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">02</span> · 개요</span>
+    <h2>Supervisor 아키텍처 한눈에</h2>
+    <p class="lead">Supervisor는 팀의 <b>허브(hub)</b> 역할을 한다. 모든 작업자(Researcher, Coder)는 작업이 끝나면 결과를 Supervisor에게 보고하고, Supervisor는 그 결과를 보고 다음 작업자를 다시 지명하거나 작업을 종료(FINISH)한다.</p>
+
+    <div class="orbit">
+      <svg viewBox="0 0 900 460" role="img" aria-label="Supervisor를 중심으로 Researcher, Coder가 연결되고 START에서 시작해 FINISH로 끝나는 허브 구조 다이어그램">
+        <defs>
+          <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+          </marker>
+          <marker id="arrowIndigo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--indigo)"/>
+          </marker>
+          <marker id="arrowGrey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+          <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--red-mark)"/>
+          </marker>
+        </defs>
+
+        <!-- START -->
+        <text x="450" y="14" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">START</text>
+        <line x1="450" y1="18" x2="450" y2="58" stroke="var(--ink-3)" stroke-width="2.5" marker-end="url(#arrowGrey)"/>
+
+        <!-- Supervisor box -->
+        <rect x="350" y="60" width="200" height="72" rx="14" fill="var(--teal-tint)" stroke="var(--teal)" stroke-width="1.5"/>
+        <text x="450" y="92" text-anchor="middle" font-size="16" font-weight="800" fill="var(--teal-ink)">Supervisor</text>
+        <text x="450" y="112" text-anchor="middle" font-size="11.5" fill="var(--ink-2)">다음 작업자 선택 (LLM)</text>
+
+        <!-- Researcher box -->
+        <rect x="50" y="222" width="230" height="72" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="165" y="254" text-anchor="middle" font-size="15" font-weight="750" fill="var(--ink)">Researcher</text>
+        <text x="165" y="274" text-anchor="middle" font-size="11.5" fill="var(--ink-3)">Tavily 웹 검색</text>
+
+        <!-- Coder box -->
+        <rect x="620" y="222" width="230" height="72" rx="14" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="735" y="254" text-anchor="middle" font-size="15" font-weight="750" fill="var(--ink)">Coder</text>
+        <text x="735" y="274" text-anchor="middle" font-size="11.5" fill="var(--ink-3)">Python REPL 실행</text>
+
+        <!-- FINISH/END box -->
+        <rect x="350" y="372" width="200" height="66" rx="14" fill="var(--red-tint)" stroke="var(--red-bd)" stroke-width="1.5"/>
+        <text x="450" y="401" text-anchor="middle" font-size="14.5" font-weight="800" fill="var(--red-mark)">FINISH → END</text>
+        <text x="450" y="420" text-anchor="middle" font-size="11" fill="var(--ink-3)">그래프 종료</text>
+
+        <!-- Supervisor -> Researcher (assign) -->
+        <line x1="388" y1="130" x2="188" y2="224" stroke="var(--teal)" stroke-width="2.5" marker-end="url(#arrowTeal)"/>
+        <text x="230" y="168" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--teal-ink)">할당</text>
+        <!-- Researcher -> Supervisor (report) -->
+        <line x1="248" y1="224" x2="420" y2="134" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowIndigo)"/>
+        <text x="335" y="196" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)">보고</text>
+
+        <!-- Supervisor -> Coder (assign) -->
+        <line x1="512" y1="130" x2="712" y2="224" stroke="var(--teal)" stroke-width="2.5" marker-end="url(#arrowTeal)"/>
+        <text x="628" y="168" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--teal-ink)" text-anchor="end">할당</text>
+        <!-- Coder -> Supervisor (report) -->
+        <line x1="652" y1="224" x2="480" y2="134" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowIndigo)"/>
+        <text x="565" y="196" font-size="10.5" font-family="ui-monospace,monospace" fill="var(--indigo)" text-anchor="end">보고</text>
+
+        <!-- Supervisor -> FINISH -->
+        <line x1="450" y1="134" x2="450" y2="370" stroke="var(--red-mark)" stroke-width="2.5" marker-end="url(#arrowRed)"/>
+        <text x="466" y="255" font-size="11" font-family="ui-monospace,monospace" fill="var(--red-mark)">FINISH</text>
+      </svg>
+    </div>
+    <p class="caption">실선(teal) = Supervisor가 작업을 할당하는 조건부 엣지 · 점선(indigo) = 작업자가 결과를 보고하는 일반 엣지 · 빨간선 = 종료 엣지.</p>
+
+    <div class="imgcard" style="margin-top:22px">
+      <img src="./assets/langgraph-multi-agent-supervisor.png" alt="노트북에 삽입된 LangGraph Multi-Agent Supervisor 아키텍처 다이어그램">
+      <div class="cap">노트북 원본 다이어그램 — assets/langgraph-multi-agent-supervisor.png</div>
+    </div>
+
+    <h3 style="margin-top:30px">구성 요소 한눈에 보기</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">구성 요소</th><th>유형</th><th>역할</th><th>사용 도구 / 기술</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Supervisor</td><td>LLM 노드</td><td>다음 작업자를 선택하거나 FINISH 판단</td><td>ChatOpenAI + Structured Output</td></tr>
+          <tr><td class="name">Researcher</td><td>Worker 노드</td><td>웹 조사 수행</td><td><code>create_react_agent</code> + TavilySearch</td></tr>
+          <tr><td class="name">Coder</td><td>Worker 노드</td><td>코드 작성 및 실행</td><td><code>create_react_agent</code> + PythonREPLTool</td></tr>
+          <tr><td class="name">AgentState</td><td>공유 상태</td><td>메시지 누적 및 라우팅 대상 기록</td><td><code>TypedDict</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 3. STATE ========== -->
+<section class="section" id="state">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">03</span> · 상태 정의</span>
+    <h2>AgentState — 팀이 공유하는 하나의 상태</h2>
+    <p class="lead">멀티 에이전트 시스템에서는 모든 노드가 <b>동일한 상태 객체</b>를 읽고 쓴다. 이 튜토리얼의 상태는 단 두 개의 필드로 이루어진다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">필드</th><th>타입</th><th>설명</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">messages</td><td class="mono">Annotated[Sequence[BaseMessage], operator.add]</td><td>지금까지 오간 모든 메시지. <code>operator.add</code>로 새 메시지가 <b>누적</b>된다.</td></tr>
+          <tr><td class="name">next</td><td class="mono">str</td><td>Supervisor가 결정한 <b>다음에 실행할 노드 이름</b> (또는 <code>FINISH</code>).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">class AgentState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]  <span class="c"># 메시지 누적</span>
+    next: str  <span class="c"># 다음으로 라우팅할 에이전트</span></pre>
+
+    <div class="callout">
+      <span class="k">왜 operator.add 인가</span>
+      <p>각 노드는 상태 전체를 새로 만드는 대신 <b>변경분만 반환</b>한다. LangGraph는 반환된 <code>messages</code> 리스트를 기존 상태의 <code>messages</code>에 <code>operator.add</code>(리스트 덧셈)로 이어 붙인다. 그 결과 Researcher와 Coder의 발언이 대화 기록에 그대로 쌓이고, Supervisor는 매 턴 전체 히스토리를 보고 판단할 수 있다.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 4. AGENTS & TOOLS ========== -->
+<section class="section" id="agents">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04</span> · 에이전트와 도구</span>
+    <h2>Researcher와 Coder — 전문화된 두 작업자</h2>
+    <p class="lead">두 작업자 모두 LangGraph의 사전 구축 함수 <code>create_react_agent</code>로 생성한다. 차이는 <b>어떤 도구를 쥐여주는가</b> 뿐이다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">에이전트</th><th>도구</th><th>도구 역할</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Researcher</td><td class="mono">TavilySearch(max_results=5)</td><td>웹 검색 결과 최대 5건 반환</td><td>최신 정보·사실 조사에 사용</td></tr>
+          <tr><td class="name">Coder</td><td class="mono">PythonREPLTool()</td><td>로컬 Python 코드 실행</td><td><span class="tilde">⚠</span> 로컬에서 임의 코드를 실행하므로 안전하지 않을 수 있음</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout amber">
+      <span class="k">보안 주의</span>
+      <p><code>PythonREPLTool</code>은 LLM이 생성한 코드를 <b>그대로 로컬에서 실행</b>한다. 신뢰할 수 없는 입력이 섞일 수 있는 프로덕션 환경에서는 샌드박스 격리 없이 사용하지 않는다.</p>
+    </div>
+
+    <pre class="code"><span class="c"># 웹 조사를 수행하는 검색 도구</span>
+tavily_tool = TavilySearch(max_results=5)
+
+<span class="c"># 로컬에서 코드를 실행하는 Python REPL 도구</span>
+python_repl_tool = PythonREPLTool()
+
+research_agent = create_react_agent(llm, tools=[tavily_tool])
+coder_agent = create_react_agent(llm, tools=[python_repl_tool], state_modifier=code_system_prompt)</pre>
+    <p class="caption">Coder에는 한글 폰트 깨짐을 막기 위한 <code>code_system_prompt</code>(OS별 matplotlib 폰트 설정)가 <code>state_modifier</code>로 추가되어 있다.</p>
+  </div>
+</section>
+
+<!-- ========== 5. HELPER UTILITY ========== -->
+<section class="section" id="helper">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">04.5</span> · 헬퍼 유틸리티</span>
+    <h2>agent_node + functools.partial — 노드를 간결하게</h2>
+    <p class="lead">모든 워커 노드는 같은 패턴을 반복한다 — <b>agent를 호출하고, 마지막 메시지를 이름표를 붙여 상태에 반환</b>. 이 반복을 <code>agent_node</code> 함수 하나로 추출한다.</p>
+
+    <div class="flow" style="margin:16px 0 6px">
+      <div class="node"><div class="lbl">Input</div><div class="val">state</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">agent.invoke</div><div class="val">에이전트 실행</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">마지막 메시지</div><div class="val">content 추출</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Output</div><div class="val">HumanMessage(name=...)<br>로 감싸 반환</div></div>
+    </div>
+
+    <pre class="code">def agent_node(state, agent, name):
+    agent_response = agent.invoke(state)
+    return {
+        "messages": [
+            HumanMessage(content=agent_response["messages"][-1].content, name=name)
+        ]
+    }</pre>
+
+    <h3>functools.partial로 노드 만들기</h3>
+    <p>매번 <code>agent</code>와 <code>name</code>을 넘기는 대신, <code>functools.partial</code>로 값을 미리 고정한 전용 함수를 만든다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">방식</th><th>호출 코드</th><th>비고</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Before</td><td class="mono">agent_node(state, agent=research_agent, name="Researcher")</td><td>호출할 때마다 agent·name을 매번 지정</td></tr>
+          <tr><td class="name">After</td><td class="mono">research_node(state)</td><td><code>functools.partial</code>로 agent·name이 이미 고정된 노드 함수</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">research_node = functools.partial(agent_node, agent=research_agent, name="Researcher")
+coder_node = functools.partial(agent_node, agent=coder_agent, name="Coder")</pre>
+    <p class="caption">덕분에 <code>workflow.add_node("Researcher", research_node)</code>처럼 그래프에 바로 등록할 수 있는 깔끔한 노드 함수가 만들어진다.</p>
+    <p class="small">※ 원본 노트북의 <code>functools.partial</code> 설명용 마크다운에는 <code>names="Researcher"</code>라고 적힌 예시가 있지만, 실제 실행 코드와 <code>agent_node</code> 함수 시그니처는 <code>name="Researcher"</code>가 맞다.</p>
+  </div>
+</section>
+
+<!-- ========== 6. SUPERVISOR ========== -->
+<section class="section" id="supervisor">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">05</span> · 감독자 생성</span>
+    <h2>Supervisor Agent — 구조화된 출력으로 다음 행동 결정</h2>
+    <p class="lead">Supervisor는 일반 텍스트가 아니라 <b>정해진 선택지 중 하나</b>만 반환해야 한다. 이를 위해 Pydantic 모델과 <code>with_structured_output</code>을 사용한다.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="big">2 + 1</div>
+        <div class="lab">선택지 개수</div>
+        <div class="sub">Researcher · Coder · FINISH</div>
+      </div>
+      <div class="stat">
+        <div class="big">Literal</div>
+        <div class="lab">RouteResponse.next 타입</div>
+        <div class="sub">members + ["FINISH"] 중 하나만 허용</div>
+      </div>
+      <div class="stat">
+        <div class="big">temperature=0</div>
+        <div class="lab">Supervisor LLM 설정</div>
+        <div class="sub">라우팅 결정의 일관성 확보</div>
+      </div>
+    </div>
+
+    <pre class="code">members = ["Researcher", "Coder"]
+options_for_next = ["FINISH"] + members
+
+class RouteResponse(BaseModel):
+    next: Literal[*options_for_next]  <span class="c"># "FINISH" | "Researcher" | "Coder"</span></pre>
+
+    <h3>Supervisor 프롬프트 구성</h3>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">구성 요소</th><th>내용</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">system (역할 지정)</td><td>"당신은 다음 워커들 간의 대화를 관리하는 감독자다: {members}. 다음에 행동할 워커로 응답하라. 끝나면 FINISH로 응답하라."</td></tr>
+          <tr><td class="name">MessagesPlaceholder</td><td>지금까지 누적된 <code>messages</code> 전체를 프롬프트에 삽입</td></tr>
+          <tr><td class="name">system (마무리 질문)</td><td>"위 대화를 보고, 다음은 누가 행동해야 하는가? 혹은 FINISH해야 하는가? {options} 중 하나를 선택하라."</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">prompt = ChatPromptTemplate.from_messages([
+    ("system", system_prompt),
+    MessagesPlaceholder(variable_name="messages"),
+    ("system", "Given the conversation above, who should act next? "
+               "Or should we FINISH? Select one of: {options}"),
+]).partial(options=str(options_for_next), members=", ".join(members))
+
+llm = ChatOpenAI(model=MODEL_NAME, temperature=0)</pre>
+    <p class="caption"><code>partial(...)</code>은 선택 가능한 워커 목록과 <code>FINISH</code> 옵션을 프롬프트에 고정한다. 그래서 Supervisor는 매 턴 자유 문장이 아니라 허용된 라우팅 후보 중 하나를 고르게 된다.</p>
+
+    <div class="flow" style="margin:18px 0 6px">
+      <div class="node"><div class="lbl">Prompt</div><div class="val">system + messages<br>+ 선택 질문</div></div>
+      <div class="arrow">→</div>
+      <div class="node accent"><div class="lbl">llm.with_structured_<br>output(RouteResponse)</div><div class="val">스키마 강제 출력</div></div>
+      <div class="arrow">→</div>
+      <div class="node"><div class="lbl">Output</div><div class="val">next = "Researcher"<br>| "Coder" | "FINISH"</div></div>
+    </div>
+
+    <pre class="code">def supervisor_agent(state):
+    supervisor_chain = prompt | llm.with_structured_output(RouteResponse)
+    return supervisor_chain.invoke(state)</pre>
+    <p class="caption">반환값이 그대로 <code>AgentState</code>의 <code>next</code> 필드로 들어가, 조건부 엣지가 이 값을 보고 다음 노드를 정한다.</p>
+  </div>
+</section>
+
+<!-- ========== 7. GRAPH ========== -->
+<section class="section" id="graph">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">06</span> · 그래프 구성</span>
+    <h2>노드와 엣지로 그래프 조립하기</h2>
+    <p class="lead">지금까지 만든 <code>research_node</code>, <code>coder_node</code>, <code>supervisor_agent</code>를 <code>StateGraph</code>에 등록하고 엣지로 연결한다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th class="name">엣지 종류</th><th>연결</th><th>결정 방식</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">시작 엣지</td><td class="mono">START → Supervisor</td><td>고정</td></tr>
+          <tr><td class="name">일반 엣지</td><td class="mono">Researcher → Supervisor<br>Coder → Supervisor</td><td>고정 (작업 후 항상 보고)</td></tr>
+          <tr><td class="name">조건부 엣지</td><td class="mono">Supervisor → {Researcher | Coder | END}</td><td><code>state["next"]</code> 값으로 분기</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <pre class="code">workflow = StateGraph(AgentState)
+workflow.add_node("Researcher", research_node)
+workflow.add_node("Coder", coder_node)
+workflow.add_node("Supervisor", supervisor_agent)
+
+for member in members:
+    workflow.add_edge(member, "Supervisor")
+
+conditional_map = {k: k for k in members}
+conditional_map["FINISH"] = END
+
+def get_next(state):
+    return state["next"]
+
+workflow.add_conditional_edges("Supervisor", get_next, conditional_map)
+workflow.add_edge(START, "Supervisor")
+
+graph = workflow.compile(checkpointer=MemorySaver())</pre>
+
+    <div class="callout">
+      <span class="k">conditional_map 이해하기</span>
+      <p><code>{"Researcher": "Researcher", "Coder": "Coder", "FINISH": END}</code> — Supervisor가 반환한 문자열을 그대로 <b>다음 노드 이름</b>으로 매핑한다. 원본 코드는 <code>members</code>로 이 딕셔너리를 만들기 때문에, 워커가 늘어나면 새 노드를 등록하고 <code>members</code>에 이름을 추가하면 된다.</p>
+    </div>
+
+    <pre class="code">from langchain_teddynote.graphs import visualize_graph
+
+visualize_graph(graph)</pre>
+    <p class="caption">원본 노트북은 컴파일된 그래프를 바로 시각화한다. 위쪽의 원본 다이어그램 이미지는 이 단계에서 확인하는 그래프 구조를 학습용으로 다시 배치한 것이다.</p>
+
+    <p class="small">※ <code>MemorySaver</code>는 메모리 기반 체크포인터다. 같은 프로세스와 같은 체크포인터 안에서 동일한 <code>thread_id</code>를 쓰면 이전 체크포인트를 이어갈 수 있고, 원본처럼 <code>random_uuid()</code>를 쓰면 실행마다 새 대화 스레드로 시작한다.</p>
+  </div>
+</section>
+
+<!-- ========== 8. EXECUTION TRACE ========== -->
+<section class="section" id="trace">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">07</span> · 팀 호출</span>
+    <h2>실행 흐름 — GDP 그래프 요청의 대표 경로</h2>
+    <p class="lead">입력: <b>"2010년 ~ 2024년까지의 대한민국의 1인당 GDP 추이를 그래프로 시각화 해주세요."</b> 원본 노트북은 실행 결과 로그를 저장하지 않으므로, 아래는 이 요청에서 기대되는 전형적인 분배 흐름이다. 실제 라우팅은 모델 응답과 검색 결과에 따라 달라질 수 있다.</p>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-step">1</div>
+        <div class="tl-body">
+          <span class="who">START → Supervisor</span>
+          <h4>요청 접수 및 라우팅 판단</h4>
+          <p>사용자 메시지를 확인한 Supervisor가 "데이터부터 조사해야 한다"고 판단하고 <code>next = "Researcher"</code>를 반환한다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">2</div>
+        <div class="tl-body">
+          <span class="who">Researcher 실행</span>
+          <h4>웹 검색으로 GDP 데이터 수집</h4>
+          <p>TavilySearch로 연도별 1인당 GDP 자료를 검색하고, 결과를 <code>HumanMessage(name="Researcher")</code>로 감싸 상태에 추가한 뒤 Supervisor에게 돌아간다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">3</div>
+        <div class="tl-body">
+          <span class="who">Supervisor 재판단</span>
+          <h4>다음 단계는 시각화</h4>
+          <p>대화 기록에 쌓인 검색 결과를 확인한 Supervisor가 <code>next = "Coder"</code>를 반환한다.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-step">4</div>
+        <div class="tl-body">
+          <span class="who">Coder 실행</span>
+          <h4>matplotlib 코드 작성 및 실행</h4>
+          <p>PythonREPLTool로 그래프 코드를 작성·실행한다. <code>code_system_prompt</code>는 생성 코드에 OS별 한글 폰트(맑은 고딕 / AppleGothic / NanumGothic) 설정을 포함하도록 지시한다.</p>
+        </div>
+      </div>
+      <div class="tl-item finish">
+        <div class="tl-step">5</div>
+        <div class="tl-body">
+          <span class="who">Supervisor → FINISH</span>
+          <h4>작업 완료 판단</h4>
+          <p>그래프까지 생성되었음을 확인한 Supervisor가 <code>next = "FINISH"</code>를 반환 → <code>conditional_map</code>에 의해 <code>END</code>로 종료된다.</p>
+        </div>
+      </div>
+    </div>
+
+    <pre class="code">config = RunnableConfig(recursion_limit=10, configurable={"thread_id": random_uuid()})
+
+inputs = {
+    "messages": [
+        HumanMessage(content="2010년 ~ 2024년까지의 대한민국의 1인당 GDP 추이를 그래프로 시각화 해주세요.")
+    ],
+}
+
+invoke_graph(graph, inputs, config)</pre>
+    <p class="caption"><code>recursion_limit=10</code> — Supervisor ↔ 워커를 오가는 루프가 무한히 반복되지 않도록 최대 스텝 수를 제한한다.</p>
+  </div>
+</section>
+
+<!-- ========== 9. COMPARISON ========== -->
+<section class="section" id="compare">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">08</span> · 비교 분석</span>
+    <h2>단순 조건부 라우팅 vs Supervisor 패턴</h2>
+    <p class="lead">이전 튜토리얼의 "에이전트 출력 기반 분기"와 이번 Supervisor 패턴을 나란히 놓고 비교하면 확장성의 차이가 분명해진다.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="name">항목</th>
+            <th>단순 조건부 라우팅</th>
+            <th style="color:var(--teal-ink)">Supervisor 패턴</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="name">라우팅 결정 주체</td>
+            <td><span class="cross">✕</span> 코드에 하드코딩된 if/else</td>
+            <td><span class="tick">✓</span> 별도 LLM 노드(Supervisor)</td>
+          </tr>
+          <tr>
+            <td class="name">신규 에이전트 추가</td>
+            <td><span class="cross">✕</span> 분기 로직 재작성 필요</td>
+            <td><span class="tick">✓</span> 새 워커 노드 등록 + members 목록 갱신</td>
+          </tr>
+          <tr>
+            <td class="name">확장성</td>
+            <td><span class="tilde">~</span> 워커 2~3개까지는 무난, 이후 급격히 복잡</td>
+            <td><span class="tick">✓</span> 워커 수가 늘어도 구조 동일</td>
+          </tr>
+          <tr>
+            <td class="name">라우팅 근거 표현력</td>
+            <td><span class="tilde">~</span> 정해진 필드/키워드 매칭 수준</td>
+            <td><span class="tick">✓</span> 전체 대화 맥락을 이해하고 판단</td>
+          </tr>
+          <tr>
+            <td class="name">추가 비용</td>
+            <td><span class="tick">✓</span> 없음</td>
+            <td><span class="cross">✕</span> 매 스텝마다 Supervisor LLM 호출 필요</td>
+          </tr>
+          <tr>
+            <td class="name">동작 예측 가능성</td>
+            <td><span class="tick">✓</span> 결정적(deterministic)</td>
+            <td><span class="tilde">~</span> <code>temperature=0</code>이어도 LLM 라우팅은 실행 환경과 응답에 따라 달라질 수 있음</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">한 단계 더 — 팀의 팀 (Hierarchical Teams)</h3>
+    <p>Supervisor 패턴은 <b>재귀적으로 중첩</b>할 수 있다. 여러 Supervisor 팀을 다시 상위 Supervisor가 관리하면, 대규모 조직처럼 계층적인 멀티 에이전트 시스템을 구성할 수 있다.</p>
+    <div class="imgcard">
+      <img src="./assets/langgraph-multi-agent-team-supervisor.png" alt="여러 팀을 상위 Supervisor가 관리하는 계층적 멀티 에이전트 구조 다이어그램">
+      <div class="cap">계층적 Supervisor 구조 예시 — assets/langgraph-multi-agent-team-supervisor.png</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 10. TAKEAWAYS ========== -->
+<section class="section" id="takeaways">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">09</span> · 정리</span>
+    <h2>정리 · 언제 쓰나 · 유의점</h2>
+
+    <div class="grid2" style="margin-top:6px">
+      <div class="card">
+        <h3 style="margin-top:0">✓ 이럴 때 쓰면 좋다</h3>
+        <ul class="plain">
+          <li>협업할 <b>전문 에이전트가 3개 이상</b>이거나 계속 늘어날 예정일 때</li>
+          <li>작업 순서가 <b>고정되어 있지 않고</b> 상황에 따라 달라져야 할 때</li>
+          <li>각 에이전트의 결과를 <b>사람처럼 판단</b>해 다음 행동을 정해야 할 때</li>
+          <li>새 에이전트를 추가할 때 <b>라우팅 조건문 재작성</b>을 피하고 싶을 때</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">⚠ 한계 · 유의점</h3>
+        <ul class="plain">
+          <li>Supervisor 호출 자체가 <b>추가 LLM 비용·지연</b>을 발생시킨다</li>
+          <li>라우팅이 <b>확률적</b>이므로 잘못된 워커를 지명할 가능성이 있다</li>
+          <li>무한 루프 방지를 위해 <b>recursion_limit</b>를 설정하는 것이 안전하다</li>
+          <li>워커가 매우 많아지면 Supervisor 프롬프트의 <b>멤버 설명이 비대</b>해질 수 있다 (이때 계층적 팀 구조 고려)</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout teal" style="margin-top:22px">
+      <span class="k">한 줄 정리</span>
+      <p>단순 분기는 "정해진 길"만 갈 수 있지만, Supervisor는 매번 <b>"지금 상황에 맞는 다음 걸음"</b>을 LLM에게 묻는다. 팀이 커질수록 이 차이가 유지보수 비용의 격차로 드러난다.</p>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p style="margin:0 0 6px"><b>LangGraph Multi-Agent Supervisor</b></p>
+    <p class="mono" style="margin:0 0 4px">17-LangGraph/03-Use-Cases/07-LangGraph-Multi-Agent-Supervisor.ipynb</p>
+    <p class="mono" style="margin:0"><a href="https://langchain-ai.github.io/langgraph/concepts/multi_agent/#supervisor" target="_blank" rel="noopener">LangGraph 공식 문서 — Multi-Agent Supervisor 개념</a> · 노트북 내용을 시각화하여 정리한 학습 자료</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- theme toggle ---------- */
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn');
+  function cur(){ return root.getAttribute('data-theme') ||
+    (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'); }
+  btn.addEventListener('click',function(){
+    var next=cur()==='dark'?'light':'dark';
+    root.setAttribute('data-theme',next);
+  });
+})();
+
+/* ---------- active nav via IntersectionObserver ---------- */
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.navlinks a'));
+  var map={}; links.forEach(function(a){ map[a.getAttribute('href').slice(1)]=a; });
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      var a=map[e.target.id]; if(!a) return;
+      if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
+    });
+  },{rootMargin:'-45% 0px -50% 0px'});
+  ['background','setup','overview','state','agents','helper','supervisor','graph','trace','compare','takeaways']
+    .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
+})();
+</script>
+</body>
+</html>
