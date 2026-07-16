@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STORM 논문 정리 — Wikipedia-like Article Writing with LLMs</title>
+<style>
+:root{
+  --bg:#F5F3EE;
+  --surface:#FFFFFF;
+  --surface-2:#FAF8F3;
+  --ink:#171B1F;
+  --text:#39434D;
+  --muted:#77818C;
+  --border:#E2DED4;
+  --border-strong:#CFC6B6;
+  --teal:#0F766E;
+  --teal-2:#14A39A;
+  --teal-tint:#E2F3EF;
+  --gold:#B27612;
+  --gold-tint:#F8EACD;
+  --sage:#587A50;
+  --sage-tint:#E8F1E2;
+  --red:#B9473A;
+  --red-tint:#F8E3DF;
+  --blue:#2E5EAA;
+  --blue-tint:#E7EEF9;
+  --shadow:0 1px 2px rgba(23,27,31,.04),0 12px 34px rgba(23,27,31,.08);
+  --shadow-lg:0 3px 8px rgba(23,27,31,.06),0 22px 58px rgba(23,27,31,.12);
+  --radius:14px;
+  --maxw:1120px;
+  --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Segoe UI","Malgun Gothic",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#101311;
+  --surface:#181D1A;
+  --surface-2:#1E241F;
+  --ink:#EDF1EC;
+  --text:#B9C2BC;
+  --muted:#7F8982;
+  --border:#2D352E;
+  --border-strong:#465045;
+  --teal:#43D5C9;
+  --teal-2:#62E1D7;
+  --teal-tint:#122E2B;
+  --gold:#E3B55E;
+  --gold-tint:#2F2613;
+  --sage:#9AC58E;
+  --sage-tint:#1B2B1A;
+  --red:#F08A7C;
+  --red-tint:#301B17;
+  --blue:#8EB4FF;
+  --blue-tint:#17243A;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 34px rgba(0,0,0,.32);
+  --shadow-lg:0 3px 8px rgba(0,0,0,.42),0 22px 58px rgba(0,0,0,.44);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#101311; --surface:#181D1A; --surface-2:#1E241F; --ink:#EDF1EC; --text:#B9C2BC; --muted:#7F8982;
+    --border:#2D352E; --border-strong:#465045; --teal:#43D5C9; --teal-2:#62E1D7; --teal-tint:#122E2B;
+    --gold:#E3B55E; --gold-tint:#2F2613; --sage:#9AC58E; --sage-tint:#1B2B1A; --red:#F08A7C;
+    --red-tint:#301B17; --blue:#8EB4FF; --blue-tint:#17243A;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 34px rgba(0,0,0,.32);
+    --shadow-lg:0 3px 8px rgba(0,0,0,.42),0 22px 58px rgba(0,0,0,.44);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--bg) 94%,var(--teal-tint)) 0,var(--bg) 420px),
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  line-height:1.72;
+  font-size:16.5px;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;
+}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+a{color:var(--teal);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:currentColor}
+p{margin:0 0 14px;color:var(--text)}
+strong{color:var(--ink)}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:.12em .42em;color:var(--ink)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:800}
+.lead{font-size:18px;color:var(--text);max-width:790px}
+h1{font-size:clamp(42px,7.2vw,74px);line-height:.98;letter-spacing:-.04em;margin:14px 0 12px;font-weight:880}
+h2{font-size:clamp(25px,3.4vw,36px);line-height:1.16;letter-spacing:-.025em;margin:12px 0 10px}
+h3{font-size:19px;letter-spacing:-.012em;margin:22px 0 8px}
+ul{padding-left:20px;margin:10px 0 0;color:var(--text)}
+li{margin:7px 0}
+.topbar{
+  position:sticky;top:0;z-index:30;
+  background:color-mix(in srgb,var(--bg) 86%,transparent);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:saturate(170%) blur(12px);
+}
+.topbar .wrap{height:58px;display:flex;align-items:center;gap:18px}
+.brand{font-family:var(--mono);font-size:14px;font-weight:900;color:var(--ink);display:flex;align-items:center;gap:9px;white-space:nowrap}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:conic-gradient(from 210deg,var(--teal),var(--gold),var(--sage),var(--teal))}
+.nav{margin-left:auto;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.nav a{font-size:13px;color:var(--muted);padding:6px 10px;border-radius:8px;border-bottom:0;white-space:nowrap}
+.nav a:hover,.nav a.active{color:var(--ink);background:var(--surface-2)}
+.theme-btn{width:38px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);cursor:pointer}
+.theme-btn:hover{border-color:var(--border-strong);color:var(--ink)}
+@media (max-width:860px){.nav{display:none}}
+.hero{padding:62px 0 38px;border-bottom:1px solid var(--border)}
+.hero-grid{display:grid;grid-template-columns:1.25fr .92fr;gap:44px;align-items:center}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr;gap:28px}}
+.sub{font-size:clamp(17px,2.2vw,21px);font-weight:680;color:var(--text);letter-spacing:-.01em;margin-bottom:18px}
+.thesis{border-left:4px solid var(--teal);padding:2px 0 2px 16px;margin:20px 0 22px;font-size:18px;font-weight:720;color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 10px;color:var(--text)}
+.chip b{color:var(--ink)}
+.paper-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:22px}
+.paper-card .title{font-size:20px;font-weight:850;letter-spacing:-.02em;line-height:1.25;margin-bottom:10px}
+.meta-row{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+.meta-row:first-of-type{border-top:0}
+.meta-row .k{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.meta-row .v{font-size:14px;color:var(--text);line-height:1.45}
+.section{padding:58px 0;border-bottom:1px solid var(--border)}
+.section-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px}
+.num{font-family:var(--mono);font-size:12px;font-weight:900;color:var(--muted);padding-top:6px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:900px){.grid2,.grid3,.grid4{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:21px;min-width:0}
+.card.tint{background:var(--surface-2)}
+.card.teal{background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.card.gold{background:var(--gold-tint);border-color:color-mix(in srgb,var(--gold) 40%,var(--border))}
+.card.sage{background:var(--sage-tint);border-color:color-mix(in srgb,var(--sage) 40%,var(--border))}
+.card.red{background:var(--red-tint);border-color:color-mix(in srgb,var(--red) 40%,var(--border))}
+.card .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:850;margin-bottom:6px}
+.big{font-size:30px;line-height:1.05;font-weight:900;letter-spacing:-.03em;color:var(--ink);margin-bottom:8px}
+.small{font-size:13.5px;color:var(--muted);line-height:1.5}
+.pipeline{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);padding:20px;margin-top:20px}
+.pipe-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:1000px){.pipe-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.pipe-grid{grid-template-columns:1fr}}
+.stage{position:relative;background:var(--surface-2);border:1px solid var(--border);border-radius:13px;padding:16px;min-height:150px}
+.stage:after{content:"";position:absolute;right:-11px;top:50%;width:18px;height:18px;border-top:2px solid var(--border-strong);border-right:2px solid var(--border-strong);transform:translateY(-50%) rotate(45deg);background:var(--surface)}
+.stage:nth-child(4):after,.stage:last-child:after{display:none}
+@media (max-width:1000px){.stage:nth-child(2):after{display:none}.stage:nth-child(4):after{display:block}}
+@media (max-width:620px){.stage:after{display:none!important}}
+.stage .idx{font-family:var(--mono);font-size:11px;color:var(--muted);font-weight:900}
+.stage h3{margin:7px 0 7px;font-size:17px}
+.stage p{font-size:14px;margin-bottom:0}
+.loop{display:grid;grid-template-columns:1fr 38px 1fr 38px 1fr;gap:0;align-items:stretch;margin:20px 0}
+.loop .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:15px;text-align:center;box-shadow:var(--shadow)}
+.loop .arrow{display:grid;place-items:center;color:var(--muted);font-weight:900;font-size:22px}
+@media (max-width:780px){.loop{grid-template-columns:1fr}.loop .arrow{height:28px;transform:rotate(90deg)}}
+.diagram-img{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-top:18px}
+.diagram-img img{display:block;width:100%;height:auto;border-radius:9px}
+.diagram-img figcaption{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:10px}
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);background:var(--surface);margin:18px 0}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:14.5px}
+th{background:var(--surface-2);font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:12px 14px;border-bottom:1px solid var(--border)}
+td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.name{font-weight:850;color:var(--ink)}
+td.num{text-align:right;font-family:var(--mono);color:var(--ink)}
+tr.hl td{background:var(--teal-tint)}
+.caption{font-family:var(--mono);font-size:12px;color:var(--muted);margin:8px 2px 0}
+.barlist{display:grid;gap:12px;margin-top:14px}
+.barrow{display:grid;grid-template-columns:160px 1fr 64px;gap:12px;align-items:center}
+.barlabel{font-weight:760;color:var(--ink);font-size:14px}
+.bartrack{height:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;overflow:hidden}
+.bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--teal),var(--gold))}
+.barval{font-family:var(--mono);font-size:13px;color:var(--text);text-align:right}
+@media (max-width:620px){.barrow{grid-template-columns:1fr}.barval{text-align:left}}
+.comparison{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media (max-width:820px){.comparison{grid-template-columns:1fr}}
+.versus{display:grid;gap:12px}
+.vs-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pill{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-family:var(--mono);font-size:11px;font-weight:850;border:1px solid var(--border);color:var(--muted);background:var(--surface)}
+.pill.good{color:var(--teal);background:var(--teal-tint);border-color:color-mix(in srgb,var(--teal) 35%,var(--border))}
+.pill.warn{color:var(--gold);background:var(--gold-tint);border-color:color-mix(in srgb,var(--gold) 38%,var(--border))}
+.callout{border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:18px 20px;margin:20px 0}
+.callout strong{display:block;margin-bottom:4px}
+.node-map{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:16px}
+.node-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px;box-shadow:var(--shadow);min-height:112px}
+.node-card .node-id{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:900;margin-bottom:6px}
+.node-card .node-name{font-weight:850;line-height:1.25;margin-bottom:5px}
+.node-card p{font-size:13px;margin:0}
+@media (max-width:1040px){.node-map{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:680px){.node-map{grid-template-columns:1fr}}
+.source-list{display:grid;gap:10px}
+.source-list a{display:block;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow)}
+.footer{padding:34px 0;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="dot"></span>STORM Paper Guide</div>
+    <nav class="nav" aria-label="문서 내 이동">
+      <a href="#overview">핵심</a>
+      <a href="#method">방법</a>
+      <a href="#evaluation">평가</a>
+      <a href="#results">결과</a>
+      <a href="#limits">한계</a>
+      <a href="#langgraph">LangGraph</a>
+      <a href="#sources">출처</a>
+    </nav>
+    <button class="theme-btn" type="button" id="themeToggle" aria-label="테마 전환">◐</button>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <div class="eyebrow">arXiv:2402.14207 · NAACL 2024</div>
+        <h1>STORM 논문 정리</h1>
+        <p class="sub">LLM에게 “글을 바로 쓰게” 하지 않고, 먼저 관점별 질문으로 조사하고 개요를 만드는 시스템</p>
+        <p class="thesis">핵심은 생성 모델의 문장력보다 <strong>사전 조사(pre-writing)</strong>를 자동화하는 데 있다. STORM은 관련 문서를 훑어 관점을 만들고, 각 관점의 가상 작성자가 전문가에게 질문하며, 검색 근거를 모아 글의 뼈대와 참고자료를 만든다.</p>
+        <div class="chips">
+          <span class="chip"><b>S</b>ynthesis</span>
+          <span class="chip"><b>T</b>opic outlines</span>
+          <span class="chip"><b>O</b>utline-first writing</span>
+          <span class="chip"><b>R</b>etrieval grounded</span>
+          <span class="chip"><b>M</b>ulti-perspective Q&A</span>
+        </div>
+      </div>
+      <aside class="paper-card">
+        <div class="title">Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models</div>
+        <div class="meta-row"><div class="k">Authors</div><div class="v">Yijia Shao, Yucheng Jiang, Theodore A. Kanell, Peter Xu, Omar Khattab, Monica S. Lam</div></div>
+        <div class="meta-row"><div class="k">Goal</div><div class="v">주어진 주제만으로 위키백과식 장문 글을 쓰기 위한 조사, 개요, 인용 기반 작성 파이프라인 제안</div></div>
+        <div class="meta-row"><div class="k">Dataset</div><div class="v">FreshWiki: 최근 생성/대폭 수정된 고품질 Wikipedia 문서로 구성해 학습 데이터 누수를 줄인 평가셋</div></div>
+        <div class="meta-row"><div class="k">Takeaway</div><div class="v">더 넓고 조직적인 글을 만들지만, 중립성·검증가능성·출처 편향은 여전히 남는다.</div></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section" id="overview">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">01</div>
+        <div>
+          <div class="eyebrow">Big Picture</div>
+          <h2>STORM이 풀려는 문제</h2>
+          <p class="lead">일반 RAG는 “주제 검색 결과를 넣고 답을 쓰기”에 가깝다. STORM은 장문 설명문을 쓰기 전에 사람이 하듯이 어떤 관점에서 무엇을 조사할지 먼저 정한다.</p>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="card teal">
+          <div class="kicker">문제</div>
+          <h3>긴 글은 바로 쓰기 어렵다</h3>
+          <p>Wikipedia식 글은 사실 나열이 아니라 주제의 범위, 균형, 구조, 출처가 맞아야 한다. 그래서 작성 전 조사와 개요 설계가 중요하다.</p>
+        </div>
+        <div class="card gold">
+          <div class="kicker">관찰</div>
+          <h3>직접 질문은 얕아진다</h3>
+          <p>LLM에게 “질문 30개를 만들어라”라고 하면 대개 언제, 어디서, 무엇 같은 표면 질문에 머문다.</p>
+        </div>
+        <div class="card sage">
+          <div class="kicker">해법</div>
+          <h3>역할과 대화를 준다</h3>
+          <p>이벤트 기획자, 역사 연구자, 경제 분석가처럼 서로 다른 관점의 작성자를 만들면 더 깊고 다양한 질문이 나온다.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>한 문장 요약</strong>
+        STORM은 “검색으로 자료를 찾는 시스템”이라기보다 “좋은 검색 질문을 만들기 위해 여러 관점의 인터뷰를 시뮬레이션하는 시스템”이다.
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="method">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">02</div>
+        <div>
+          <div class="eyebrow">Method</div>
+          <h2>STORM 파이프라인</h2>
+          <p class="lead">논문은 전체 작업을 사전 조사와 작성으로 나눈다. STORM의 차별점은 사전 조사 단계에서 관점 발견, 다중 턴 질문, 신뢰 가능한 검색 근거 수집을 결합한다는 점이다.</p>
+        </div>
+      </div>
+
+      <div class="pipeline" aria-label="STORM 파이프라인 다이어그램">
+        <div class="pipe-grid">
+          <div class="stage">
+            <div class="idx">STEP 1</div>
+            <h3>관련 문서 훑기</h3>
+            <p>주제와 비슷한 Wikipedia 문서의 목차를 모아, 어떤 관점이 필요한지 힌트를 얻는다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 2</div>
+            <h3>관점 생성</h3>
+            <p>기본 사실 작성자에 더해 역사, 기술, 정책, 영향 등 서로 다른 역할을 만든다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 3</div>
+            <h3>관점별 인터뷰</h3>
+            <p>각 작성자가 전문가에게 질문한다. 답변을 읽고 후속 질문을 이어가며 조사를 깊게 만든다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 4</div>
+            <h3>검색과 선별</h3>
+            <p>복잡한 질문을 검색 쿼리로 나누고, 신뢰도가 낮은 출처를 거른 뒤 답변을 합성한다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 5</div>
+            <h3>대화 기록 수집</h3>
+            <p>질문, 답변, 근거 문서를 관점별로 모아 참고자료 집합과 조사 메모를 만든다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 6</div>
+            <h3>초안 개요 생성</h3>
+            <p>LLM의 내부 지식으로 먼저 일반적인 개요를 만들고 전체 구조의 출발점으로 삼는다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 7</div>
+            <h3>개요 정제</h3>
+            <p>관점별 대화와 초안 개요를 함께 넣어 빠진 세부 주제와 섹션 구조를 보완한다.</p>
+          </div>
+          <div class="stage">
+            <div class="idx">STEP 8</div>
+            <h3>섹션별 작성</h3>
+            <p>개요의 각 섹션에 맞는 참고자료를 검색해 인용이 달린 장문 글을 만든 뒤 중복을 다듬는다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:18px">
+        <div class="card">
+          <div class="kicker">Question Loop</div>
+          <h3>질문 하나가 다음 질문을 만든다</h3>
+          <div class="loop">
+            <div class="box"><strong>질문</strong><br><span class="small">관점과 대화 기록 기반</span></div>
+            <div class="arrow">→</div>
+            <div class="box"><strong>검색·선별</strong><br><span class="small">쿼리 분해, 신뢰 출처 필터</span></div>
+            <div class="arrow">→</div>
+            <div class="box"><strong>답변 합성</strong><br><span class="small">근거를 읽고 후속 질문 준비</span></div>
+          </div>
+          <p>단발 질문 목록보다 강한 이유는 답변을 읽은 뒤 모르는 지점을 다시 물어볼 수 있기 때문이다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Why Perspective?</div>
+          <h3>관점은 질문의 검색 공간을 바꾼다</h3>
+          <p>같은 “2022 동계올림픽 개막식”이라도 일반 독자는 장소와 날짜를 묻지만, 이벤트 기획자는 교통, 예산, 참가국 입장 순서 같은 운영 질문을 떠올린다. STORM은 이런 역할 차이를 의도적으로 만든다.</p>
+          <p>결과적으로 검색 쿼리도 넓어지고, 최종 개요가 표면 사실을 넘어 세부 섹션을 더 많이 포함한다.</p>
+        </div>
+      </div>
+
+      <figure class="diagram-img">
+        <img src="assets/langgraph-storm-concept.png" alt="주제에서 여러 분석가, 인터뷰, 연구 보고서로 이어지는 STORM 개념도">
+        <figcaption>저장소 기존 자산: STORM식 조사 흐름을 LangGraph 관점에서 표현한 개념도</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="evaluation">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">03</div>
+        <div>
+          <div class="eyebrow">Evaluation Design</div>
+          <h2>평가를 어떻게 설계했나</h2>
+          <p class="lead">논문은 최종 글만 보지 않고, 사전 조사 결과인 개요 품질도 따로 평가한다. STORM의 목표가 “글쓰기 전 단계” 자동화이기 때문이다.</p>
+        </div>
+      </div>
+
+      <div class="grid4">
+        <div class="card">
+          <div class="kicker">Dataset</div>
+          <div class="big">FreshWiki</div>
+          <p>최근 Wikipedia 글 중 품질 기준을 통과한 문서를 모아 평가셋을 구성했다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Outline Metrics</div>
+          <div class="big">2개</div>
+          <p>heading soft recall과 heading entity recall로 사람이 만든 목차와 얼마나 겹치는지 본다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Article Metrics</div>
+          <div class="big">7개</div>
+          <p>ROUGE, 엔티티 회수율, 흥미도, 조직성, 관련성, 커버리지, 검증가능성을 평가한다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Human Eval</div>
+          <div class="big">10명</div>
+          <p>숙련 Wikipedia 편집자가 STORM과 oRAG 결과를 비교 평가했다.</p>
+        </div>
+      </div>
+
+      <div class="comparison" style="margin-top:18px">
+        <div class="card">
+          <div class="kicker">Baselines</div>
+          <h3>비교 대상</h3>
+          <div class="versus">
+            <div class="vs-row">
+              <div><span class="pill warn">Direct Gen</span></div>
+              <div class="small">외부 검색 없이 바로 개요와 글 생성</div>
+            </div>
+            <div class="vs-row">
+              <div><span class="pill warn">RAG</span></div>
+              <div class="small">주제 검색 결과를 넣고 개요 또는 글 생성</div>
+            </div>
+            <div class="vs-row">
+              <div><span class="pill good">oRAG</span></div>
+              <div class="small">개요를 만든 뒤 섹션 제목으로 추가 검색해 섹션별 작성</div>
+            </div>
+            <div class="vs-row">
+              <div><span class="pill good">STORM</span></div>
+              <div class="small">관점별 질문 대화로 자료를 모은 뒤 개요와 글 생성</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="kicker">What Is Fair?</div>
+          <h3>평가의 핵심 비교</h3>
+          <p>oRAG도 개요 기반 RAG라 강한 기준선이다. 따라서 STORM이 oRAG를 이긴다는 것은 단순히 “개요가 있어서 좋다”가 아니라, <strong>개요를 만들기 전 질문과 조사 방식</strong>이 추가 가치를 만든다는 뜻이다.</p>
+          <p>논문은 또한 perspective 제거, conversation 제거, outline stage 제거 실험으로 어떤 부품이 성능에 기여하는지 분리했다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="results">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">04</div>
+        <div>
+          <div class="eyebrow">Results</div>
+          <h2>결과는 무엇을 말하나</h2>
+          <p class="lead">자동 평가는 STORM이 더 넓은 개요와 더 풍부한 글을 만든다고 보고한다. 사람 평가는 조직성과 커버리지 향상을 확인하면서도, 검증가능성은 아직 충분히 해결되지 않았다고 지적한다.</p>
+        </div>
+      </div>
+
+      <div class="grid3">
+        <div class="card teal">
+          <div class="kicker">Organization</div>
+          <div class="big">+25%p</div>
+          <p>편집자가 “조직적”이라고 판단한 비율이 oRAG보다 25%p 높았다.</p>
+        </div>
+        <div class="card sage">
+          <div class="kicker">Coverage</div>
+          <div class="big">+10%p</div>
+          <p>좋은 커버리지로 평가된 비율이 oRAG보다 10%p 높았다.</p>
+        </div>
+        <div class="card gold">
+          <div class="kicker">Preference</div>
+          <div class="big">26 : 14</div>
+          <p>사람 평가의 쌍대 비교에서 STORM 결과가 oRAG보다 더 자주 선호됐다.</p>
+        </div>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>ROUGE-1</th>
+              <th>ROUGE-L</th>
+              <th>Entity Recall</th>
+              <th>Interest</th>
+              <th>Organization</th>
+              <th>Relevance</th>
+              <th>Coverage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">Direct Gen</td><td class="num">25.62</td><td class="num">12.63</td><td class="num">5.08</td><td class="num">2.87</td><td class="num">4.60</td><td class="num">3.10</td><td class="num">4.16</td></tr>
+            <tr><td class="name">RAG</td><td class="num">28.52</td><td class="num">13.18</td><td class="num">7.57</td><td class="num">3.14</td><td class="num">4.22</td><td class="num">3.05</td><td class="num">4.08</td></tr>
+            <tr><td class="name">oRAG</td><td class="num">44.26</td><td class="num">16.51</td><td class="num">12.57</td><td class="num">3.90</td><td class="num">4.79</td><td class="num">4.09</td><td class="num">4.70</td></tr>
+            <tr class="hl"><td class="name">STORM</td><td class="num">45.82</td><td class="num">16.70</td><td class="num">14.10</td><td class="num">3.99</td><td class="num">4.82</td><td class="num">4.45</td><td class="num">4.88</td></tr>
+            <tr><td class="name">STORM w/o Outline Stage</td><td class="num">26.77</td><td class="num">12.77</td><td class="num">7.39</td><td class="num">3.33</td><td class="num">4.87</td><td class="num">3.35</td><td class="num">4.37</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="caption">자동 글 품질 평가. 루브릭 점수는 1-5 척도이며 STORM은 oRAG보다 entity recall, interest, relevance, coverage에서 유의미한 개선을 보였다.</div>
+
+      <div class="grid2" style="margin-top:20px">
+        <div class="card">
+          <div class="kicker">Outline Quality</div>
+          <h3>개요 품질이 좋아진다</h3>
+          <div class="barlist">
+            <div class="barrow"><div class="barlabel">GPT-3.5 Direct</div><div class="bartrack"><div class="bar" style="width:80.23%"></div></div><div class="barval">80.23</div></div>
+            <div class="barrow"><div class="barlabel">GPT-3.5 STORM</div><div class="bartrack"><div class="bar" style="width:86.26%"></div></div><div class="barval">86.26</div></div>
+            <div class="barrow"><div class="barlabel">GPT-4 RAG-expand</div><div class="bartrack"><div class="bar" style="width:91.36%"></div></div><div class="barval">91.36</div></div>
+            <div class="barrow"><div class="barlabel">GPT-4 STORM</div><div class="bartrack"><div class="bar" style="width:92.73%"></div></div><div class="barval">92.73</div></div>
+          </div>
+          <p class="caption">heading soft recall 기준. 더 높은 값은 사람 작성 Wikipedia 목차와 의미적으로 더 많이 겹친다는 뜻이다.</p>
+        </div>
+
+        <div class="card">
+          <div class="kicker">Ablation</div>
+          <h3>대화가 특히 중요하다</h3>
+          <div class="barlist">
+            <div class="barrow"><div class="barlabel">Full STORM refs</div><div class="bartrack"><div class="bar" style="width:100%"></div></div><div class="barval">99.83</div></div>
+            <div class="barrow"><div class="barlabel">w/o Perspective</div><div class="bartrack"><div class="bar" style="width:54.45%"></div></div><div class="barval">54.36</div></div>
+            <div class="barrow"><div class="barlabel">w/o Conversation</div><div class="bartrack"><div class="bar" style="width:39.63%"></div></div><div class="barval">39.56</div></div>
+          </div>
+          <p class="caption">평균 고유 참고자료 수. 관점과 대화를 모두 쓸 때 더 많은 출처를 발견한다.</p>
+        </div>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Human Metric</th>
+              <th>oRAG Avg.</th>
+              <th>oRAG Good Rate</th>
+              <th>STORM Avg.</th>
+              <th>STORM Good Rate</th>
+              <th>p-value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">Interest Level</td><td class="num">3.63</td><td class="num">57.5%</td><td class="num">4.03</td><td class="num">70.0%</td><td class="num">0.077</td></tr>
+            <tr class="hl"><td class="name">Organization</td><td class="num">3.25</td><td class="num">45.0%</td><td class="num">4.00</td><td class="num">70.0%</td><td class="num">0.005</td></tr>
+            <tr><td class="name">Relevance</td><td class="num">3.93</td><td class="num">62.5%</td><td class="num">4.15</td><td class="num">65.0%</td><td class="num">0.347</td></tr>
+            <tr><td class="name">Coverage</td><td class="num">3.58</td><td class="num">57.5%</td><td class="num">4.00</td><td class="num">67.5%</td><td class="num">0.084</td></tr>
+            <tr><td class="name">Verifiability</td><td class="num">3.85</td><td class="num">67.5%</td><td class="num">3.80</td><td class="num">67.5%</td><td class="num">0.843</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="caption">숙련 Wikipedia 편집자 10명이 20개 주제의 STORM/oRAG 결과를 비교했다. Good Rate는 1-7 척도에서 4점 이상 비율이다.</div>
+    </div>
+  </section>
+
+  <section class="section" id="limits">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">05</div>
+        <div>
+          <div class="eyebrow">Limitations</div>
+          <h2>중요한 한계와 해석</h2>
+          <p class="lead">STORM은 좋은 초안을 만드는 데 유용하지만, 곧바로 게시 가능한 Wikipedia 글을 만든다는 뜻은 아니다. 논문 자체도 편집자 피드백을 통해 여러 위험을 강조한다.</p>
+        </div>
+      </div>
+      <div class="grid3">
+        <div class="card red">
+          <div class="kicker">Source Bias</div>
+          <h3>출처 편향이 옮겨온다</h3>
+          <p>검색 엔진과 웹 문서가 특정 관점에 치우치면, 생성된 글도 그 어조와 편향을 따라갈 수 있다.</p>
+        </div>
+        <div class="card gold">
+          <div class="kicker">Over-association</div>
+          <h3>근거 사이를 과하게 연결한다</h3>
+          <p>존재하는 사실을 가져오더라도 서로 무관한 사실을 그럴듯하게 연결하면 검증가능성이 떨어진다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Not Publication-ready</div>
+          <h3>사람 글보다 아직 부족하다</h3>
+          <p>편집자들은 STORM 결과가 유용한 시작점이라고 보았지만, 잘 다듬어진 인간 작성 문서에는 못 미친다고 평가했다.</p>
+        </div>
+      </div>
+      <div class="callout">
+        <strong>실무 적용 시 결론</strong>
+        STORM은 “최종 답변 생성기”보다 “리서치 어시스턴트”로 쓰는 편이 안전하다. 사람이 개요, 출처 균형, 논리적 연결, 중립성을 검토하는 단계를 반드시 남겨야 한다.
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="langgraph">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">06</div>
+        <div>
+          <div class="eyebrow">LangGraph Angle</div>
+          <h2>LangGraph로 보면 어떻게 나뉘나</h2>
+          <p class="lead">STORM은 상태를 축적하며 여러 관점의 대화를 병렬로 돌리는 구조라 LangGraph 예제로 옮기기 좋다. 핵심 상태는 topic, perspectives, conversations, references, draft_outline, final_outline, article_sections다.</p>
+        </div>
+      </div>
+      <div class="node-map">
+        <div class="node-card">
+          <div class="node-id">node 01</div>
+          <div class="node-name">survey_related_topics</div>
+          <p>유사 주제와 목차를 모아 관점 후보의 재료를 만든다.</p>
+        </div>
+        <div class="node-card">
+          <div class="node-id">node 02</div>
+          <div class="node-name">generate_perspectives</div>
+          <p>기본 사실 작성자와 전문 관점 작성자를 만든다.</p>
+        </div>
+        <div class="node-card">
+          <div class="node-id">parallel</div>
+          <div class="node-name">run_interviews</div>
+          <p>관점별 writer-expert 대화를 병렬 실행한다.</p>
+        </div>
+        <div class="node-card">
+          <div class="node-id">loop</div>
+          <div class="node-name">retrieve_and_answer</div>
+          <p>질문 분해, 검색, 출처 필터, 답변 합성을 반복한다.</p>
+        </div>
+        <div class="node-card">
+          <div class="node-id">node 05</div>
+          <div class="node-name">refine_outline</div>
+          <p>초안 개요와 대화 기록을 합쳐 최종 개요를 만든다.</p>
+        </div>
+        <div class="node-card">
+          <div class="node-id">node 06</div>
+          <div class="node-name">write_sections</div>
+          <p>섹션별 관련 참고자료를 골라 인용 있는 글을 생성한다.</p>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:18px">
+        <div class="card teal">
+          <div class="kicker">Graph Pattern</div>
+          <h3>fan-out / fan-in이 핵심</h3>
+          <p>관점별 인터뷰는 독립적이므로 fan-out으로 병렬 처리하고, final outline 생성에서 fan-in으로 합친다. 이 구조는 LangGraph의 조건부 edge와 map-reduce 패턴에 잘 맞는다.</p>
+        </div>
+        <div class="card">
+          <div class="kicker">Guardrails</div>
+          <h3>검증 노드를 추가해야 한다</h3>
+          <p>논문의 한계를 줄이려면 source diversity check, claim-source entailment check, unsupported inference detector 같은 검증 노드를 별도로 두는 편이 좋다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="sources">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="num">07</div>
+        <div>
+          <div class="eyebrow">Sources</div>
+          <h2>참고 링크</h2>
+          <p class="lead">요약은 논문 본문과 공식 저장소 설명을 기준으로 정리했다.</p>
+        </div>
+      </div>
+      <div class="source-list">
+        <a href="https://arxiv.org/abs/2402.14207">arXiv abstract: Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models</a>
+        <a href="https://arxiv.org/pdf/2402.14207">arXiv PDF: STORM paper full text</a>
+        <a href="https://github.com/stanford-oval/storm">Official GitHub: stanford-oval/storm</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">Created for 17-LangGraph/03-Use-Cases · STORM paper explainer</div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var key="storm-paper-guide-theme";
+  var saved=localStorage.getItem(key);
+  if(saved){root.setAttribute("data-theme",saved);}
+  document.getElementById("themeToggle").addEventListener("click",function(){
+    var current=root.getAttribute("data-theme");
+    var next=current==="dark"?"light":"dark";
+    root.setAttribute("data-theme",next);
+    localStorage.setItem(key,next);
+  });
+  var links=Array.prototype.slice.call(document.querySelectorAll(".nav a"));
+  var sections=links.map(function(a){return document.querySelector(a.getAttribute("href"));}).filter(Boolean);
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        links.forEach(function(a){a.classList.toggle("active",a.getAttribute("href")==="#"+entry.target.id);});
+      }
+    });
+  },{rootMargin:"-35% 0px -55% 0px",threshold:0.01});
+  sections.forEach(function(section){observer.observe(section);});
+})();
+</script>
+</body>
+</html>

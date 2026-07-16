@@ -266,6 +266,7 @@ ul.plain li{margin:5px 0;color:var(--ink-2)}
   <div class="wrap">
     <div class="brand"><span class="dot" aria-hidden="true"></span>STORM</div>
     <nav class="navlinks" aria-label="섹션">
+      <a href="#flow-overview">전체흐름</a>
       <a href="#background">배경</a>
       <a href="#setup">설정</a>
       <a href="#analysts">분석가</a>
@@ -334,6 +335,154 @@ ul.plain li{margin:5px 0;color:var(--ink-2)}
       <div class="card">
         <h3 style="margin-top:0">③ 효과</h3>
         <p style="margin:0">모든 인터뷰 결과가 <b>map-reduce</b>로 병합되어 출처가 인용된 서론-본문-결론 보고서가 자동 완성된다. <code>max_analysts</code>만 늘리면 조사 폭이 그대로 확장된다.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== OVERALL FLOW ========== -->
+<section class="section" id="flow-overview">
+  <div class="wrap">
+    <span class="eyebrow"><span class="num">00</span> · 전체 흐름</span>
+    <h2>리포트를 보고 인터뷰하는 것이 아니라, 인터뷰와 검색으로 리포트를 만든다</h2>
+    <p class="lead">최종 보고서는 인터뷰 이후의 산출물이다. 각 분석가의 질문이 검색 쿼리로 바뀌고, 웹·Arxiv에서 가져온 문서가 전문가 답변의 근거가 되며, 그 답변과 소스 문서를 섹션 메모로 압축한 뒤 마지막에 하나의 보고서로 합친다.</p>
+
+    <div class="orbit">
+      <svg viewBox="0 0 1080 760" role="img" aria-label="Research Assistant 전체 흐름: 주제에서 분석가를 만들고, 사람 피드백으로 확정한 뒤, 분석가별 인터뷰가 질문과 웹·Arxiv 검색, 전문가 답변을 반복한다. 인터뷰별 섹션이 누적되고 최종 보고서로 병합된다.">
+        <defs>
+          <marker id="arrowFlowInk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-3)"/>
+          </marker>
+          <marker id="arrowFlowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--teal)"/>
+          </marker>
+          <marker id="arrowFlowIndigo" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--indigo)"/>
+          </marker>
+          <marker id="arrowFlowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--amber-mark)"/>
+          </marker>
+          <filter id="softShadow" x="-12%" y="-20%" width="124%" height="150%">
+            <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#101828" flood-opacity=".11"/>
+          </filter>
+        </defs>
+
+        <text x="540" y="28" text-anchor="middle" font-size="13" font-family="ui-monospace,monospace" fill="var(--ink-3)">Research Assistant data flow</text>
+
+        <rect x="40" y="70" width="160" height="64" rx="12" fill="var(--panel-2)" stroke="var(--border-strong)" filter="url(#softShadow)"/>
+        <text x="120" y="96" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">Topic</text>
+        <text x="120" y="116" text-anchor="middle" font-size="11" fill="var(--ink-3)">사용자 연구 주제</text>
+
+        <line x1="200" y1="102" x2="285" y2="102" stroke="var(--ink-3)" stroke-width="2.2" marker-end="url(#arrowFlowInk)"/>
+
+        <rect x="285" y="70" width="170" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="370" y="96" text-anchor="middle" font-size="15" font-weight="800" fill="var(--teal-ink)">create_analysts</text>
+        <text x="370" y="116" text-anchor="middle" font-size="11" fill="var(--ink-2)">관점별 분석가 생성</text>
+
+        <line x1="455" y1="102" x2="540" y2="102" stroke="var(--ink-3)" stroke-width="2.2" marker-end="url(#arrowFlowInk)"/>
+
+        <rect x="540" y="70" width="170" height="64" rx="12" fill="var(--panel)" stroke="var(--border-strong)" filter="url(#softShadow)"/>
+        <text x="625" y="96" text-anchor="middle" font-size="15" font-weight="800" fill="var(--ink)">human_feedback</text>
+        <text x="625" y="116" text-anchor="middle" font-size="11" fill="var(--ink-3)">분석가 구성 검토</text>
+
+        <path d="M585,134 C520,190 415,190 372,134" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrowFlowIndigo)"/>
+        <text x="480" y="177" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--indigo)">피드백 있으면 재생성</text>
+
+        <line x1="710" y1="102" x2="795" y2="102" stroke="var(--teal)" stroke-width="2.4" marker-end="url(#arrowFlowTeal)"/>
+        <text x="752" y="88" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--teal-ink)">피드백 없음</text>
+
+        <rect x="795" y="70" width="230" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="910" y="96" text-anchor="middle" font-size="15" font-weight="800" fill="var(--teal-ink)">Send("conduct_interview") x N</text>
+        <text x="910" y="116" text-anchor="middle" font-size="11" fill="var(--ink-2)">분석가마다 병렬 인터뷰 시작</text>
+
+        <rect x="58" y="220" width="964" height="270" rx="18" fill="var(--panel)" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <text x="540" y="248" text-anchor="middle" font-size="14" font-weight="850" fill="var(--ink)">conduct_interview 서브그래프 (분석가별로 반복)</text>
+        <text x="540" y="268" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">ask_question → search_web + search_arxiv → generate_answer → route_messages</text>
+
+        <rect x="96" y="306" width="150" height="64" rx="12" fill="var(--panel-2)" stroke="var(--border)" filter="url(#softShadow)"/>
+        <text x="171" y="332" text-anchor="middle" font-size="14" font-weight="800" fill="var(--ink)">ask_question</text>
+        <text x="171" y="352" text-anchor="middle" font-size="11" fill="var(--ink-3)">분석가 질문</text>
+
+        <line x1="246" y1="338" x2="326" y2="300" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+        <line x1="246" y1="338" x2="326" y2="378" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+
+        <rect x="326" y="268" width="150" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="401" y="294" text-anchor="middle" font-size="14" font-weight="800" fill="var(--teal-ink)">search_web</text>
+        <text x="401" y="314" text-anchor="middle" font-size="11" fill="var(--ink-2)">Tavily 웹 검색</text>
+
+        <rect x="326" y="346" width="150" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="401" y="372" text-anchor="middle" font-size="14" font-weight="800" fill="var(--teal-ink)">search_arxiv</text>
+        <text x="401" y="392" text-anchor="middle" font-size="11" fill="var(--ink-2)">논문 검색</text>
+
+        <line x1="476" y1="300" x2="578" y2="334" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+        <line x1="476" y1="378" x2="578" y2="350" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+
+        <rect x="578" y="306" width="162" height="64" rx="12" fill="var(--indigo-tint)" stroke="var(--indigo)" filter="url(#softShadow)"/>
+        <text x="659" y="332" text-anchor="middle" font-size="14" font-weight="800" fill="var(--indigo)">context</text>
+        <text x="659" y="352" text-anchor="middle" font-size="11" fill="var(--ink-2)">웹+논문 문서 누적</text>
+
+        <line x1="740" y1="338" x2="816" y2="338" stroke="var(--amber-mark)" stroke-width="2.2" marker-end="url(#arrowFlowAmber)"/>
+
+        <rect x="816" y="306" width="162" height="64" rx="12" fill="var(--amber-tint)" stroke="var(--amber-bd)" filter="url(#softShadow)"/>
+        <text x="897" y="332" text-anchor="middle" font-size="14" font-weight="800" fill="var(--amber)">generate_answer</text>
+        <text x="897" y="352" text-anchor="middle" font-size="11" fill="var(--ink-2)">context만 보고 답변</text>
+
+        <path d="M898,370 C900,440 170,452 170,370" fill="none" stroke="var(--indigo)" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#arrowFlowIndigo)"/>
+        <text x="536" y="448" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" fill="var(--indigo)">턴이 남으면 다음 질문으로 루프</text>
+
+        <line x1="897" y1="370" x2="897" y2="520" stroke="var(--ink-3)" stroke-width="2.2" marker-end="url(#arrowFlowInk)"/>
+        <text x="914" y="442" font-size="11" font-family="ui-monospace,monospace" fill="var(--ink-3)">종료 조건</text>
+
+        <rect x="762" y="520" width="270" height="64" rx="12" fill="var(--panel-2)" stroke="var(--border)" filter="url(#softShadow)"/>
+        <text x="897" y="546" text-anchor="middle" font-size="14" font-weight="800" fill="var(--ink)">save_interview → write_section</text>
+        <text x="897" y="566" text-anchor="middle" font-size="11" fill="var(--ink-3)">검색 문서 기반 섹션 메모 작성</text>
+
+        <line x1="762" y1="552" x2="620" y2="552" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+
+        <rect x="354" y="520" width="266" height="64" rx="12" fill="var(--indigo-tint)" stroke="var(--indigo)" filter="url(#softShadow)"/>
+        <text x="487" y="546" text-anchor="middle" font-size="14" font-weight="800" fill="var(--indigo)">sections</text>
+        <text x="487" y="566" text-anchor="middle" font-size="11" fill="var(--ink-2)">operator.add 로 N개 메모 누적</text>
+
+        <line x1="487" y1="584" x2="487" y2="635" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+
+        <rect x="132" y="635" width="190" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="227" y="661" text-anchor="middle" font-size="14" font-weight="800" fill="var(--teal-ink)">write_report</text>
+        <text x="227" y="681" text-anchor="middle" font-size="11" fill="var(--ink-2)">본문 통합</text>
+
+        <rect x="356" y="635" width="190" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="451" y="661" text-anchor="middle" font-size="14" font-weight="800" fill="var(--teal-ink)">write_introduction</text>
+        <text x="451" y="681" text-anchor="middle" font-size="11" fill="var(--ink-2)">서론 작성</text>
+
+        <rect x="580" y="635" width="190" height="64" rx="12" fill="var(--teal-tint)" stroke="var(--teal)" filter="url(#softShadow)"/>
+        <text x="675" y="661" text-anchor="middle" font-size="14" font-weight="800" fill="var(--teal-ink)">write_conclusion</text>
+        <text x="675" y="681" text-anchor="middle" font-size="11" fill="var(--ink-2)">결론 작성</text>
+
+        <line x1="322" y1="667" x2="356" y2="667" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+        <line x1="546" y1="667" x2="580" y2="667" stroke="var(--teal)" stroke-width="2.2" marker-end="url(#arrowFlowTeal)"/>
+        <line x1="770" y1="667" x2="844" y2="667" stroke="var(--indigo)" stroke-width="2.2" marker-end="url(#arrowFlowIndigo)"/>
+
+        <rect x="844" y="635" width="184" height="64" rx="12" fill="var(--panel)" stroke="var(--border-strong)" filter="url(#softShadow)"/>
+        <text x="936" y="661" text-anchor="middle" font-size="14" font-weight="800" fill="var(--ink)">finalize_report</text>
+        <text x="936" y="681" text-anchor="middle" font-size="11" fill="var(--ink-3)">최종 보고서 조립</text>
+      </svg>
+    </div>
+    <p class="caption">핵심은 방향이다: 리포트 → 인터뷰가 아니라, 질문 → 웹/Arxiv 검색 → context 기반 답변 → 섹션 메모 → 최종 리포트다.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="big">질문</div>
+        <div class="lab">무엇을 찾을지 정한다</div>
+        <div class="sub">분석가 페르소나와 대화 이력으로 다음 질문 생성</div>
+      </div>
+      <div class="stat">
+        <div class="big">검색</div>
+        <div class="lab">답변 근거를 가져온다</div>
+        <div class="sub">Tavily 웹 검색과 Arxiv 논문 검색 결과가 context로 누적</div>
+      </div>
+      <div class="stat">
+        <div class="big">리포트</div>
+        <div class="lab">인터뷰 결과를 합친다</div>
+        <div class="sub">각 인터뷰 섹션을 reduce해서 본문·서론·결론 생성</div>
       </div>
     </div>
   </div>
@@ -461,7 +610,7 @@ class Perspectives(BaseModel):
       </table>
     </div>
 
-    <h3>create_analysts 노드 — 프롬프트 5단계</h3>
+    <h3>create_analysts 노드 — 프롬프트 4단계</h3>
     <p><code>analyst_instructions</code>는 LLM에게 다음 순서를 지시한다: <b>① 주제 확인 → ② 피드백 검토 → ③ 흥미로운 테마 결정 → ④ 상위 <code>max_analysts</code>개 테마 선정 → ⑤ 테마마다 분석가 1명 배정</b>.</p>
 
     <div class="flow" style="margin:16px 0 6px">
@@ -1312,7 +1461,7 @@ display(Markdown(report))</pre>
       if(e.isIntersecting){ links.forEach(function(l){l.classList.remove('active')}); a.classList.add('active'); }
     });
   },{rootMargin:'-45% 0px -50% 0px'});
-  ['background','setup','analysts','interview','parallel','report','graph','trace','compare','takeaways']
+  ['flow-overview','background','setup','analysts','interview','parallel','report','graph','trace','compare','takeaways']
     .forEach(function(id){ var el=document.getElementById(id); if(el) obs.observe(el); });
 })();
 </script>
