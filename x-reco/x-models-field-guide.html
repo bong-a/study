@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="추천 개발 초보자를 위한 X For You 공개 모델 해설서. Phoenix, SimClusters, VMRanker, Grox, CLIP, Agatha, BDSM, UserCredV2 등 모델과 알고리즘을 입력부터 출력까지 설명합니다.">
+  <meta name="color-scheme" content="light">
+  <title>X의 추천·안전 모델 해부도 — 초보 개발자용</title>
+  <style>
+    :root {
+      --paper:#f2efe7; --paper-2:#fffdf7; --ink:#161b22; --muted:#5d6470; --line:#20252d;
+      --blue:#1d9bf0; --blue-soft:#dff2ff; --lime:#c7f36b; --lime-soft:#effbd4;
+      --coral:#ff6b5e; --coral-soft:#ffe6e2; --purple:#7c6cf2; --purple-soft:#ece9ff;
+      --yellow:#ffd166; --yellow-soft:#fff3c9; --green:#14845c; --red:#c43d36;
+      --radius:18px; --radius-lg:28px; --shadow:6px 6px 0 var(--line); --shadow-sm:3px 3px 0 var(--line);
+      --content:1180px; --reading:780px;
+    }
+    *,*::before,*::after{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:radial-gradient(circle at 80% 3%,rgba(124,108,242,.13),transparent 30rem),linear-gradient(rgba(22,27,34,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,27,34,.035) 1px,transparent 1px),var(--paper);background-size:auto,24px 24px,24px 24px,auto;color:var(--ink);font-family:Pretendard,"Apple SD Gothic Neo","Noto Sans KR",Inter,system-ui,sans-serif;font-size:17px;line-height:1.75;word-break:keep-all}
+    a{color:inherit;text-underline-offset:.2em} a:hover{text-decoration-thickness:2px}
+    code,.mono{font-family:"SFMono-Regular",Consolas,monospace;font-size:.9em}
+    code{padding:.13em .38em;border:1px solid rgba(22,27,34,.18);border-radius:6px;background:rgba(255,255,255,.7)}
+    button{font:inherit;color:inherit}
+    :focus-visible{outline:4px solid var(--yellow);outline-offset:3px}
+    .skip-link{position:fixed;z-index:999;top:12px;left:12px;transform:translateY(-160%);padding:10px 16px;border-radius:10px;background:var(--ink);color:#fff}.skip-link:focus{transform:none}
+    .reading-progress{position:fixed;z-index:100;top:0;left:0;width:100%;height:5px}.reading-progress span{display:block;width:0;height:100%;background:linear-gradient(90deg,var(--blue),var(--purple),var(--coral))}
+
+    .hero{position:relative;overflow:hidden;padding:58px 24px 46px;border-bottom:2px solid var(--line);background:var(--ink);color:#fff}
+    .hero::after{content:"MODEL";position:absolute;right:-30px;bottom:-90px;color:rgba(255,255,255,.035);font-size:17vw;font-weight:950;line-height:1;pointer-events:none}
+    .hero-inner{position:relative;z-index:1;max-width:var(--content);margin:auto}
+    .hero-top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:52px}
+    .brand{display:flex;align-items:center;gap:11px;font-size:.78rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+    .x-tile{display:grid;width:38px;height:38px;place-items:center;border-radius:10px;background:#fff;color:var(--ink);font-size:1.1rem;font-weight:950}
+    .tool-row{display:flex;flex-wrap:wrap;gap:9px}.tool-link,.hero-link{display:inline-flex;min-height:44px;align-items:center;justify-content:center;padding:8px 15px;border:1.5px solid rgba(255,255,255,.5);border-radius:999px;color:#fff;font-size:.77rem;font-weight:800;text-decoration:none}.tool-link:hover{background:rgba(255,255,255,.1)}
+    .eyebrow{margin:0 0 15px;color:var(--lime);font-family:monospace;font-size:.8rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+    h1,h2,h3,h4{line-height:1.2;letter-spacing:-.035em}h1{max-width:930px;margin:0;font-size:clamp(3rem,7vw,6.5rem);font-weight:950}h1 em{color:var(--blue);font-style:normal}
+    .hero-copy{max-width:760px;margin:24px 0 0;color:#c7ced8;font-size:1.15rem}.hero-copy strong{color:#fff}
+    .hero-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:27px}.hero-link{border-color:var(--lime);background:var(--lime);color:var(--ink)}
+    .fact-strip{display:grid;grid-template-columns:repeat(4,1fr);margin-top:42px;border:1.5px solid rgba(255,255,255,.28);border-radius:16px;background:rgba(255,255,255,.05)}
+    .fact{padding:17px}.fact+.fact{border-left:1px solid rgba(255,255,255,.2)}.fact strong{display:block;color:var(--lime);font-family:monospace;font-size:1.05rem}.fact span{display:block;margin-top:3px;color:#bfc7d2;font-size:.72rem}
+
+    .mobile-nav{display:none}.layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:52px;max-width:var(--content);margin:0 auto;padding:42px 24px 0}
+    .side-nav{position:relative}.side-inner{position:sticky;top:24px}.side-title{margin:0 0 12px;color:var(--muted);font-family:monospace;font-size:.68rem;font-weight:900;text-transform:uppercase}.side-nav ol{margin:0;padding:0;list-style:none}.side-nav a{display:grid;grid-template-columns:28px 1fr;gap:8px;padding:8px 9px;border-radius:9px;font-size:.75rem;font-weight:780;text-decoration:none}.side-nav a span{color:var(--blue);font-family:monospace}.side-nav a.is-active{background:var(--ink);color:#fff}.side-nav a.is-active span{color:var(--lime)}
+    .scope-stamp{margin-top:22px;padding:14px;border:2px solid var(--line);border-radius:12px;background:var(--yellow-soft);font-family:monospace;font-size:.65rem;line-height:1.5}
+
+    main{min-width:0}.chapter{padding:12px 0 88px;scroll-margin-top:24px}.chapter+.chapter{padding-top:76px;border-top:2px solid rgba(22,27,34,.2)}
+    .chapter-head{max-width:900px;margin-bottom:34px}.chapter-no{color:var(--blue);font-family:monospace;font-size:.77rem;font-weight:900;letter-spacing:.08em}.chapter h2{margin:9px 0 0;font-size:clamp(2.15rem,5vw,4rem);font-weight:950}.lede{max-width:var(--reading);margin:17px 0 0;color:var(--muted);font-size:1.05rem}
+    .one-line{margin:26px 0;padding:19px 22px;border-left:8px solid var(--blue);border-radius:0 12px 12px 0;background:var(--blue-soft);font-weight:800}.one-line.purple{border-color:var(--purple);background:var(--purple-soft)}.one-line.coral{border-color:var(--coral);background:var(--coral-soft)}
+    .source-note{margin-top:16px;color:var(--muted);font-size:.73rem;line-height:1.55}.source-note a{font-weight:850}
+    .badge{display:inline-flex;align-items:center;min-height:28px;padding:3px 9px;border:1px solid var(--line);border-radius:999px;background:#fff;font-family:monospace;font-size:.67rem;font-weight:900}.badge.ml{background:var(--lime-soft)}.badge.math{background:var(--purple-soft)}.badge.system{background:var(--blue-soft)}.badge.not{background:var(--coral-soft)}.badge.partial{background:var(--yellow-soft)}
+
+    .taxonomy{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.tax-card{padding:20px;border:2px solid var(--line);border-radius:var(--radius);background:#fff}.tax-card h3{margin:14px 0 8px;font-size:1.05rem}.tax-card p{margin:0;color:var(--muted);font-size:.77rem}.tax-card b{display:block;margin-top:12px;font-family:monospace;font-size:.68rem}
+    .origin-box{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:25px}.origin-card{padding:21px;border:2px solid var(--line);border-radius:var(--radius);background:var(--paper-2)}.origin-card h3{font-size:1.05rem}.origin-card p{margin:0;color:var(--muted);font-size:.8rem}
+
+    .system-map{padding:24px;border:2px solid var(--line);border-radius:var(--radius-lg);background:var(--ink);box-shadow:var(--shadow);color:#fff}.map-lane{display:grid;grid-template-columns:145px 1fr;gap:16px;align-items:start;padding:16px 0}.map-lane+.map-lane{border-top:1px solid rgba(255,255,255,.18)}.lane-label{color:var(--lime);font-family:monospace;font-size:.72rem;font-weight:900}.map-flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.map-node{padding:10px 12px;border:1px solid rgba(255,255,255,.36);border-radius:10px;background:rgba(255,255,255,.08);font-size:.72rem;font-weight:800}.map-node.ml{border-color:var(--lime)}.map-node.math{border-color:#b7adff}.map-node.system{border-color:#74c7ff}.map-arrow{color:var(--lime);font-weight:950}.map-note{margin:16px 0 0;color:#aeb7c4;font-size:.73rem}
+    .quick-index{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:25px}.quick-link{display:block;padding:15px;border:1.5px solid var(--line);border-radius:12px;background:#fff;text-decoration:none}.quick-link small{color:var(--blue);font-family:monospace;font-size:.62rem;font-weight:900}.quick-link strong{display:block;margin-top:4px;font-size:.86rem}.quick-link:hover{transform:translate(-2px,-2px);box-shadow:var(--shadow-sm)}
+
+    .model-list{display:grid;gap:26px}.model-card{overflow:hidden;border:2px solid var(--line);border-radius:var(--radius-lg);background:var(--paper-2);box-shadow:var(--shadow)}
+    .model-head{display:grid;grid-template-columns:70px 1fr auto;gap:18px;align-items:start;padding:25px;border-bottom:2px solid var(--line)}.model-number{display:grid;width:62px;height:62px;place-items:center;border:2px solid var(--line);border-radius:17px;background:var(--blue);font-family:monospace;font-size:1.2rem;font-weight:950}.model-title h3{margin:3px 0 6px;font-size:clamp(1.45rem,3vw,2.2rem)}.model-title p{margin:0;color:var(--muted);font-size:.83rem}.model-meta{text-align:right}.model-meta span{display:block;margin-top:7px;color:var(--muted);font-family:monospace;font-size:.62rem}
+    .model-body{padding:25px}.ipo-flow{display:grid;grid-template-columns:1fr auto 1.15fr auto 1fr;gap:10px;align-items:stretch}.ipo-box{display:grid;align-content:center;min-height:120px;padding:17px;border:1.5px solid var(--line);border-radius:13px;background:#fff}.ipo-box.process{background:var(--ink);color:#fff}.ipo-box.output{background:var(--lime-soft)}.ipo-box small{color:var(--blue);font-family:monospace;font-size:.63rem;font-weight:900}.ipo-box.process small{color:var(--lime)}.ipo-box strong{display:block;margin-top:7px;font-size:.88rem}.ipo-box p{margin:5px 0 0;color:var(--muted);font-size:.7rem;line-height:1.5}.ipo-box.process p{color:#bfc7d2}.ipo-arrow{display:grid;place-items:center;color:var(--purple);font-weight:950}
+    .explain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}.explain{padding:16px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.explain h4{margin:0 0 7px;font-size:.83rem}.explain p{margin:0;color:var(--muted);font-size:.72rem}.explain.watch{background:var(--yellow-soft)}
+    details{margin-top:15px;border:1.5px solid var(--line);border-radius:12px;background:#fff}summary{position:relative;padding:14px 44px 14px 16px;font-size:.77rem;font-weight:850;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}summary::after{content:"+";position:absolute;right:16px;font-family:monospace;font-size:1.1rem}details[open] summary::after{content:"−"}.detail-body{padding:0 16px 16px;color:var(--muted);font-size:.75rem}.detail-body ul{margin:0;padding-left:20px}.detail-body li+li{margin-top:6px}
+
+    .task-heads{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.task-heads span{padding:5px 8px;border:1px solid var(--line);border-radius:999px;background:var(--purple-soft);font-family:monospace;font-size:.62rem;font-weight:800}
+    .not-model-table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:2px solid var(--line);border-radius:var(--radius);background:#fff}.not-model-table th,.not-model-table td{padding:14px;border-bottom:1px solid rgba(22,27,34,.18);text-align:left;vertical-align:top;font-size:.76rem}.not-model-table th{background:var(--ink);color:#fff;font-family:monospace}.not-model-table tr:last-child td{border-bottom:0}.not-model-table td:first-child{font-weight:900}.not-model-table td:last-child{color:var(--muted)}
+    .reading-order{counter-reset:read;display:grid;gap:11px;margin-top:25px}.read-step{counter-increment:read;display:grid;grid-template-columns:46px 1fr auto;gap:14px;align-items:center;padding:15px;border:1.5px solid var(--line);border-radius:12px;background:#fff}.read-step::before{content:counter(read,decimal-leading-zero);display:grid;width:40px;height:40px;place-items:center;border:1.5px solid var(--line);border-radius:10px;background:var(--lime);font-family:monospace;font-weight:950}.read-step strong{font-size:.83rem}.read-step p{margin:2px 0 0;color:var(--muted);font-size:.7rem}.read-step a{font-size:.7rem;font-weight:850}
+    .source-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:24px}.source-card{display:block;padding:17px;border:1.5px solid var(--line);border-radius:12px;background:#fff;text-decoration:none}.source-card small{color:var(--blue);font-family:monospace;font-size:.61rem;font-weight:900}.source-card strong{display:block;margin-top:5px;font-size:.84rem}.source-card span{display:block;margin-top:4px;color:var(--muted);font-size:.69rem}.source-card:hover{transform:translate(-2px,-2px);box-shadow:var(--shadow-sm)}
+    .verified{margin-top:22px;padding:15px;border:2px solid var(--line);border-radius:12px;background:var(--lime-soft);font-family:monospace;font-size:.68rem}
+    footer{padding:31px 24px;border-top:2px solid var(--line);background:var(--ink);color:#c5ccd5}.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:18px;max-width:var(--content);margin:auto}.footer-inner p{margin:0;font-size:.74rem}.footer-inner a{color:#fff;font-weight:850}
+
+    @media(max-width:1000px){.layout{grid-template-columns:1fr;padding-top:27px}.side-nav{display:none}.mobile-nav{display:block;position:sticky;z-index:50;top:0;overflow-x:auto;border-bottom:2px solid var(--line);background:rgba(242,239,231,.96);backdrop-filter:blur(10px)}.mobile-nav div{display:flex;width:max-content;padding:9px 13px}.mobile-nav a{padding:7px 10px;border-radius:999px;font-size:.69rem;font-weight:850;text-decoration:none}.mobile-nav a.is-active{background:var(--ink);color:#fff}.chapter{scroll-margin-top:62px}.taxonomy{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:760px){body{font-size:16px}.hero{padding-top:38px}.hero-top{margin-bottom:36px}.fact-strip{grid-template-columns:repeat(2,1fr)}.fact:nth-child(3){border-top:1px solid rgba(255,255,255,.2);border-left:0}.fact:nth-child(4){border-top:1px solid rgba(255,255,255,.2)}.origin-box,.source-grid{grid-template-columns:1fr}.map-lane{grid-template-columns:1fr;gap:7px}.quick-index{grid-template-columns:repeat(2,1fr)}.model-head{grid-template-columns:62px 1fr}.model-meta{grid-column:2;text-align:left}.model-meta span{display:inline;margin-right:10px}.ipo-flow{grid-template-columns:1fr}.ipo-arrow{transform:rotate(90deg)}.explain-grid{grid-template-columns:1fr}.model-card{box-shadow:4px 4px 0 var(--line)}}
+    @media(max-width:520px){.hero{padding-right:17px;padding-left:17px}.brand span:last-child{display:none}.tool-row .tool-link:last-child{display:none}.fact{padding:14px}.layout{padding-right:17px;padding-left:17px}.chapter{padding-bottom:68px}.taxonomy,.quick-index{grid-template-columns:1fr}.model-head{grid-template-columns:1fr;padding:19px}.model-meta{grid-column:auto}.model-body{padding:19px}.read-step{grid-template-columns:42px 1fr}.read-step a{grid-column:2}.not-model-table{display:block;overflow-x:auto;white-space:nowrap}.footer-inner{align-items:flex-start;flex-direction:column}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
+    @media print{@page{size:A4;margin:14mm}body{background:#fff;color:#000;font-size:10pt}.reading-progress,.hero-top,.mobile-nav,.side-nav{display:none!important}.hero{padding:20px 0;background:#fff;color:#000}.hero::after{display:none}.hero h1{font-size:34pt}.hero-copy,.fact span{color:#333}.fact-strip{border-color:#000}.fact+.fact{border-color:#000}.fact strong{color:#000}.layout{display:block;max-width:none;padding:0}.chapter{padding:22px 0;break-before:page}.chapter:first-child{break-before:auto}.model-card,.system-map,.tax-card,details{break-inside:avoid;box-shadow:none!important}.system-map,.ipo-box.process{background:#fff;color:#000}.map-note,.ipo-box.process p{color:#333}a{color:#000;text-decoration:none}a[href^="http"]::after{content:" (" attr(href) ")";font-size:6pt;word-break:break-all}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <div class="reading-progress" aria-hidden="true"><span id="reading-bar"></span></div>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="hero-top">
+        <div class="brand"><span class="x-tile" aria-hidden="true">X</span><span>Model field guide · companion</span></div>
+        <div class="tool-row">
+          <a class="tool-link" href="x-for-you-algorithm-guide.html">For You 본편 ←</a>
+          <a class="tool-link" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener">공식 저장소 ↗</a>
+        </div>
+      </div>
+      <p class="eyebrow">추천 개발 초보자용 · 공개 코드 확인 2026-08-14</p>
+      <h1>X의 모델을<br><em>하나씩 해부하기</em></h1>
+      <p class="hero-copy">Phoenix부터 BDSM까지, 이름만 보면 알 수 없는 시스템을 <strong>입력 → 처리 → 출력</strong>으로 뜯습니다. 신경망이 아닌 알고리즘과 단순 서비스에는 “모델 아님” 표시를 붙였습니다.</p>
+      <div class="hero-actions"><a class="hero-link" href="#boundary">모델 경계부터 시작 →</a><a class="tool-link" href="#recommendation">Phoenix 바로 보기</a></div>
+      <div class="fact-strip" aria-label="문서 핵심 범위">
+        <div class="fact"><strong>4 classes</strong><span>학습 모델 · 수학 알고리즘 · 모델 시스템 · 비모델</span></div>
+        <div class="fact"><strong>2 Phoenix</strong><span>Retrieval과 Ranking을 분리해 설명</span></div>
+        <div class="fact"><strong>3 domains</strong><span>추천 · 콘텐츠 이해 · 계정 신뢰</span></div>
+        <div class="fact"><strong>0 hype</strong><span>공개된 코드와 공식 설명까지만</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="mobile-nav" aria-label="모바일 목차"><div>
+    <a href="#boundary">모델 경계</a><a href="#map">전체 지도</a><a href="#recommendation">추천·랭킹</a><a href="#content">콘텐츠·미디어</a><a href="#trust">계정 신뢰</a><a href="#not-models">모델 아닌 것</a><a href="#sources">출처</a>
+  </div></nav>
+
+  <div class="layout">
+    <aside class="side-nav" aria-label="문서 목차"><div class="side-inner">
+      <p class="side-title">Model map</p>
+      <ol>
+        <li><a href="#boundary"><span>00</span>먼저, 모델의 경계</a></li>
+        <li><a href="#map"><span>01</span>전체 시스템 지도</a></li>
+        <li><a href="#recommendation"><span>02</span>추천·랭킹 모델</a></li>
+        <li><a href="#content"><span>03</span>콘텐츠·미디어</a></li>
+        <li><a href="#trust"><span>04</span>계정 신뢰·어뷰징</a></li>
+        <li><a href="#not-models"><span>05</span>모델 아닌 것들</a></li>
+        <li><a href="#sources"><span>06</span>읽는 순서·출처</a></li>
+      </ol>
+      <div class="scope-stamp">SCOPE<br>공식 README의 Components 표와 공개 디렉터리 기준. 운영 중인 모든 비공개 모델 목록을 뜻하지 않습니다.</div>
+    </div></aside>
+
+    <main id="main">
+      <section class="chapter" id="boundary" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 00 · WHAT COUNTS AS A MODEL?</span><h2>이름이 있다고 모두<br>AI 모델은 아니다</h2><p class="lede">추천 시스템 문서에서는 학습된 신경망, 그래프 알고리즘, 여러 모델을 호출하는 서비스까지 모두 “시스템” 이름으로 등장합니다. 먼저 종류를 구분해야 역할을 오해하지 않습니다.</p></div>
+        <div class="taxonomy">
+          <article class="tax-card"><span class="badge ml">학습 모델</span><h3>데이터로 파라미터를 배움</h3><p>Transformer·MLP처럼 학습을 거친 가중치가 새로운 입력의 점수나 벡터를 계산합니다.</p><b>Phoenix · BDSM · adult-content</b></article>
+          <article class="tax-card"><span class="badge math">수학 알고리즘</span><h3>정해진 계산 규칙을 실행</h3><p>그래프나 집합을 수학적으로 계산하지만, 일반적인 신경망 학습 모델은 아닙니다.</p><b>SimClusters · VMRanker · UserCredV2</b></article>
+          <article class="tax-card"><span class="badge system">모델 시스템</span><h3>모델을 호출하고 결과를 묶음</h3><p>하나의 가중치 파일보다 데이터 로딩·모델 호출·라벨 저장을 포함하는 제품 시스템입니다.</p><b>Grox · Agatha · Media Model Proxy</b></article>
+          <article class="tax-card"><span class="badge not">비모델</span><h3>저장·규칙·실행을 담당</h3><p>게시물을 캐시하거나 규칙을 평가하고 여러 단계를 연결합니다. AI가 없어도 동작합니다.</p><b>Thunder · Botmaker · Home Mixer</b></article>
+        </div>
+        <div class="origin-box">
+          <article class="origin-card"><h3>“X에서 만들었다”의 좁은 뜻</h3><p><strong>Phoenix와 BDSM</strong>처럼 X의 문제에 맞춰 설계된 고유 모델·시스템을 뜻합니다. 코드명도 X 내부 시스템의 이름입니다.</p></article>
+          <article class="origin-card"><h3>“X가 구현한다”의 넓은 뜻</h3><p><strong>CLIP·PageRank·DPP</strong>의 기본 아이디어는 X가 발명한 것이 아닙니다. 이 저장소에는 X의 구현과 운영 연결 코드가 공개되어 있습니다.</p></article>
+        </div>
+        <div class="one-line coral">따라서 이 문서의 “X 모델 전체”는 <strong>공식 README가 For You와 Visibility에 연결된 것으로 열거한 공개 모델·알고리즘 시스템 전체</strong>를 뜻합니다. X 내부의 비공개 모델까지 모두 안다는 뜻은 아닙니다.</div>
+        <p class="source-note">범위 기준: <a href="https://github.com/xai-org/x-algorithm#components" target="_blank" rel="noreferrer noopener">공식 Components 표 ↗</a> · 공개 제외 범위: <a href="https://github.com/xai-org/x-algorithm#whats-not-in-this-repo" target="_blank" rel="noreferrer noopener">What's not in this repo? ↗</a></p>
+      </section>
+
+      <section class="chapter" id="map" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 01 · SYSTEM MAP</span><h2>모델들은 피드의<br>서로 다른 순간에 일한다</h2><p class="lede">추천 요청이 들어온 순간 작동하는 모델과, 게시물·계정을 미리 분석해 라벨을 저장하는 모델을 분리해서 보세요.</p></div>
+        <div class="system-map" role="img" aria-label="X 추천 및 안전 모델의 실행 위치 지도">
+          <div class="map-lane"><div class="lane-label">요청 순간 · 추천</div><div class="map-flow"><span class="map-node math">SimClusters</span><span class="map-node ml">Phoenix Retrieval</span><span class="map-arrow">→</span><span class="map-node ml">Phoenix Ranking</span><span class="map-arrow">→</span><span class="map-node math">VMRanker</span><span class="map-arrow">→</span><span class="map-node">For You 순서</span></div></div>
+          <div class="map-lane"><div class="lane-label">게시물 발행 후 · 이해</div><div class="map-flow"><span class="map-node system">Grox</span><span class="map-node ml">TwitterCLIP</span><span class="map-node ml">adult-content</span><span class="map-node ml">pNSFWMedia</span><span class="map-arrow">→</span><span class="map-node">게시물·미디어 라벨</span></div></div>
+          <div class="map-lane"><div class="lane-label">계정 행동 축적 · 신뢰</div><div class="map-flow"><span class="map-node system">Agatha</span><span class="map-node ml">BDSM</span><span class="map-node math">UserCredV2</span><span class="map-arrow">→</span><span class="map-node">계정 점수·라벨</span></div></div>
+          <div class="map-lane"><div class="lane-label">요청 순간 · 노출</div><div class="map-flow"><span class="map-node">저장된 라벨</span><span class="map-arrow">→</span><span class="map-node">Visibility Filtering</span><span class="map-arrow">→</span><span class="map-node">ALLOW / INTERSTITIAL / DROP</span></div></div>
+          <p class="map-note">위 지도에서 마지막 줄의 Visibility Filtering은 모델이 아니라 규칙 시스템입니다. 앞선 모델의 출력이 곧바로 DROP이 되는 것이 아니라, 규칙이 사용자·국가·설정·라벨을 함께 읽고 최종 판단합니다.</p>
+        </div>
+        <div class="quick-index" aria-label="모델 상세 바로가기">
+          <a class="quick-link" href="#phoenix-retrieval"><small>RECOMMENDATION</small><strong>Phoenix Retrieval</strong></a><a class="quick-link" href="#phoenix-ranking"><small>RECOMMENDATION</small><strong>Phoenix Ranking</strong></a><a class="quick-link" href="#simclusters"><small>GRAPH</small><strong>SimClusters</strong></a><a class="quick-link" href="#vmranker"><small>RERANKING</small><strong>VMRanker</strong></a><a class="quick-link" href="#grox"><small>LLM SYSTEM</small><strong>Grox</strong></a><a class="quick-link" href="#clip"><small>MULTIMODAL</small><strong>TwitterCLIP</strong></a><a class="quick-link" href="#adult-content"><small>MEDIA SAFETY</small><strong>adult-content</strong></a><a class="quick-link" href="#pnsfw"><small>MEDIA SAFETY</small><strong>pNSFWMedia</strong></a><a class="quick-link" href="#agatha"><small>ACCOUNT</small><strong>Agatha</strong></a><a class="quick-link" href="#bdsm"><small>ACCOUNT</small><strong>BDSM</strong></a><a class="quick-link" href="#usercred"><small>GRAPH</small><strong>UserCredV2</strong></a><a class="quick-link" href="#mmp"><small>SERVING</small><strong>Media Model Proxy</strong></a>
+        </div>
+        <p class="source-note">공식 위치 구분: <a href="https://github.com/xai-org/x-algorithm#system-architecture" target="_blank" rel="noreferrer noopener">System Architecture ↗</a></p>
+      </section>
+
+      <section class="chapter" id="recommendation" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 02 · RECOMMENDATION</span><h2>무엇을 찾고<br>어떤 순서로 세울까?</h2><p class="lede">Phoenix라는 한 이름 안에 후보 수집 모델과 랭킹 모델이 따로 있습니다. SimClusters가 다른 방식으로 후보를 보태고, VMRanker가 마지막 순서의 반복감을 줄입니다.</p></div>
+        <div class="model-list">
+          <article class="model-card" id="phoenix-retrieval">
+            <header class="model-head"><div class="model-number">01</div><div class="model-title"><span class="badge ml">학습 모델 · Transformer</span><h3>Phoenix Retrieval</h3><p>수백만 게시물에서 사용자와 가까운 비팔로우 후보를 벡터 검색으로 찾는 1단계 모델.</p></div><div class="model-meta"><span>phoenix/</span><span>ONLINE · OON SOURCE</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>최근 행동 이력 + 프로필 문맥</strong><p>반응한 게시물의 순서, 국가·언어 같은 거친 사용자 특성</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>두 개의 타워가 같은 벡터 공간으로</strong><p>User Tower는 사용자 벡터, Candidate Tower는 게시물 벡터를 만듭니다.</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>내적이 큰 Top-K 게시물</strong><p>사용자 벡터와 가까운 후보 ID 목록</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 Two-Tower인가?</h4><p>게시물 벡터를 미리 계산해 인덱스에 넣어 두면, 요청 때 사용자 벡터와 빠르게 비교할 수 있습니다.</p></div><div class="explain"><h4>무엇을 학습하나?</h4><p>좋아한 게시물은 가깝게, 무관한 게시물은 멀게 놓는 대조 학습을 사용합니다. 공식 설명은 favorite를 양성 신호로 듭니다.</p></div><div class="explain watch"><h4>헷갈리지 말 것</h4><p>최종 순위를 정하지 않습니다. 넓은 바다에서 랭킹 모델이 볼 작은 후보 풀을 만드는 역할입니다.</p></div></div>
+              <details><summary>실제 구현에서 한 단계 더 보기</summary><div class="detail-body"><ul><li>사용자 타워는 행동 이력을 Transformer로 인코딩하며 production 설정에는 학습된 사용자 ID 임베딩이 없습니다.</li><li>후보는 멀티모달 임베딩에서 만든 6단계 Semantic ID와 해시된 작성자 ID를 사용합니다.</li><li>체크포인트를 저장할 때 후보 타워가 코퍼스 전체를 계산해 검색 인덱스를 체크포인트에 함께 넣습니다.</li><li>서빙은 정규화된 사용자 벡터와 게시물 벡터의 내적으로 Top-K를 찾습니다.</li></ul></div></details>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/phoenix#retrieval-two-tower-model" target="_blank" rel="noreferrer noopener">Phoenix Retrieval 공식 설명·코드 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="phoenix-ranking">
+            <header class="model-head"><div class="model-number">02</div><div class="model-title"><span class="badge ml">학습 모델 · Multi-task Transformer</span><h3>Phoenix Ranking</h3><p>각 후보에 대해 좋아요·답글·체류·신고 등 여러 행동 가능성을 한꺼번에 예측하는 2단계 모델.</p></div><div class="model-meta"><span>phoenix/</span><span>ONLINE · SCORING</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>사용자 + 행동 이력 + 후보 묶음</strong><p>게시물·작성자·행동·Semantic ID·시간·표면·게시물 나이 등</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>후보 격리 마스크가 있는 Transformer</strong><p>후보는 사용자와 이력은 보지만 다른 후보는 보지 못합니다.</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>후보 × 행동별 확률</strong><p>여러 행동 logit과 dwell 관련 연속값</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 여러 확률인가?</h4><p>좋아요 하나만 최적화하지 않고 클릭·체류·팔로우·부정 반응을 각각 예측한 뒤 정책 가중치로 합칠 수 있습니다.</p></div><div class="explain"><h4>후보 격리란?</h4><p>A의 점수가 같은 배치에 B가 들어왔는지에 따라 바뀌지 않게 후보끼리 attention을 막는 장치입니다.</p></div><div class="explain watch"><h4>모델 출력 ≠ 최종 점수</h4><p><code>RankingScorer</code>가 확률에 가중치를 곱해 최종 점수를 만듭니다. 가중합은 모델이 아닌 제품 규칙입니다.</p></div></div>
+              <details><summary>공식 production 구조의 숫자 보기</summary><div class="detail-body"><ul><li>공개 README의 production 랭킹 설정: 임베딩 차원 2560, Transformer 8층, GQA 20 query / 4 KV heads.</li><li>이력 길이 1022, 한 번에 후보 64개를 다루는 설정이 공개되어 있습니다.</li><li>학습 코드는 JAX, 온라인 서빙 레이어는 Rust이며 합성 데이터용 nano 설정도 제공합니다.</li><li>후보별 다중 라벨 분류와 dwell time 같은 연속 신호 회귀 head를 함께 둡니다.</li></ul></div></details>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/phoenix#ranking-transformer-with-candidate-isolation" target="_blank" rel="noreferrer noopener">Phoenix Ranking 공식 설명·코드 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="simclusters">
+            <header class="model-head"><div class="model-number">03</div><div class="model-title"><span class="badge math">그래프·클러스터 알고리즘</span><h3>SimClusters</h3><p>“누가 무엇에 함께 반응했는가”에서 관심사 공동체를 만들고, 공동체와 가까운 게시물을 찾습니다.</p></div><div class="model-meta"><span>simclusters/</span><span>OON SOURCE</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>사용자·게시물 참여 그래프</strong><p>계정들이 어떤 계정·게시물에 반응했는지</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>공동 반응을 관심사 클러스터로</strong><p>사용자와 게시물에 여러 클러스터 가중치를 부여</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>클러스터가 가까운 후보</strong><p>팔로우 밖에서 발견한 관련 게시물</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>장점</h4><p>텍스트를 직접 이해하지 않아도 사람들의 집단 행동에서 주제와 취향을 발견할 수 있습니다.</p></div><div class="explain"><h4>하나의 클러스터만?</h4><p>사용자와 게시물은 여러 관심사에 동시에 속할 수 있습니다. “개발 0.7, 축구 0.2” 같은 희소 표현으로 생각하면 쉽습니다.</p></div><div class="explain watch"><h4>신경망인가?</h4><p>이 가이드에서는 학습된 신경망이 아니라 그래프 기반 표현·후보 수집 알고리즘으로 분류합니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/simclusters" target="_blank" rel="noreferrer noopener">SimClusters 공개 구현 ↗</a> · <a href="https://github.com/xai-org/x-algorithm#candidate-sources" target="_blank" rel="noreferrer noopener">공식 역할 설명 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="vmranker">
+            <header class="model-head"><div class="model-number">04</div><div class="model-title"><span class="badge math">수학적 재정렬 · DPP</span><h3>VMRanker</h3><p>점수가 높은 글만 연달아 놓을 때 생기는 “비슷한 글 반복”을 줄이는 다양성 재정렬 서비스.</p></div><div class="model-meta"><span>vm-ranker/</span><span>RERANKING</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>후보 점수 + 임베딩</strong><p>각 게시물의 품질 점수와 서로의 벡터 유사도</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>Determinantal Point Process</strong><p>품질과 집합의 다양성을 함께 크게 만드는 순서를 계산</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>조금 더 다양한 순서</strong><p>점수를 약간 양보하고 이웃 게시물의 유사성을 낮춤</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>쉬운 비유</h4><p>시험 점수만 보고 팀을 뽑지 않고, 능력은 높으면서 역할이 겹치지 않는 조합을 고르는 것과 같습니다.</p></div><div class="explain"><h4>새 점수를 예측하나?</h4><p>아닙니다. 이미 계산된 점수와 임베딩을 받아 순서를 다시 정합니다.</p></div><div class="explain watch"><h4>딥러닝 모델?</h4><p>DPP는 확률·선형대수 기반의 일반 수학 도구입니다. X가 이 문제에 맞춰 서비스로 구현했습니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/vm-ranker" target="_blank" rel="noreferrer noopener">VMRanker 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm#ranking" target="_blank" rel="noreferrer noopener">공식 역할 설명 ↗</a></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter" id="content" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 03 · CONTENT & MEDIA</span><h2>게시물과 이미지가<br>무엇을 담았는가?</h2><p class="lede">이 계열은 피드 요청이 올 때마다 무거운 분석을 다시 하지 않습니다. 게시물이 발행될 때 텍스트·이미지·영상을 분석하고 점수·라벨을 저장해 둡니다.</p></div>
+        <div class="model-list">
+          <article class="model-card" id="grox">
+            <header class="model-head"><div class="model-number">05</div><div class="model-title"><span class="badge system">LLM 분류 시스템 · 부분 공개</span><h3>Grox</h3><p>Grok 계열 LLM 호출을 작업 흐름으로 묶어 새 게시물의 스팸·성인물·폭력물 분류와 멀티모달 표현을 만듭니다.</p></div><div class="model-meta"><span>grox/</span><span>OFF REQUEST PATH</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>게시물 텍스트·이미지·영상</strong><p>게시물 발행 이벤트와 분석할 콘텐츠</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>Flow + LLM 호출 + 후처리</strong><p>작업 계획, 데이터 로더, Grok sampler, 분류별 flow</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>분류 결과와 숫자 표현</strong><p>스팸·안전 카테고리 및 텍스트·이미지 임베딩</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>하나의 모델인가?</h4><p>아니라 보는 편이 정확합니다. LLM을 여러 분류 작업에 연결하는 실행·오케스트레이션 시스템입니다.</p></div><div class="explain"><h4>공개된 흐름</h4><p>저장소에는 reply spam, UPA, PTOS, multimodal embedding 같은 flow와 공통 실행 엔진이 보입니다.</p></div><div class="explain watch"><h4>가장 큰 빈칸</h4><p>구체적인 Jinja 프롬프트는 악용 방지를 이유로 비공개입니다. 따라서 분류 기준을 완전히 재현할 수는 없습니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/grox" target="_blank" rel="noreferrer noopener">Grox 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm#whats-not-in-this-repo" target="_blank" rel="noreferrer noopener">비공개 범위 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="clip">
+            <header class="model-head"><div class="model-number">06</div><div class="model-title"><span class="badge ml">학습 모델 · 멀티모달 임베딩</span><h3>TwitterCLIP</h3><p>X가 공개한 CLIP 구현입니다. 이미지와 텍스트를 같은 벡터 공간에 놓아 “무슨 이미지인지”를 후속 분류기가 읽을 수 있게 합니다.</p></div><div class="model-meta"><span>clip/</span><span>EMBEDDING BACKBONE</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>이미지와 연결 텍스트</strong><p>서로 맞는 이미지–문장 쌍</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>Image Encoder ↔ Text Encoder</strong><p>맞는 쌍은 가깝게, 다른 쌍은 멀게 대조 학습</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>정렬된 이미지·텍스트 벡터</strong><p>미디어 분류기의 공통 입력 표현</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 벡터가 필요한가?</h4><p>픽셀 자체 대신 의미가 압축된 숫자 배열을 쓰면 작은 분류기가 성인물·폭력물 같은 작업을 더 쉽게 배울 수 있습니다.</p></div><div class="explain"><h4>직접 라벨을 내나?</h4><p>주 역할은 표현 생성입니다. 실제 adult 여부 같은 판정은 이 벡터 위의 별도 분류기가 담당할 수 있습니다.</p></div><div class="explain watch"><h4>누가 발명했나?</h4><p>CLIP 개념은 OpenAI 연구에서 널리 알려졌습니다. 여기서는 X가 공개한 자체 학습·모델 구현을 설명합니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/clip" target="_blank" rel="noreferrer noopener">X CLIP 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm#content-understanding" target="_blank" rel="noreferrer noopener">공식 연결 설명 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="adult-content">
+            <header class="model-head"><div class="model-number">07</div><div class="model-title"><span class="badge ml">학습 모델 · 이진 분류 + 보정</span><h3>adult-content</h3><p>미디어 임베딩을 받아 성인 콘텐츠일 확률을 내고, 운영에서 해석하기 쉬운 확률로 보정합니다.</p></div><div class="model-meta"><span>adult-content/</span><span>MEDIA SAFETY</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>미디어 임베딩</strong><p>이미지를 압축해 표현한 숫자 벡터</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>BatchNorm → GELU Dense → Sigmoid</strong><p>Binary cross-entropy로 학습한 작은 MLP</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>adult 확률 + 보정표</strong><p>Isotonic Regression으로 점수와 실제 비율을 맞춤</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 작은 모델인가?</h4><p>이미지의 복잡한 특징은 앞선 임베딩 모델이 추출했으므로, 이 모델은 그 벡터를 분류하는 얕은 신경망이면 됩니다.</p></div><div class="explain"><h4>보정은 무엇인가?</h4><p>0.8이라는 점수가 실제로 약 80%의 양성 비율을 뜻하도록 검증 데이터로 점수 눈금을 다시 맞춥니다.</p></div><div class="explain watch"><h4>점수 = 조치?</h4><p>아닙니다. 점수나 라벨은 Visibility 규칙의 입력 중 하나이며 사용자 설정·국가·관계가 최종 결과를 바꿀 수 있습니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/blob/main/adult-content/training.py" target="_blank" rel="noreferrer noopener">학습 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm/blob/main/adult-content/calibration.py" target="_blank" rel="noreferrer noopener">확률 보정 코드 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="pnsfw">
+            <header class="model-head"><div class="model-number">08</div><div class="model-title"><span class="badge ml">학습 모델 · 신호 결합 분류기</span><h3>pNSFWMedia</h3><p>이미지만 보지 않고 이미지 점수와 작성자 계정 신호를 합쳐 성인 미디어 가능성을 예측합니다.</p></div><div class="model-meta"><span>pnsfwmedia/</span><span>MEDIA + ACCOUNT</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>CLIP 점수 + 계정 신호</strong><p>Agatha 성인물 점수, 텍스트 점수, 팔로워 수, 소비자 점수, 누락 플래그</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>Frozen CLIP + Dense 50 + Sigmoid</strong><p>이미지 표현과 계정 문맥을 이어 붙여 이진 분류</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>NSFW 미디어 점수</strong><p>미디어와 작성자 문맥을 함께 본 확률</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 계정도 보나?</h4><p>같은 시각 특징이라도 계정이 과거에 올린 콘텐츠와 주변 반응이 추가 문맥을 줄 수 있기 때문입니다.</p></div><div class="explain"><h4>누락 플래그란?</h4><p>계정 점수가 없다는 사실도 별도 입력으로 넣어, 기본값 숫자와 실제 낮은 점수를 구분합니다.</p></div><div class="explain watch"><h4>파일 이름의 experimental</h4><p>공개 파일은 <code>model_experimental.py</code>입니다. production 전체와 동일하다고 확대 해석하지 않습니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/blob/main/pnsfwmedia/model_experimental.py" target="_blank" rel="noreferrer noopener">pNSFWMedia 공개 모델 코드 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="mmp">
+            <header class="model-head"><div class="model-number">S</div><div class="model-title"><span class="badge not">모델 아님 · 서빙 프록시</span><h3>Media Model Proxy</h3><p>이미지·영상을 한 번 불러 여러 미디어 모델에 동시에 추론을 요청하는 중간 서비스.</p></div><div class="model-meta"><span>media-model-proxy/</span><span>SERVING INFRA</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>미디어 위치 + 모델 플래그</strong><p>Blobstore 경로, 미디어 타입, 실행할 모델 목록</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>미디어 1회 로드 → 모델 병렬 호출</strong><p>DeepBird prediction 서비스로 요청을 중계</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>모델별 응답 map</strong><p>저장은 하지 않고 호출자에게 결과를 반환</p></div></div>
+              <div class="task-heads" aria-label="공식 README에 적힌 미디어 모델 작업"><span>adult content</span><span>violence & gore</span><span>hateful symbols</span><span>subject matter</span><span>known-media match</span></div>
+              <div class="one-line">이름에 Model이 들어가지만 <strong>가중치를 학습하는 모델이 아니라 모델 서버들을 효율적으로 호출하는 프록시</strong>입니다.</div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/media-model-proxy" target="_blank" rel="noreferrer noopener">Media Model Proxy README·코드 ↗</a></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter" id="trust" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 04 · ACCOUNT TRUST</span><h2>계정이 어떻게<br>행동해 왔는가?</h2><p class="lede">콘텐츠 자체뿐 아니라 계정이 받은 반응, 행동의 시간 순서, 팔로우·참여 그래프도 신뢰와 어뷰징 신호를 만듭니다.</p></div>
+        <div class="model-list">
+          <article class="model-card" id="agatha">
+            <header class="model-head"><div class="model-number">09</div><div class="model-title"><span class="badge system">오프라인 점수 시스템</span><h3>Agatha</h3><p>다른 사람들이 계정의 게시물에 보인 차단·신고 반응을 favorite와 비교해 계정 단위 건강성 점수를 만듭니다.</p></div><div class="model-meta"><span>agatha/</span><span>BATCH · ACCOUNT</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>계정이 받은 반응 집계</strong><p>차단, 신고, 스팸 신고, favorite와 계정 라벨</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>배치 집계·비율 계산·보정</strong><p>rate 기반 job과 NSFW·spam 계열 build job</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>계정별 건강성 점수·라벨</strong><p>스팸·성인물 가능성 등 후속 시스템의 입력</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>핵심 아이디어</h4><p>신고 수만 보면 유명 계정이 불리합니다. favorite 같은 정상 참여와의 상대 비율을 함께 보는 이유입니다.</p></div><div class="explain"><h4>온라인 모델인가?</h4><p>공식 README는 실시간 신경망 하나보다 여러 오프라인 배치 job으로 설명합니다.</p></div><div class="explain watch"><h4>라벨의 의미</h4><p>Agatha 점수는 pNSFWMedia나 enforcement 규칙으로 흘러갈 수 있지만, 그 자체가 곧 계정 정지를 뜻하지 않습니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/agatha" target="_blank" rel="noreferrer noopener">Agatha 공개 배치 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm#content-understanding" target="_blank" rel="noreferrer noopener">공식 설명 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="bdsm">
+            <header class="model-head"><div class="model-number">10</div><div class="model-title"><span class="badge ml">학습 모델 · 행동 시퀀스 Transformer</span><h3>BDSM</h3><p>계정이 시간에 따라 수행한 행동 순서를 읽어 봇·스팸·조작 같은 비정상 행동 패턴을 찾습니다.</p></div><div class="model-meta"><span>bdsm/</span><span>STREAMING · ACCOUNT</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>최근 512개 행동 시퀀스</strong><p>행동 타입, 시간, 표면, 체류, 기기·클라이언트, 대상 해시</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>양방향 Transformer + 8 task heads</strong><p>시간 간격을 반영하는 RoPE와 별도 MLP head</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>8가지 계정 행동 점수</strong><p>head별 확률과 임계값을 넘은 탐지 결과</p></div></div>
+              <div class="task-heads" aria-label="BDSM의 8개 분류 head"><span>FollowBot</span><span>LikeBot</span><span>EngagementAmplifier</span><span>ReplySpamBot</span><span>TweetSpamBot</span><span>RTBot</span><span>MultiActionBot</span><span>LegitimateUser</span></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 순서가 중요한가?</h4><p>같은 행동 횟수라도 몇 초 간격의 기계적 폭주와 며칠에 걸친 자연스러운 활동은 의미가 다릅니다.</p></div><div class="explain"><h4>어떻게 학습하나?</h4><p>backbone은 마스킹 속성 예측과 대조 학습으로 사전학습하고, 8개 task head는 저장된 CLS 표현으로 별도 학습합니다.</p></div><div class="explain watch"><h4>무엇이 비공개인가?</h4><p>실제 조치 임계값은 <code>9.99</code> sentinel로 가려져 있어 공개 코드 그대로는 탐지가 발동하지 않습니다.</p></div></div>
+              <details><summary>구현 파이프라인 보기</summary><div class="detail-body"><ul><li>Kafka 행동 이벤트 → Rust accumulator → sequence prefetcher → JAX GPU scorer → result sink 순서입니다.</li><li>256개 행동 타입, 임베딩 폭 1024, 시퀀스 길이 512가 공개 설정으로 명시됩니다.</li><li>backbone 가중치와 task head는 안전한 NPZ 및 SHA-256 manifest 형태로 제공됩니다.</li><li>결과 sink가 head별 threshold와 cooldown을 읽어 challenge·suspend 같은 단계적 조치를 연결하지만 실제 운영 threshold는 비공개입니다.</li></ul></div></details>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/bdsm" target="_blank" rel="noreferrer noopener">BDSM README·학습·서빙 코드 ↗</a></p>
+            </div>
+          </article>
+
+          <article class="model-card" id="usercred">
+            <header class="model-head"><div class="model-number">11</div><div class="model-title"><span class="badge math">그래프 알고리즘 · PageRank</span><h3>UserCredV2</h3><p>팔로우와 참여 연결망을 따라 신뢰 질량을 퍼뜨리고, 계정마다 0~100 범위의 점수를 만듭니다.</p></div><div class="model-meta"><span>user-cred-v2/</span><span>BATCH · GRAPH</span></div></header>
+            <div class="model-body">
+              <div class="ipo-flow"><div class="ipo-box"><small>INPUT</small><strong>팔로우·참여 그래프</strong><p>계정을 노드로, 관계와 참여를 edge로 표현</p></div><div class="ipo-arrow">→</div><div class="ipo-box process"><small>PROCESS</small><strong>PageRank 질량 전파</strong><p>신뢰받는 노드와 연결된 계정에 반복적으로 mass 전달</p></div><div class="ipo-arrow">→</div><div class="ipo-box output"><small>OUTPUT</small><strong>계정별 mass와 0~100 score</strong><p>로그 변환 후 범위를 잘라 저장</p></div></div>
+              <div class="explain-grid"><div class="explain"><h4>왜 그래프인가?</h4><p>계정 자체의 프로필보다 누가 팔로우하고 상호작용하는지를 보면 관계망 속 평판을 표현할 수 있습니다.</p></div><div class="explain"><h4>공개 점수식</h4><p><code>165.2 + 7.07 × ln(mass)</code>를 계산하고 0~100으로 제한합니다. mass가 0 이하면 0입니다.</p></div><div class="explain watch"><h4>AI 모델인가?</h4><p>PageRank는 학습 데이터로 신경망 가중치를 맞추는 모델이 아닙니다. 그래프 위에서 반복 계산하는 알고리즘입니다.</p></div></div>
+              <p class="source-note"><a href="https://github.com/xai-org/x-algorithm/tree/main/user-cred-v2" target="_blank" rel="noreferrer noopener">UserCredV2 코드 ↗</a> · <a href="https://github.com/xai-org/x-algorithm/blob/main/user-cred-v2/UserCredV2.scala" target="_blank" rel="noreferrer noopener">점수 변환식 ↗</a></p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="chapter" id="not-models" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 05 · NOT MODELS</span><h2>모델처럼 들리지만<br>역할이 다른 것들</h2><p class="lede">이 컴포넌트들은 중요하지만 학습 모델로 부르면 시스템을 잘못 이해하게 됩니다.</p></div>
+        <table class="not-model-table">
+          <thead><tr><th>이름</th><th>정체</th><th>실제 역할</th></tr></thead>
+          <tbody>
+            <tr><td>Thunder</td><td><span class="badge not">인메모리 저장·조회</span></td><td>팔로우 계정이 방금 발행한 게시물을 메모리에 보관하고 빠르게 반환합니다.</td></tr>
+            <tr><td>Phoenix RankAll</td><td><span class="badge not">검색 인덱스</span></td><td>Phoenix Retrieval이 조회하는 게시물 벡터 인덱스를 이벤트에 맞춰 갱신합니다.</td></tr>
+            <tr><td>RankingScorer</td><td><span class="badge not">가중합 규칙</span></td><td>Phoenix의 행동별 확률에 설정 가중치를 곱해 하나의 점수로 합칩니다.</td></tr>
+            <tr><td>Visibility Filtering</td><td><span class="badge not">규칙 평가기</span></td><td>사용자 관계·설정·국가·라벨을 읽어 ALLOW / INTERSTITIAL / DROP을 결정합니다.</td></tr>
+            <tr><td>Scarecrow</td><td><span class="badge not">이벤트 라벨러</span></td><td>이벤트가 발생할 때 Botmaker 규칙을 실행해 게시물·계정에 라벨을 적용합니다.</td></tr>
+            <tr><td>Botmaker</td><td><span class="badge not">규칙 언어·엔진</span></td><td>라벨 조건을 표현하는 언어, compiler, runtime입니다. 일부 실제 규칙은 비공개입니다.</td></tr>
+            <tr><td>Abuse Enforcement</td><td><span class="badge not">정책·조치 서비스</span></td><td>모델 점수와 규칙을 읽어 라벨, challenge, suspend 같은 조치를 수행합니다.</td></tr>
+            <tr><td>Candidate Pipeline</td><td><span class="badge not">프레임워크</span></td><td>Source·Hydrator·Filter·Scorer·Selector·SideEffect의 실행 순서를 정의합니다.</td></tr>
+            <tr><td>Home Mixer</td><td><span class="badge not">오케스트레이터</span></td><td>For You 요청에서 실제 후보 소스·모델·필터·블렌더를 조립해 실행합니다.</td></tr>
+          </tbody>
+        </table>
+        <div class="one-line purple"><strong>가장 중요한 관계:</strong> 모델은 점수·벡터·라벨을 만들고, 규칙 시스템은 그 신호를 다른 사용자 문맥과 합쳐 실제 노출 결정을 내립니다.</div>
+        <p class="source-note">비모델 역할 근거: <a href="https://github.com/xai-org/x-algorithm#components" target="_blank" rel="noreferrer noopener">공식 Components 표 ↗</a></p>
+      </section>
+
+      <section class="chapter" id="sources" data-nav-section>
+        <div class="chapter-head"><span class="chapter-no">CHAPTER 06 · READING PATH & SOURCES</span><h2>코드를 읽는다면<br>이 순서가 가장 덜 막힌다</h2><p class="lede">처음부터 모든 디렉터리를 읽지 말고, 입력과 출력이 명확한 파일부터 넓혀 가세요.</p></div>
+        <div class="reading-order">
+          <div class="read-step"><div><strong>큰 지도: root README</strong><p>요청 경로와 라벨링 경로에서 각 이름의 위치를 확인합니다.</p></div><a href="https://github.com/xai-org/x-algorithm#system-architecture" target="_blank" rel="noreferrer noopener">열기 ↗</a></div>
+          <div class="read-step"><div><strong>Phoenix README</strong><p>Retrieval과 Ranking을 하나의 two-stage 시스템으로 연결합니다.</p></div><a href="https://github.com/xai-org/x-algorithm/tree/main/phoenix" target="_blank" rel="noreferrer noopener">열기 ↗</a></div>
+          <div class="read-step"><div><strong>작은 분류기: adult-content</strong><p>임베딩 → Dense → sigmoid → calibration의 전체 흐름이 짧습니다.</p></div><a href="https://github.com/xai-org/x-algorithm/tree/main/adult-content" target="_blank" rel="noreferrer noopener">열기 ↗</a></div>
+          <div class="read-step"><div><strong>행동 모델: BDSM README</strong><p>학습 목표, 모델, streaming pipeline, 공개 한계를 한 문서에서 볼 수 있습니다.</p></div><a href="https://github.com/xai-org/x-algorithm/tree/main/bdsm" target="_blank" rel="noreferrer noopener">열기 ↗</a></div>
+          <div class="read-step"><div><strong>마지막에 규칙 시스템</strong><p>점수가 어떻게 실제 라벨·노출 판단으로 이어지는지 확인합니다.</p></div><a href="https://github.com/xai-org/x-algorithm/tree/main/visibility-filtering" target="_blank" rel="noreferrer noopener">열기 ↗</a></div>
+        </div>
+
+        <h3 style="margin-top:48px">공식 소스 묶음</h3>
+        <div class="source-grid">
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm#components" target="_blank" rel="noreferrer noopener"><small>INVENTORY</small><strong>공식 Components 표</strong><span>이 가이드의 전체 범위를 정한 기준</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/phoenix" target="_blank" rel="noreferrer noopener"><small>RETRIEVAL + RANKING</small><strong>Phoenix</strong><span>production 모델 코드, 학습, Rust serving, 합성 데이터</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/simclusters" target="_blank" rel="noreferrer noopener"><small>GRAPH RETRIEVAL</small><strong>SimClusters</strong><span>클러스터·ANN 후보 수집 코드</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/vm-ranker" target="_blank" rel="noreferrer noopener"><small>DIVERSITY</small><strong>VMRanker</strong><span>DPP 재정렬 서비스</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/grox" target="_blank" rel="noreferrer noopener"><small>LLM FLOWS</small><strong>Grox</strong><span>분류 flow와 공통 실행 엔진</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/clip" target="_blank" rel="noreferrer noopener"><small>MULTIMODAL</small><strong>TwitterCLIP</strong><span>이미지·텍스트 임베딩 학습 코드</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/agatha" target="_blank" rel="noreferrer noopener"><small>ACCOUNT BATCH</small><strong>Agatha</strong><span>계정 반응 기반 배치 점수 job</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/bdsm" target="_blank" rel="noreferrer noopener"><small>BEHAVIOR TRANSFORMER</small><strong>BDSM</strong><span>행동 시퀀스 모델과 streaming pipeline</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/user-cred-v2" target="_blank" rel="noreferrer noopener"><small>GRAPH TRUST</small><strong>UserCredV2</strong><span>PageRank mass와 계정 점수</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/media-model-proxy" target="_blank" rel="noreferrer noopener"><small>MODEL SERVING</small><strong>Media Model Proxy</strong><span>미디어 로드와 다중 모델 호출 프록시</span></a>
+        </div>
+        <div class="verified">VERIFIED 2026-08-14 KST · xai-org/x-algorithm main 브랜치의 공식 README와 공개 코드 기준 · 모델·설정·공개 범위는 이후 바뀔 수 있습니다.</div>
+      </section>
+    </main>
+  </div>
+
+  <footer><div class="footer-inner"><p>추천 개발 초보자를 위한 비공식 한국어 해설 · 공식 소스 링크와 확인일 포함</p><p><a href="x-for-you-algorithm-guide.html">For You 본편</a> · <a href="#top">맨 위로 ↑</a></p></div></footer>
+
+  <script>
+    (() => {
+      const bar = document.getElementById('reading-bar');
+      const sections = [...document.querySelectorAll('[data-nav-section]')];
+      const links = [...document.querySelectorAll('.side-nav a, .mobile-nav a')];
+      const renderProgress = () => {
+        const max = document.documentElement.scrollHeight - innerHeight;
+        bar.style.width = `${max > 0 ? Math.min(100, scrollY / max * 100) : 0}%`;
+      };
+      addEventListener('scroll', renderProgress, { passive: true });
+      addEventListener('resize', renderProgress);
+      renderProgress();
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!visible) return;
+          links.forEach((link) => link.classList.toggle('is-active', link.getAttribute('href') === `#${visible.target.id}`));
+        }, { rootMargin: '-18% 0px -65% 0px', threshold: [0, .2, .5] });
+        sections.forEach((section) => observer.observe(section));
+      }
+    })();
+  </script>
+</body>
+</html>

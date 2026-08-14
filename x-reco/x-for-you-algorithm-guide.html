@@ -1,0 +1,1986 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="추천 개발 초보자를 위한 X For You 추천 알고리즘 한국어 가이드북. 후보 수집, Phoenix 랭킹, 가중치, Visibility Filtering을 시각 자료와 실습으로 설명합니다.">
+  <meta name="color-scheme" content="light">
+  <title>X For You 알고리즘 — 초보 개발자 가이드북</title>
+  <style>
+    :root {
+      --paper: #f2efe7;
+      --paper-2: #fffdf7;
+      --ink: #161b22;
+      --muted: #5d6470;
+      --line: #20252d;
+      --blue: #1d9bf0;
+      --blue-soft: #dff2ff;
+      --lime: #c7f36b;
+      --lime-soft: #effbd4;
+      --coral: #ff6b5e;
+      --coral-soft: #ffe6e2;
+      --purple: #7c6cf2;
+      --purple-soft: #ece9ff;
+      --yellow: #ffd166;
+      --yellow-soft: #fff3c9;
+      --green: #14845c;
+      --red: #c43d36;
+      --radius-sm: 12px;
+      --radius: 18px;
+      --radius-lg: 28px;
+      --shadow: 6px 6px 0 var(--line);
+      --shadow-sm: 3px 3px 0 var(--line);
+      --content: 1180px;
+      --reading: 760px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 20% 5%, rgba(29, 155, 240, .12), transparent 28rem),
+        linear-gradient(rgba(22, 27, 34, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(22, 27, 34, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: auto, 24px 24px, 24px 24px, auto;
+      color: var(--ink);
+      font-family: Pretendard, "Apple SD Gothic Neo", "Noto Sans KR", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 17px;
+      line-height: 1.75;
+      word-break: keep-all;
+    }
+    a { color: inherit; text-underline-offset: .2em; }
+    a:hover { text-decoration-thickness: 2px; }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    img, svg { display: block; max-width: 100%; }
+    code, .mono {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: .91em;
+    }
+    code {
+      padding: .14em .38em;
+      border: 1px solid rgba(22, 27, 34, .18);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, .65);
+    }
+    :focus-visible {
+      outline: 4px solid var(--yellow);
+      outline-offset: 3px;
+    }
+    .skip-link {
+      position: fixed;
+      z-index: 999;
+      top: 12px;
+      left: 12px;
+      transform: translateY(-160%);
+      padding: 10px 16px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      background: var(--ink);
+      color: #fff;
+    }
+    .skip-link:focus { transform: translateY(0); }
+    .reading-progress {
+      position: fixed;
+      z-index: 100;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 5px;
+      background: transparent;
+    }
+    .reading-progress span {
+      display: block;
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--purple), var(--coral));
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 72px 24px 38px;
+      border-bottom: 2px solid var(--line);
+      background: var(--ink);
+      color: #fff;
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: -35% -10% auto 45%;
+      height: 760px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(29, 155, 240, .32), rgba(124, 108, 242, .12) 45%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner { position: relative; max-width: var(--content); margin: 0 auto; }
+    .hero-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 46px;
+    }
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .x-tile {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 1.2rem;
+    }
+    .tool-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .tool-button, .primary-link {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 15px;
+      border: 1.5px solid rgba(255,255,255,.52);
+      border-radius: 999px;
+      background: transparent;
+      color: #fff;
+      font-weight: 750;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .tool-button:hover, .primary-link:hover { background: rgba(255,255,255,.1); }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+      align-items: center;
+      gap: clamp(36px, 6vw, 88px);
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 18px;
+      color: var(--lime);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: .82rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before { content: ""; width: 30px; height: 2px; background: currentColor; }
+    h1, h2, h3, h4 { line-height: 1.18; letter-spacing: -.035em; }
+    h1 {
+      max-width: 780px;
+      margin: 0;
+      font-size: clamp(3.1rem, 7.2vw, 6.8rem);
+      font-weight: 900;
+    }
+    .hero h1 em {
+      position: relative;
+      color: var(--blue);
+      font-style: normal;
+    }
+    .hero h1 em::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: .08em;
+      left: 0;
+      height: .12em;
+      border-radius: 999px;
+      background: var(--lime);
+      opacity: .9;
+    }
+    .hero-lede {
+      max-width: 680px;
+      margin: 26px 0 0;
+      color: #d4d8df;
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      line-height: 1.75;
+    }
+    .hero-lede strong { color: #fff; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .primary-link {
+      border-color: var(--lime);
+      background: var(--lime);
+      color: var(--ink);
+    }
+    .primary-link:hover { background: #d8ff8c; }
+    .hero-visual {
+      position: relative;
+      padding: 24px;
+      border: 2px solid rgba(255,255,255,.32);
+      border-radius: var(--radius-lg);
+      background: rgba(255,255,255,.06);
+      box-shadow: 14px 14px 0 rgba(29,155,240,.2);
+      backdrop-filter: blur(8px);
+    }
+    .visual-kicker { margin: 0 0 14px; color: #bfc6d1; font-size: .78rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .compression-visual { display: grid; gap: 15px; }
+    .post-cloud { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; }
+    .post-dot { aspect-ratio: 1; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(255,255,255,.13); }
+    .post-dot:nth-child(3n) { background: rgba(29,155,240,.7); }
+    .post-dot:nth-child(7n) { background: rgba(199,243,107,.75); }
+    .funnel-label { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; color: #aeb6c2; font-size: .76rem; font-weight: 700; }
+    .funnel-label::before, .funnel-label::after { content: ""; height: 1px; background: rgba(255,255,255,.24); }
+    .mini-feed { display: grid; gap: 8px; }
+    .mini-post {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 54px;
+      padding: 9px 12px;
+      border-radius: 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+    .mini-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--blue-soft); border: 2px solid var(--blue); }
+    .mini-lines { display: grid; gap: 5px; }
+    .mini-lines i { display: block; height: 6px; border-radius: 10px; background: #cfd5dd; }
+    .mini-lines i:last-child { width: 72%; }
+    .mini-score { font-family: monospace; font-size: .74rem; font-weight: 800; color: var(--green); }
+    .hero-fact-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      margin-top: 58px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.06);
+    }
+    .hero-fact { padding: 20px 22px; }
+    .hero-fact + .hero-fact { border-left: 1px solid rgba(255,255,255,.22); }
+    .hero-fact strong { display: block; color: var(--lime); font-family: monospace; font-size: 1.08rem; }
+    .hero-fact span { display: block; margin-top: 4px; color: #c7cdd6; font-size: .8rem; line-height: 1.45; }
+
+    .mobile-toc { display: none; }
+    .page-shell {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: clamp(28px, 5vw, 72px);
+      max-width: var(--content);
+      margin: 0 auto;
+      padding: 54px 24px 100px;
+    }
+    .side-nav { position: relative; }
+    .side-nav-inner { position: sticky; top: 28px; }
+    .side-nav-title { margin: 0 0 12px; font-family: monospace; font-size: .72rem; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+    .side-nav ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+    .side-nav a {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 9px;
+      align-items: baseline;
+      padding: 7px 8px;
+      border-radius: 9px;
+      color: var(--muted);
+      font-size: .8rem;
+      font-weight: 700;
+      line-height: 1.35;
+      text-decoration: none;
+    }
+    .side-nav a span { color: #8b929c; font-family: monospace; font-size: .68rem; }
+    .side-nav a:hover, .side-nav a.is-active { background: var(--ink); color: #fff; }
+    .side-nav a.is-active span { color: var(--lime); }
+    .study-progress {
+      margin-top: 24px;
+      padding: 16px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--paper-2);
+      box-shadow: var(--shadow-sm);
+    }
+    .study-progress p { margin: 0; font-size: .76rem; font-weight: 850; }
+    .progress-number { display: block; margin-top: 4px; font-family: monospace; font-size: 1.5rem; font-weight: 900; }
+    .progress-track { height: 8px; margin-top: 10px; overflow: hidden; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
+    .progress-track span { display: block; width: 0; height: 100%; background: var(--blue); transition: width .25s ease; }
+
+    main { min-width: 0; }
+    .chapter {
+      padding: 22px 0 90px;
+      scroll-margin-top: 24px;
+    }
+    .chapter + .chapter { border-top: 2px solid rgba(22,27,34,.2); }
+    .chapter-head { max-width: 880px; margin-bottom: 36px; }
+    .chapter-number { display: inline-block; margin-bottom: 12px; color: var(--blue); font-family: monospace; font-size: .8rem; font-weight: 900; letter-spacing: .08em; }
+    h2 { margin: 0; font-size: clamp(2.15rem, 5vw, 4rem); font-weight: 900; }
+    h3 { margin: 0 0 14px; font-size: clamp(1.35rem, 2.6vw, 2rem); }
+    h4 { margin: 0 0 8px; font-size: 1rem; }
+    .chapter-lede { max-width: var(--reading); margin: 18px 0 0; color: var(--muted); font-size: 1.06rem; }
+    .one-line {
+      margin: 28px 0;
+      padding: 20px 24px;
+      border-left: 8px solid var(--blue);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      background: var(--blue-soft);
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+    .one-line.coral { border-left-color: var(--coral); background: var(--coral-soft); }
+    .one-line.lime { border-left-color: var(--green); background: var(--lime-soft); }
+    .one-line.purple { border-left-color: var(--purple); background: var(--purple-soft); }
+    .source-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: .76rem;
+      line-height: 1.55;
+    }
+    .source-note a { font-weight: 800; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .card {
+      padding: 24px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--paper-2);
+    }
+    .card.shadow { box-shadow: var(--shadow); }
+    .card p:last-child { margin-bottom: 0; }
+    .card-icon {
+      display: grid;
+      width: 46px;
+      height: 46px;
+      margin-bottom: 20px;
+      place-items: center;
+      border: 2px solid var(--line);
+      border-radius: 13px;
+      background: var(--lime);
+      font-family: monospace;
+      font-size: 1rem;
+      font-weight: 900;
+      box-shadow: 3px 3px 0 var(--line);
+    }
+    .card p { color: var(--muted); }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-family: monospace;
+      font-size: .7rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .tag.blue { background: var(--blue-soft); }
+    .tag.lime { background: var(--lime-soft); }
+    .tag.coral { background: var(--coral-soft); }
+    .tag.purple { background: var(--purple-soft); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .key-card { position: relative; overflow: hidden; min-height: 230px; }
+    .key-card .big-number { display: block; margin-bottom: 28px; color: var(--blue); font-family: monospace; font-size: 3.2rem; font-weight: 900; line-height: 1; }
+    .key-card:nth-child(2) .big-number { color: var(--purple); }
+    .key-card:nth-child(3) .big-number { color: var(--coral); }
+    .key-card::after { content: "?"; position: absolute; right: 10px; bottom: -48px; color: rgba(22,27,34,.055); font-size: 11rem; font-weight: 950; line-height: 1; }
+
+    .truth-box {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 16px;
+      margin: 26px 0;
+      padding: 20px 22px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--yellow-soft);
+    }
+    .truth-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: var(--yellow); font-weight: 950; }
+    .truth-box strong { display: block; }
+    .truth-box p { margin: 4px 0 0; color: #5f553c; font-size: .88rem; }
+
+    .official-architecture {
+      margin: 30px 0;
+      padding: 26px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--paper-2);
+      box-shadow: var(--shadow);
+    }
+    .architecture-kicker { margin: 0 0 16px; color: var(--blue); font-family: monospace; font-size: .73rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .arch-terminal {
+      width: min(100%, 520px);
+      margin: 0 auto;
+      padding: 14px 18px;
+      border: 2px solid var(--line);
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-weight: 900;
+      text-align: center;
+    }
+    .arch-terminal.output { background: var(--lime); color: var(--ink); }
+    .arch-down { display: grid; height: 42px; place-items: center; color: var(--purple); font-size: 1.35rem; font-weight: 950; }
+    .arch-home {
+      padding: 18px;
+      border: 3px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+    }
+    .arch-home-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+    .arch-home-head strong { font-size: 1.08rem; }
+    .arch-home-head span { color: var(--muted); font-family: monospace; font-size: .7rem; }
+    .arch-pipeline {
+      padding: 18px;
+      border: 2px solid var(--line);
+      border-radius: 15px;
+      background: var(--blue-soft);
+    }
+    .arch-pipeline + .arch-pipeline { margin-top: 14px; }
+    .arch-pipeline.blending { background: var(--purple-soft); }
+    .arch-pipeline h3 { margin-bottom: 5px; font-size: 1.05rem; }
+    .arch-pipeline > p { margin: 0 0 14px; color: var(--muted); font-size: .77rem; }
+    .arch-mini-flow { display: grid; grid-template-columns: repeat(7, minmax(88px, 1fr)); gap: 8px; overflow-x: auto; padding: 2px 2px 7px; }
+    .arch-mini-step { position: relative; min-height: 78px; padding: 11px 9px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; font-size: .7rem; font-weight: 850; line-height: 1.35; }
+    .arch-mini-step small { display: block; margin-bottom: 5px; color: var(--blue); font-family: monospace; font-size: .62rem; }
+    .arch-blend-flow { display: grid; grid-template-columns: 1.15fr auto repeat(3, minmax(90px, .7fr)) auto 1fr; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
+    .arch-blend-item { min-height: 64px; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; font-size: .69rem; font-weight: 850; line-height: 1.35; text-align: center; }
+    .arch-plus { color: var(--purple); font-family: monospace; font-weight: 950; text-align: center; }
+    .arch-context-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .arch-context {
+      padding: 15px;
+      border: 1.5px dashed var(--line);
+      border-radius: 12px;
+      background: var(--yellow-soft);
+      font-size: .75rem;
+      line-height: 1.55;
+    }
+    .arch-context.side { background: var(--coral-soft); }
+    .arch-context strong { display: block; margin-bottom: 4px; }
+
+    .framework-compare { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 16px; margin: 34px 0 24px; }
+    .framework-card { padding: 24px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .framework-card.framework { background: var(--lime-soft); }
+    .framework-card.recipe { background: var(--blue-soft); }
+    .framework-card h3 { margin: 8px 0 10px; font-size: 1.28rem; }
+    .framework-card p { margin: 0; color: var(--muted); font-size: .84rem; }
+    .framework-card ul { margin: 15px 0 0; padding-left: 20px; color: var(--muted); font-size: .76rem; }
+    .framework-card li + li { margin-top: 6px; }
+    .framework-equals { display: grid; place-items: center; color: var(--purple); font-family: monospace; font-size: 1.6rem; font-weight: 950; }
+    .execution-board { margin: 24px 0; padding: 22px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--ink); color: #fff; }
+    .execution-board h3 { margin-bottom: 6px; font-size: 1.2rem; }
+    .execution-board > p { margin: 0 0 18px; color: #b8c0cb; font-size: .78rem; }
+    .execution-row { display: grid; grid-template-columns: 108px 1fr; gap: 14px; align-items: center; padding: 13px 0; border-top: 1px solid rgba(255,255,255,.17); }
+    .execution-label { color: var(--lime); font-family: monospace; font-size: .7rem; font-weight: 900; }
+    .execution-items { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+    .execution-items span { padding: 7px 9px; border: 1px solid rgba(255,255,255,.3); border-radius: 8px; background: rgba(255,255,255,.08); font-family: monospace; font-size: .68rem; }
+    .execution-items i { color: var(--lime); font-style: normal; font-weight: 950; }
+    .stage-catalog { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 22px; }
+    .stage-type { min-height: 126px; padding: 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; }
+    .stage-type code { display: inline-block; padding: 0; border: 0; background: none; color: var(--purple); font-size: .7rem; font-weight: 900; }
+    .stage-type strong { display: block; margin: 8px 0 4px; font-size: .8rem; }
+    .stage-type p { margin: 0; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+    .pipeline-ledger { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+    .ledger-item { padding: 15px; border: 1.5px dashed var(--line); border-radius: 11px; background: var(--paper-2); }
+    .ledger-item code { color: var(--blue); font-weight: 900; }
+    .ledger-item p { margin: 5px 0 0; color: var(--muted); font-size: .7rem; }
+
+    .pipeline-shell {
+      overflow: hidden;
+      border: 2px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--ink);
+      box-shadow: var(--shadow);
+      color: #fff;
+    }
+    .pipeline-top { padding: 22px 22px 8px; color: #aeb6c2; font-family: monospace; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .pipeline-track {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(108px, 1fr));
+      gap: 0;
+      overflow-x: auto;
+      padding: 14px 16px 20px;
+      scrollbar-color: var(--blue) transparent;
+    }
+    .stage-button {
+      position: relative;
+      min-height: 126px;
+      padding: 16px 12px;
+      border: 0;
+      border-right: 1px solid rgba(255,255,255,.16);
+      background: transparent;
+      color: #c3c9d1;
+      text-align: left;
+      cursor: pointer;
+    }
+    .stage-button:last-child { border-right: 0; }
+    .stage-button::after {
+      content: "→";
+      position: absolute;
+      z-index: 2;
+      top: 16px;
+      right: -8px;
+      color: var(--lime);
+      font-size: .9rem;
+    }
+    .stage-button:last-child::after { display: none; }
+    .stage-button small { display: block; color: var(--blue); font-family: monospace; font-weight: 900; }
+    .stage-button b { display: block; margin-top: 10px; color: inherit; font-size: .88rem; line-height: 1.35; }
+    .stage-button.is-active { border-radius: 12px; background: #fff; color: var(--ink); }
+    .stage-button.is-active small { color: var(--purple); }
+    .stage-detail {
+      display: grid;
+      grid-template-columns: .7fr 1.3fr;
+      gap: 24px;
+      min-height: 190px;
+      padding: 26px;
+      border-top: 1px solid rgba(255,255,255,.18);
+      background: #222934;
+    }
+    .stage-analogy { color: var(--lime); font-weight: 800; }
+    .stage-detail h3 { margin-top: 6px; color: #fff; }
+    .stage-detail p { margin: 0; color: #c3c9d1; }
+    .stage-files { margin-top: 14px; color: #9ea7b4; font-family: monospace; font-size: .73rem; }
+
+    .trio-compare { margin: 28px 0; }
+    .trio-compare h3 { margin-bottom: 16px; }
+    .trio-flow {
+      display: grid;
+      grid-template-columns: 1.25fr auto .75fr;
+      align-items: stretch;
+      gap: 16px;
+      margin: 22px 0 30px;
+      padding: 22px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+    .trio-sources { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .trio-source, .trio-ranker {
+      display: grid;
+      align-content: center;
+      min-height: 112px;
+      padding: 15px;
+      border: 1.5px solid rgba(255,255,255,.34);
+      border-radius: 12px;
+      background: rgba(255,255,255,.08);
+      text-align: center;
+    }
+    .trio-source b, .trio-ranker b { color: #fff; font-size: .88rem; }
+    .trio-source small, .trio-ranker small { display: block; margin-top: 6px; color: #bfc7d2; font-size: .68rem; line-height: 1.45; }
+    .trio-source:nth-child(1) { border-color: var(--blue); }
+    .trio-source:nth-child(2) { border-color: var(--lime); }
+    .trio-source:nth-child(3) { border-color: var(--purple); }
+    .trio-arrow { display: grid; place-items: center; color: var(--lime); font-size: 1.6rem; font-weight: 950; }
+    .trio-ranker { border: 2px solid var(--lime); background: rgba(199,243,107,.12); }
+    .trio-ranker b { color: var(--lime); }
+
+    .source-lanes { display: grid; grid-template-columns: 1fr 1.35fr; gap: 20px; margin-top: 30px; }
+    .lane {
+      padding: 26px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+    }
+    .lane.in { background: var(--blue-soft); }
+    .lane.out { background: var(--purple-soft); }
+    .lane-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 22px; }
+    .lane-head h3 { margin: 0; }
+    .lane-flow { display: grid; gap: 12px; }
+    .source-module {
+      position: relative;
+      padding: 18px;
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    .source-module + .source-module::before { content: "+"; position: absolute; top: -22px; left: 50%; font-family: monospace; font-weight: 900; }
+    .source-module p { margin: 5px 0 0; color: var(--muted); font-size: .84rem; }
+    .vector-demo {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 15px;
+      margin: 28px 0;
+      padding: 22px;
+      border: 2px dashed var(--purple);
+      border-radius: var(--radius);
+      background: rgba(236,233,255,.64);
+    }
+    .vector-box { padding: 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; text-align: center; }
+    .vector-array { display: block; margin-top: 7px; color: var(--purple); font-family: monospace; font-weight: 850; }
+    .vector-arrow { color: var(--purple); font-family: monospace; font-size: 1.4rem; font-weight: 950; }
+
+    .model-diagram {
+      display: grid;
+      grid-template-columns: 1fr auto 1.15fr auto 1fr;
+      align-items: stretch;
+      gap: 12px;
+      margin: 28px 0;
+    }
+    .model-block {
+      display: grid;
+      align-content: center;
+      min-height: 180px;
+      padding: 20px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: #fff;
+      text-align: center;
+    }
+    .model-block.context { background: var(--blue-soft); }
+    .model-block.phoenix { background: var(--ink); color: #fff; box-shadow: var(--shadow-sm); }
+    .model-block.output { background: var(--lime-soft); }
+    .model-block p { margin: 7px 0 0; color: var(--muted); font-size: .8rem; }
+    .model-block.phoenix p { color: #b8c0cb; }
+    .model-arrow { display: grid; place-items: center; color: var(--purple); font-size: 1.5rem; font-weight: 950; }
+    .probabilities { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+    .probabilities span { padding: 3px 7px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-family: monospace; font-size: .65rem; }
+    .formula {
+      margin: 28px 0;
+      padding: 28px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--ink);
+      color: #fff;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .formula .formula-main { color: var(--lime); font-family: "SFMono-Regular", Consolas, monospace; font-size: clamp(1.1rem, 2.7vw, 1.85rem); font-weight: 900; }
+    .formula p { margin: 12px auto 0; max-width: 700px; color: #bdc5cf; font-size: .82rem; }
+
+    .weight-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 28px; }
+    .weight-panel { padding: 22px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .weight-panel.positive { border-top: 9px solid var(--green); }
+    .weight-panel.negative { border-top: 9px solid var(--coral); }
+    .weight-panel h3 { font-size: 1.2rem; }
+    .weight-scale-note { color: var(--muted); font-size: .72rem; }
+    .weight-list { display: grid; gap: 11px; margin-top: 18px; }
+    .weight-row { display: grid; grid-template-columns: 108px 1fr 52px; align-items: center; gap: 10px; font-size: .76rem; }
+    .weight-label { font-weight: 800; }
+    .weight-bar-track { height: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 999px; background: #eef0f3; }
+    .weight-bar { display: block; height: 100%; background: var(--green); }
+    .negative .weight-bar { background: var(--coral); }
+    .weight-value { font-family: monospace; font-weight: 900; text-align: right; }
+
+    .score-lab {
+      display: grid;
+      grid-template-columns: 1.3fr .7fr;
+      gap: 0;
+      margin-top: 34px;
+      overflow: hidden;
+      border: 2px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+    .lab-controls { padding: 26px; }
+    .lab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .lab-head p { margin: 5px 0 0; color: var(--muted); font-size: .82rem; }
+    .reset-button {
+      min-height: 42px;
+      padding: 7px 12px;
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      background: var(--paper);
+      font-size: .75rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .slider-list { display: grid; gap: 16px; }
+    .slider-row { display: grid; grid-template-columns: 110px 1fr 64px 72px; align-items: center; gap: 12px; }
+    .slider-row label { font-size: .77rem; font-weight: 850; }
+    input[type="range"] { width: 100%; accent-color: var(--blue); cursor: pointer; }
+    .slider-row.negative input[type="range"] { accent-color: var(--coral); }
+    .prob-value, .contribution { font-family: monospace; font-size: .72rem; font-weight: 800; text-align: right; }
+    .contribution { color: var(--green); }
+    .slider-row.negative .contribution { color: var(--red); }
+    .score-output {
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding: 28px;
+      background: var(--ink);
+      color: #fff;
+      text-align: center;
+    }
+    .score-output small { color: #aeb6c2; font-family: monospace; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+    .total-score { margin: 12px 0 6px; color: var(--lime); font-family: monospace; font-size: clamp(2.5rem, 6vw, 4.7rem); font-weight: 950; line-height: 1; }
+    .score-direction { max-width: 240px; margin: 12px 0 0; color: #c2c9d3; font-size: .8rem; }
+    .score-meter { position: relative; width: 100%; height: 12px; margin-top: 24px; border-radius: 999px; background: linear-gradient(90deg, var(--coral), #7c7078 50%, var(--lime)); }
+    .score-meter span { position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; transform: translate(-50%,-50%); border: 3px solid #fff; border-radius: 50%; background: var(--ink); transition: left .25s ease; }
+    .lab-warning { grid-column: 1 / -1; margin: 0; padding: 14px 20px; border-top: 1px solid var(--line); background: var(--yellow-soft); color: #5e5338; font-size: .75rem; }
+
+    .adjustment-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 30px; }
+    .adjust-card { padding: 22px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .adjust-card h3 { font-size: 1.08rem; }
+    .adjust-card p { color: var(--muted); font-size: .82rem; }
+    .author-decay { display: flex; align-items: flex-end; gap: 8px; height: 94px; margin-top: 16px; }
+    .decay-bar { display: grid; flex: 1; place-items: end center; border: 1.5px solid var(--line); border-radius: 7px 7px 0 0; background: var(--blue); color: #fff; font-family: monospace; font-size: .62rem; font-weight: 900; }
+    .decay-bar:nth-child(1) { height: 90px; }
+    .decay-bar:nth-child(2) { height: 46px; }
+    .decay-bar:nth-child(3), .decay-bar:nth-child(4) { height: 25px; background: var(--purple); }
+    .oon-factor { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; margin-top: 27px; font-family: monospace; font-weight: 900; }
+    .oon-factor span { padding: 13px 8px; border: 1.5px solid var(--line); border-radius: 10px; background: var(--purple-soft); text-align: center; }
+    .new-author-stack { position: relative; height: 100px; margin-top: 16px; }
+    .new-post { position: absolute; right: 0; left: 0; height: 26px; padding: 3px 8px; border: 1.5px solid var(--line); border-radius: 7px; background: #e8ebef; font-family: monospace; font-size: .62rem; }
+    .new-post:nth-child(1) { top: 0; }
+    .new-post:nth-child(2) { top: 36px; background: var(--lime); transform: translateY(-18px); }
+    .new-post:nth-child(3) { top: 72px; }
+
+    .rerank-demo { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 18px; margin-top: 26px; padding: 22px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--purple-soft); }
+    .rerank-list { display: grid; gap: 8px; }
+    .rerank-post { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; font-size: .76rem; font-weight: 800; }
+    .rerank-arrow { font-size: 1.8rem; font-weight: 950; color: var(--purple); }
+
+    .filter-funnel { display: grid; gap: 10px; margin: 28px 0; }
+    .funnel-stage {
+      width: var(--w);
+      margin-inline: auto;
+      padding: 14px 18px;
+      border: 2px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper-2);
+      text-align: center;
+      font-size: .82rem;
+      font-weight: 850;
+    }
+    .funnel-stage:nth-child(2) { background: var(--blue-soft); }
+    .funnel-stage:nth-child(3) { background: var(--purple-soft); }
+    .funnel-stage:nth-child(4) { background: var(--lime-soft); }
+    .funnel-stage small { display: block; color: var(--muted); font-weight: 650; }
+    .filter-table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; font-size: .79rem; }
+    .filter-table th, .filter-table td { padding: 13px 15px; border-bottom: 1px solid #cfd4db; text-align: left; vertical-align: top; }
+    .filter-table tr:last-child td { border-bottom: 0; }
+    .filter-table th { background: var(--ink); color: #fff; font-size: .72rem; }
+    .filter-table td:first-child { font-family: monospace; font-weight: 850; }
+
+    .visibility-board {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 18px;
+      margin-top: 32px;
+      padding: 26px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--ink);
+      color: #fff;
+      box-shadow: var(--shadow);
+    }
+    .vf-inputs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; }
+    .vf-input { padding: 12px; border: 1px solid rgba(255,255,255,.28); border-radius: 10px; background: rgba(255,255,255,.07); color: #d8dde4; font-size: .72rem; text-align: center; }
+    .vf-engine { display: grid; width: 132px; height: 132px; place-items: center; padding: 14px; border: 2px solid var(--lime); border-radius: 50%; background: #262e3a; color: var(--lime); font-family: monospace; font-size: .74rem; font-weight: 900; text-align: center; }
+    .vf-outcomes { display: grid; gap: 9px; }
+    .vf-outcome { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 10px; background: #fff; color: var(--ink); font-size: .77rem; font-weight: 850; }
+    .status-dot { display: grid; width: 28px; height: 28px; place-items: center; border: 2px solid var(--line); border-radius: 50%; font-family: monospace; font-size: .65rem; }
+    .allow .status-dot { background: var(--lime); }
+    .interstitial .status-dot { background: var(--yellow); }
+    .drop .status-dot { background: var(--coral); }
+
+    .scenario-lab { margin-top: 28px; padding: 24px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .scenario-buttons { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+    .scenario-button { min-height: 44px; padding: 8px 13px; border: 2px solid var(--line); border-radius: 999px; background: var(--paper); font-size: .76rem; font-weight: 850; cursor: pointer; }
+    .scenario-button.is-active { background: var(--ink); color: #fff; }
+    .scenario-result { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: center; margin-top: 20px; padding: 20px; border-radius: 14px; background: var(--lime-soft); }
+    .scenario-result[data-status="INTERSTITIAL"] { background: var(--yellow-soft); }
+    .scenario-result[data-status="DROP"] { background: var(--coral-soft); }
+    .scenario-status { font-family: monospace; font-size: 1rem; font-weight: 950; }
+    .scenario-result p { margin: 0; color: var(--muted); font-size: .82rem; }
+
+    .ecosystem-map { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: 12px; margin-top: 32px; }
+    .eco-column { padding: 20px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .eco-column:nth-child(1) { background: var(--blue-soft); }
+    .eco-column:nth-child(3) { background: var(--purple-soft); }
+    .eco-column:nth-child(5) { background: var(--lime-soft); }
+    .eco-title { margin-bottom: 14px; font-family: monospace; font-size: .72rem; font-weight: 900; text-transform: uppercase; }
+    .eco-node { margin-top: 9px; padding: 10px; border: 1.5px solid var(--line); border-radius: 9px; background: #fff; font-size: .72rem; }
+    .eco-node b { display: block; }
+    .eco-node span { color: var(--muted); }
+    .eco-arrow { display: grid; place-items: center; color: var(--purple); font-size: 1.4rem; font-weight: 950; }
+    .label-path-note { margin-top: 18px; padding: 16px 18px; border: 2px dashed var(--line); border-radius: 12px; background: rgba(255,255,255,.5); font-size: .78rem; }
+
+    .release-timeline { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 34px; }
+    .release-timeline::before { content: ""; position: absolute; top: 30px; right: 11%; left: 11%; height: 3px; background: var(--line); }
+    .release-card { position: relative; padding-top: 0; }
+    .release-dot { position: relative; z-index: 2; display: grid; width: 62px; height: 62px; margin: 0 auto 20px; place-items: center; border: 3px solid var(--line); border-radius: 50%; background: var(--paper); font-family: monospace; font-size: .72rem; font-weight: 950; }
+    .release-card:nth-child(1) .release-dot { background: var(--blue-soft); }
+    .release-card:nth-child(2) .release-dot { background: var(--purple-soft); }
+    .release-card:nth-child(3) .release-dot { background: var(--lime); }
+    .release-body { min-height: 255px; padding: 20px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .release-body h3 { font-size: 1.05rem; }
+    .release-body ul { margin: 12px 0 0; padding-left: 20px; color: var(--muted); font-size: .8rem; }
+    .release-body a { font-size: .75rem; font-weight: 800; }
+    .compare-table { display: grid; grid-template-columns: .75fr 1.25fr; margin-top: 28px; overflow: hidden; border: 2px solid var(--line); border-radius: var(--radius); }
+    .compare-column { padding: 24px; background: #fff; }
+    .compare-column + .compare-column { border-left: 2px solid var(--line); background: var(--lime-soft); }
+    .compare-column h3 { font-size: 1.1rem; }
+    .compare-column ul { padding-left: 20px; color: var(--muted); font-size: .82rem; }
+
+    .hood-card { display: grid; grid-template-columns: 160px 1fr; gap: 24px; align-items: center; margin-top: 28px; padding: 28px; border: 2px solid var(--line); border-radius: var(--radius-lg); background: var(--blue-soft); box-shadow: var(--shadow); }
+    .hood-gauge { display: grid; width: 140px; height: 140px; place-items: center; border: 12px solid #fff; border-top-color: var(--blue); border-right-color: var(--purple); border-radius: 50%; background: var(--ink); color: #fff; font-family: monospace; font-size: .72rem; font-weight: 900; text-align: center; }
+    .hood-card p { color: var(--muted); }
+
+    .blueprint { counter-reset: blueprint; display: grid; gap: 14px; margin-top: 28px; }
+    .blueprint-step { counter-increment: blueprint; display: grid; grid-template-columns: 54px 1fr auto; align-items: center; gap: 16px; padding: 18px 20px; border: 2px solid var(--line); border-radius: 14px; background: #fff; }
+    .blueprint-step::before { content: counter(blueprint, decimal-leading-zero); display: grid; width: 46px; height: 46px; place-items: center; border: 2px solid var(--line); border-radius: 12px; background: var(--lime); font-family: monospace; font-weight: 950; }
+    .blueprint-step h3 { margin: 0; font-size: .98rem; }
+    .blueprint-step p { margin: 4px 0 0; color: var(--muted); font-size: .78rem; }
+    .blueprint-step code { white-space: nowrap; }
+    .pseudo-code { margin-top: 24px; overflow-x: auto; padding: 24px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--ink); color: #e7ebf0; box-shadow: var(--shadow); font-family: monospace; font-size: .76rem; line-height: 1.7; }
+    .pseudo-code .comment { color: #8291a5; }
+    .pseudo-code .keyword { color: var(--lime); }
+    .pseudo-code .fn { color: #78c9ff; }
+    .pseudo-code .warn { color: #ff9b91; }
+
+    .myth-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 26px; }
+    .myth { padding: 20px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; }
+    .myth-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .myth-mark { display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid var(--line); border-radius: 50%; background: var(--coral); font-weight: 950; }
+    .myth strong { font-size: .9rem; }
+    .myth p { margin: 0; color: var(--muted); font-size: .8rem; }
+
+    .knowledge-check { margin-top: 30px; }
+    details {
+      border: 2px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+    details + details { margin-top: 10px; }
+    summary { position: relative; padding: 17px 48px 17px 18px; font-weight: 850; cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; position: absolute; top: 50%; right: 18px; transform: translateY(-50%); font-family: monospace; font-size: 1.2rem; }
+    details[open] summary::after { content: "−"; }
+    .details-body { padding: 0 18px 18px; color: var(--muted); font-size: .84rem; }
+    .details-body p { margin: 0; }
+
+    .glossary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .glossary details + details { margin-top: 0; }
+    .glossary .details-body strong { color: var(--ink); }
+    .source-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 28px; }
+    .source-card { display: block; padding: 20px; border: 2px solid var(--line); border-radius: var(--radius); background: #fff; text-decoration: none; }
+    .source-card:hover { transform: translate(-2px,-2px); box-shadow: var(--shadow-sm); }
+    .source-card small { color: var(--blue); font-family: monospace; font-size: .69rem; font-weight: 900; }
+    .source-card strong { display: block; margin-top: 8px; font-size: .95rem; }
+    .source-card span { display: block; margin-top: 7px; color: var(--muted); font-size: .76rem; }
+    .verification-stamp { margin-top: 26px; padding: 16px 18px; border: 2px solid var(--line); border-radius: 12px; background: var(--lime-soft); font-family: monospace; font-size: .72rem; }
+
+    .checklist { display: grid; gap: 10px; margin-top: 24px; }
+    .check-item { display: flex; align-items: flex-start; gap: 12px; padding: 15px 16px; border: 2px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; }
+    .check-item input { width: 21px; height: 21px; flex: 0 0 auto; margin-top: 3px; accent-color: var(--green); }
+    .check-item span { font-size: .84rem; font-weight: 780; }
+    .check-item:has(input:checked) { background: var(--lime-soft); text-decoration: line-through; text-decoration-color: rgba(22,27,34,.35); }
+
+    footer { padding: 34px 24px; border-top: 2px solid var(--line); background: var(--ink); color: #c8ced7; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; max-width: var(--content); margin: 0 auto; }
+    footer p { margin: 0; font-size: .78rem; }
+    footer a { color: #fff; font-weight: 800; }
+
+    @media (max-width: 1040px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .hero-visual { max-width: 720px; }
+      .page-shell { grid-template-columns: 1fr; padding-top: 28px; }
+      .side-nav { display: none; }
+      .mobile-toc { display: block; position: sticky; z-index: 50; top: 0; overflow-x: auto; border-bottom: 2px solid var(--line); background: rgba(242,239,231,.96); backdrop-filter: blur(10px); }
+      .mobile-toc ol { display: flex; width: max-content; margin: 0; padding: 10px 16px; list-style: none; }
+      .mobile-toc a { display: block; padding: 7px 11px; border-radius: 999px; font-size: .72rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
+      .mobile-toc a.is-active { background: var(--ink); color: #fff; }
+      .chapter { scroll-margin-top: 64px; }
+    }
+
+    @media (max-width: 820px) {
+      body { font-size: 16px; }
+      .hero { padding-top: 42px; }
+      .hero-tools { margin-bottom: 34px; }
+      .hero-grid { gap: 38px; }
+      .hero-fact-strip { grid-template-columns: repeat(2, 1fr); }
+      .hero-fact:nth-child(3) { border-left: 0; border-top: 1px solid rgba(255,255,255,.22); }
+      .hero-fact:nth-child(4) { border-top: 1px solid rgba(255,255,255,.22); }
+      .grid-3, .adjustment-grid { grid-template-columns: 1fr; }
+      .grid-2, .weight-panels, .source-grid, .glossary, .myth-grid { grid-template-columns: 1fr; }
+      .stage-detail { grid-template-columns: 1fr; }
+      .source-lanes { grid-template-columns: 1fr; }
+      .trio-flow { grid-template-columns: 1fr; }
+      .trio-arrow { transform: rotate(90deg); }
+      .model-diagram { grid-template-columns: 1fr; }
+      .model-arrow { transform: rotate(90deg); }
+      .score-lab { grid-template-columns: 1fr; }
+      .lab-warning { grid-column: auto; }
+      .score-output { min-height: 280px; }
+      .framework-compare { grid-template-columns: 1fr; }
+      .framework-equals { min-height: 28px; transform: rotate(90deg); }
+      .stage-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .arch-context-row { grid-template-columns: 1fr; }
+      .visibility-board { grid-template-columns: 1fr; }
+      .vf-engine { margin: 0 auto; }
+      .ecosystem-map { grid-template-columns: 1fr; }
+      .eco-arrow { transform: rotate(90deg); }
+      .release-timeline { grid-template-columns: 1fr; }
+      .release-timeline::before { top: 30px; bottom: 30px; left: 30px; width: 3px; height: auto; }
+      .release-card { display: grid; grid-template-columns: 62px 1fr; gap: 16px; align-items: start; }
+      .release-dot { margin: 0; }
+      .release-body { min-height: 0; }
+      .hood-card { grid-template-columns: 1fr; }
+      .hood-gauge { margin: 0 auto; }
+      .compare-table { grid-template-columns: 1fr; }
+      .compare-column + .compare-column { border-top: 2px solid var(--line); border-left: 0; }
+    }
+
+    @media (max-width: 560px) {
+      .hero { padding-right: 17px; padding-left: 17px; }
+      .hero-tools { align-items: flex-start; }
+      .brand-mark span:last-child { display: none; }
+      .tool-row .tool-button:nth-child(2) { display: none; }
+      h1 { font-size: clamp(2.75rem, 15vw, 4.2rem); }
+      .hero-visual { padding: 18px; box-shadow: 8px 8px 0 rgba(29,155,240,.2); }
+      .hero-fact { padding: 16px; }
+      .page-shell { padding-right: 17px; padding-left: 17px; }
+      .chapter { padding-bottom: 70px; }
+      .card { padding: 20px; }
+      .vector-demo, .rerank-demo { grid-template-columns: 1fr; }
+      .trio-sources { grid-template-columns: 1fr; }
+      .vector-arrow, .rerank-arrow { transform: rotate(90deg); text-align: center; }
+      .slider-row { grid-template-columns: 90px 1fr 58px; }
+      .slider-row .contribution { grid-column: 2 / -1; text-align: left; }
+      .score-lab { box-shadow: 4px 4px 0 var(--line); }
+      .vf-inputs { grid-template-columns: 1fr; }
+      .scenario-result { grid-template-columns: 1fr; }
+      .filter-table { display: block; overflow-x: auto; white-space: nowrap; }
+      .official-architecture { padding: 17px; box-shadow: 4px 4px 0 var(--line); }
+      .arch-home { padding: 12px; }
+      .arch-home-head { align-items: flex-start; flex-direction: column; }
+      .stage-catalog, .pipeline-ledger { grid-template-columns: 1fr; }
+      .execution-row { grid-template-columns: 1fr; gap: 7px; }
+      .blueprint-step { grid-template-columns: 46px 1fr; }
+      .blueprint-step code { grid-column: 2; width: max-content; }
+      .footer-inner { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 15mm; }
+      body { background: #fff; color: #000; font-size: 10.5pt; }
+      .reading-progress, .hero-tools, .mobile-toc, .side-nav, .scenario-buttons, .reset-button, .checklist { display: none !important; }
+      .hero { padding: 24px 0; border: 0; background: #fff; color: #000; }
+      .hero::before, .hero-visual { display: none; }
+      .hero h1 { font-size: 34pt; }
+      .hero-lede, .hero-fact span { color: #333; }
+      .hero-fact-strip { border-color: #000; background: #fff; }
+      .hero-fact + .hero-fact { border-color: #000; }
+      .hero-fact strong { color: #000; }
+      .page-shell { display: block; max-width: none; padding: 0; }
+      .chapter { padding: 24px 0; break-before: page; }
+      .chapter:first-child { break-before: auto; }
+      .card, .official-architecture, .pipeline-shell, .framework-card, .execution-board, .score-lab, .visibility-board, .source-card, details { break-inside: avoid; box-shadow: none !important; }
+      a { color: #000; text-decoration: none; }
+      a[href^="http"]::after { content: " (" attr(href) ")"; font-size: 7pt; word-break: break-all; }
+      .stage-detail, .score-output, .visibility-board, .formula, .pseudo-code { background: #fff; color: #000; }
+      .stage-detail p, .formula p, .score-direction { color: #333; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">본문 바로가기</a>
+  <div class="reading-progress" aria-hidden="true"><span id="reading-bar"></span></div>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="hero-tools">
+        <div class="brand-mark"><span class="x-tile" aria-hidden="true">X</span><span>For You · beginner field guide</span></div>
+        <div class="tool-row">
+          <a class="tool-button" href="x-models-field-guide.html">모델 상세편 →</a>
+          <a class="tool-button" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener">공식 저장소 ↗</a>
+          <button class="tool-button" id="print-button" type="button">PDF로 저장 / 인쇄</button>
+        </div>
+      </div>
+
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">추천 개발 초보자용 · 2026.08 업데이트</p>
+          <h1>X의 피드는<br><em>어떻게 고를까?</em></h1>
+          <p class="hero-lede">하루 약 5억 개의 게시물에서 내 화면의 몇 개를 고르는 과정. <strong>후보 수집 → 점수 계산 → 노출 판단</strong>이라는 세 질문으로 쪼개면, 거대한 시스템도 읽을 수 있습니다.</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#start">5분 코스 시작 →</a>
+            <a class="tool-button" href="#score">가중치 직접 만져보기</a>
+          </div>
+        </div>
+
+        <div class="hero-visual" role="img" aria-label="수많은 게시물이 추천 파이프라인을 통과해 몇 개의 피드 카드로 압축되는 모습">
+          <p class="visual-kicker">500,000,000 posts / day → a handful</p>
+          <div class="compression-visual">
+            <div class="post-cloud" aria-hidden="true">
+              <i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i>
+              <i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i>
+              <i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i><i class="post-dot"></i>
+            </div>
+            <div class="funnel-label">retrieve · filter · rank</div>
+            <div class="mini-feed" aria-hidden="true">
+              <div class="mini-post"><span class="mini-avatar"></span><span class="mini-lines"><i></i><i></i></span><span class="mini-score">#01</span></div>
+              <div class="mini-post"><span class="mini-avatar" style="background:var(--purple-soft);border-color:var(--purple)"></span><span class="mini-lines"><i></i><i></i></span><span class="mini-score">#02</span></div>
+              <div class="mini-post"><span class="mini-avatar" style="background:var(--lime-soft);border-color:var(--green)"></span><span class="mini-lines"><i></i><i></i></span><span class="mini-score">#03</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-fact-strip" aria-label="가이드 핵심 사실">
+        <div class="hero-fact"><strong>2026-01-20</strong><span>저장소 최초 공개 커밋</span></div>
+        <div class="hero-fact"><strong>2026-08-13</strong><span>설정·가중치·노출 필터 대폭 확장</span></div>
+        <div class="hero-fact"><strong>3 sources</strong><span>Thunder + Phoenix + SimClusters</span></div>
+        <div class="hero-fact"><strong>3 outcomes</strong><span>ALLOW · INTERSTITIAL · DROP</span></div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="mobile-toc" aria-label="모바일 목차">
+    <ol>
+      <li><a href="#start">시작</a></li>
+      <li><a href="#map">전체 지도</a></li>
+      <li><a href="#candidates">후보 수집</a></li>
+      <li><a href="#score">점수와 랭킹</a></li>
+      <li><a href="#visibility">노출 판단</a></li>
+      <li><a href="#labels">라벨 생태계</a></li>
+      <li><a href="#release">공개 타임라인</a></li>
+      <li><a href="#build">직접 만들기</a></li>
+      <li><a href="#glossary">용어·출처</a></li>
+    </ol>
+  </nav>
+
+  <div class="page-shell">
+    <aside class="side-nav" aria-label="문서 목차">
+      <div class="side-nav-inner">
+        <p class="side-nav-title">Guide map</p>
+        <ol>
+          <li><a href="#start"><span>00</span>먼저 잡을 3가지</a></li>
+          <li><a href="#map"><span>01</span>5분 전체 지도</a></li>
+          <li><a href="#candidates"><span>02</span>후보는 어디서?</a></li>
+          <li><a href="#score"><span>03</span>Phoenix 점수</a></li>
+          <li><a href="#visibility"><span>04</span>필터와 노출</a></li>
+          <li><a href="#labels"><span>05</span>라벨 생태계</a></li>
+          <li><a href="#release"><span>06</span>무엇이 공개됐나</a></li>
+          <li><a href="#build"><span>07</span>미니 추천기 설계</a></li>
+          <li><a href="#glossary"><span>08</span>용어·출처</a></li>
+        </ol>
+        <div class="study-progress" aria-live="polite">
+          <p>학습 체크</p>
+          <strong class="progress-number" id="progress-number">0 / 5</strong>
+          <div class="progress-track" aria-hidden="true"><span id="study-progress-bar"></span></div>
+        </div>
+      </div>
+    </aside>
+
+    <main id="main-content">
+      <section class="chapter" id="start" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 00 · START HERE</span>
+          <h2>거대한 알고리즘을<br>세 질문으로 쪼개기</h2>
+          <p class="chapter-lede">추천 시스템은 “좋은 글을 찾아주는 AI 하나”가 아닙니다. 서로 다른 책임을 가진 여러 단계가 바통을 넘기는 파이프라인입니다.</p>
+        </div>
+
+        <div class="grid-3">
+          <article class="card key-card shadow">
+            <span class="big-number">01</span>
+            <h3>무엇을 후보로<br>가져올까?</h3>
+            <p>팔로우 계정의 최신 글과, 아직 팔로우하지 않은 계정의 관련 글을 빠르게 모읍니다.</p>
+            <div class="tag-row"><span class="tag blue">Retrieval</span><span class="tag">Thunder</span><span class="tag">Phoenix</span><span class="tag">SimClusters</span></div>
+          </article>
+          <article class="card key-card shadow">
+            <span class="big-number">02</span>
+            <h3>어떤 순서로<br>세울까?</h3>
+            <p>Phoenix가 여러 행동의 확률을 예측하고, 설정에 있는 가중치로 하나의 점수를 만듭니다.</p>
+            <div class="tag-row"><span class="tag purple">Ranking</span><span class="tag">Transformer</span><span class="tag">Score</span></div>
+          </article>
+          <article class="card key-card shadow">
+            <span class="big-number">03</span>
+            <h3>보여줘도<br>되는가?</h3>
+            <p>차단·뮤트·국가·설정·콘텐츠 라벨을 읽어 정상 노출, 경고 뒤 노출, 제외를 결정합니다.</p>
+            <div class="tag-row"><span class="tag coral">Visibility</span><span class="tag">ALLOW</span><span class="tag">DROP</span></div>
+          </article>
+        </div>
+
+        <div class="truth-box">
+          <div class="truth-icon" aria-hidden="true">!</div>
+          <div>
+            <strong>이 세 질문은 서로 다른 문제입니다.</strong>
+            <p>점수가 높아도 Visibility Filtering이 <code>DROP</code>을 답하면 보이지 않습니다. 반대로 허용된 글이라도 점수가 낮으면 피드 위쪽에 오르지 못할 수 있습니다.</p>
+          </div>
+        </div>
+
+        <div class="one-line">초보자의 첫 문장: <strong>“후보 수집이 재료를 고르고, 랭킹이 순서를 정하고, Visibility가 출입 가능 여부를 정한다.”</strong></div>
+        <p class="source-note">근거: X 공식 README는 “랭킹은 순서를 정하고, Visibility Filtering은 보여줄 수 있는지를 별도로 정한다”고 설명합니다. <a href="https://github.com/xai-org/x-algorithm#overview" target="_blank" rel="noreferrer noopener">README Overview ↗</a></p>
+      </section>
+
+      <section class="chapter" id="map" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 01 · THE MAP</span>
+          <h2>For You 요청 한 번의<br>전체 여행</h2>
+          <p class="chapter-lede">X의 Home Mixer가 요청을 받으면 Post Pipeline을 실행하고, 마지막에는 광고·팔로우 추천·프롬프트 같은 비게시물 항목을 Blending Pipeline에서 섞습니다.</p>
+        </div>
+
+        <div class="official-architecture" aria-label="X 공식 System Architecture를 초보자용으로 다시 그린 구조도">
+          <p class="architecture-kicker">Official architecture · beginner edition</p>
+          <div class="arch-terminal">For You 피드 요청</div>
+          <div class="arch-down" aria-hidden="true">↓</div>
+          <div class="arch-home">
+            <div class="arch-home-head">
+              <strong>Home Mixer</strong>
+              <span>요청 경로의 총괄 조립기</span>
+            </div>
+
+            <div class="arch-pipeline">
+              <h3>① Post Pipeline · <code>PhoenixCandidatePipeline</code></h3>
+              <p>게시물을 모으고, 정보를 채우고, 거르고, 점수를 매겨 최종 게시물 목록을 만듭니다.</p>
+              <div class="arch-mini-flow" aria-label="Post Pipeline의 7단계">
+                <div class="arch-mini-step"><small>01</small>요청 정보<br>채우기</div>
+                <div class="arch-mini-step"><small>02 · 병렬</small>후보<br>소스 호출</div>
+                <div class="arch-mini-step"><small>03</small>후보 정보<br>채우기</div>
+                <div class="arch-mini-step"><small>04</small>점수 전<br>필터</div>
+                <div class="arch-mini-step"><small>05</small>점수·<br>재정렬</div>
+                <div class="arch-mini-step"><small>06</small>상위 K개<br>선택</div>
+                <div class="arch-mini-step"><small>07</small>선택 후<br>최종 필터</div>
+              </div>
+            </div>
+
+            <div class="arch-pipeline blending">
+              <h3>② Blending Pipeline · <code>ForYouCandidatePipeline</code></h3>
+              <p>Post Pipeline의 결과를 하나의 후보 소스로 받아, 모델이 직접 순위를 매기지 않은 항목을 함께 배치합니다.</p>
+              <div class="arch-blend-flow" aria-label="Blending Pipeline의 입력과 출력">
+                <div class="arch-blend-item">랭킹된<br>게시물</div><div class="arch-plus">+</div>
+                <div class="arch-blend-item">광고</div><div class="arch-blend-item">Who to<br>Follow</div><div class="arch-blend-item">프롬프트</div>
+                <div class="arch-plus">→</div><div class="arch-blend-item">BlenderSelector<br>최종 배치</div>
+              </div>
+            </div>
+
+            <div class="arch-context-row">
+              <div class="arch-context">
+                <strong>요청 경로 밖 · 지속 실행</strong>
+                라벨링 시스템이 게시물·계정을 분석해 결과를 저장합니다. 요청 경로는 저장된 라벨을 읽어 Visibility 판단에 사용합니다.
+              </div>
+              <div class="arch-context side">
+                <strong>응답을 막지 않는 Side Effects</strong>
+                제공한 게시물 기록, 게시물 캐시 갱신, 광고·클라이언트 이벤트 로그를 비동기로 실행합니다.
+              </div>
+            </div>
+          </div>
+          <div class="arch-down" aria-hidden="true">↓</div>
+          <div class="arch-terminal output">완성된 For You 타임라인</div>
+        </div>
+
+        <div class="one-line purple"><strong>구조도를 읽는 요령:</strong> Post Pipeline은 “게시물 순위표”를 만들고, Blending Pipeline은 그 순위표를 실제 피드 화면용 목록으로 조립합니다.</div>
+
+        <div class="pipeline-shell">
+          <div class="pipeline-top">Post Pipeline · 버튼을 눌러 공식 7단계를 확인하세요</div>
+          <div class="pipeline-track" role="tablist" aria-label="For You 파이프라인 단계">
+            <button class="stage-button is-active" type="button" role="tab" aria-selected="true" data-stage="0"><small>01</small><b>Query<br>Hydration</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="1"><small>02</small><b>Candidate<br>Sources</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="2"><small>03</small><b>Candidate<br>Hydration</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="3"><small>04</small><b>Pre-scoring<br>Filters</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="4"><small>05</small><b>Scoring &amp;<br>Reranking</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="5"><small>06</small><b>Top-K<br>Selection</b></button>
+            <button class="stage-button" type="button" role="tab" aria-selected="false" data-stage="6"><small>07</small><b>Post-selection<br>Filters</b></button>
+          </div>
+          <div class="stage-detail" id="stage-detail" role="tabpanel" aria-live="polite">
+            <div>
+              <span class="stage-analogy">비유: 주문서 작성</span>
+              <h3>보는 사람의 상황을 채운다</h3>
+            </div>
+            <div>
+              <p>최근 좋아요·답글·공유 같은 행동 순서, 팔로잉, 차단·뮤트, 뮤트 키워드, 이미 본 게시물, 팔로우 토픽 등을 요청에 붙입니다. 이 정보가 이후 후보 수집과 모델의 문맥이 됩니다.</p>
+              <div class="stage-files">home-mixer/query_hydrators/ · viewer context</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="framework-compare">
+          <article class="framework-card framework">
+            <span class="tag lime">재사용 가능한 뼈대</span>
+            <h3><code>candidate-pipeline</code></h3>
+            <p>후보가 지나갈 단계의 종류, 실행 순서, 병렬 처리, 단계별 통계를 정의한 범용 Rust 프레임워크입니다.</p>
+            <ul>
+              <li>“Source·Filter·Scorer란 무엇인가?”를 인터페이스로 정의</li>
+              <li>활성화된 구성요소만 실행하고 단계별 개수를 기록</li>
+              <li>조회·보강처럼 독립적인 작업은 묶어서 병렬 실행</li>
+            </ul>
+          </article>
+          <div class="framework-equals" aria-hidden="true">＋</div>
+          <article class="framework-card recipe">
+            <span class="tag blue">X For You의 실제 레시피</span>
+            <h3><code>home-mixer</code></h3>
+            <p>어떤 후보 소스와 필터·점수기·선택기를 꽂을지, 어떤 설정값과 가중치를 쓸지를 정합니다.</p>
+            <ul>
+              <li>Thunder·Phoenix Retrieval·SimClusters를 실제 Source로 연결</li>
+              <li>PhoenixScorer·RankingScorer·VMRanker를 실행</li>
+              <li>Visibility Filtering과 BlenderSelector를 제품 흐름에 연결</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="execution-board">
+          <h3>“파이프라인”과 “병렬 실행”은 모순이 아닙니다</h3>
+          <p>큰 단계는 왼쪽에서 오른쪽으로 진행합니다. 다만 같은 단계 안에서 서로의 결과를 기다릴 필요가 없는 구성요소는 동시에 실행합니다.</p>
+          <div class="execution-row">
+            <div class="execution-label">병렬 묶음 ∥</div>
+            <div class="execution-items"><span>QueryHydrator A ∥ B</span><span>Source A ∥ B ∥ C</span><span>Hydrator A ∥ B</span><span>SideEffect A ∥ B</span></div>
+          </div>
+          <div class="execution-row">
+            <div class="execution-label">순차 적용 →</div>
+            <div class="execution-items"><span>Filter 1 → Filter 2</span><span>Scorer 1 → Scorer 2</span><span>Selector는 하나</span></div>
+          </div>
+          <p style="margin:14px 0 0">각 부품의 <code>enable(query)</code>가 거짓이면 그 요청에서는 건너뜁니다. 그래서 기능 스위치와 실험 설정을 같은 뼈대 위에서 바꿀 수 있습니다.</p>
+        </div>
+
+        <h3 style="margin-top:34px">프레임워크가 정의한 10가지 부품</h3>
+        <div class="stage-catalog">
+          <article class="stage-type"><code>QueryHydrator</code><strong>요청 보강</strong><p>사용자·요청 문맥을 붙입니다.</p></article>
+          <article class="stage-type"><code>DependentQueryHydrator</code><strong>의존 요청 보강</strong><p>앞서 채운 요청 정보가 필요한 보강입니다.</p></article>
+          <article class="stage-type"><code>Source</code><strong>후보 조회</strong><p>여러 저장소·모델에서 후보를 가져옵니다.</p></article>
+          <article class="stage-type"><code>Hydrator</code><strong>후보 보강</strong><p>게시물·작성자 특성을 후보에 붙입니다.</p></article>
+          <article class="stage-type"><code>Filter</code><strong>선택 전 제거</strong><p>조건에 맞지 않는 후보를 차례로 뺍니다.</p></article>
+          <article class="stage-type"><code>Scorer</code><strong>점수 계산</strong><p>후보에 모델·규칙 점수를 누적합니다.</p></article>
+          <article class="stage-type"><code>Selector</code><strong>선택</strong><p>정렬·Top-K 같은 방법으로 일부를 고릅니다.</p></article>
+          <article class="stage-type"><code>PostSelectionHydrator</code><strong>선택 후 보강</strong><p>고른 후보에만 필요한 정보를 붙입니다.</p></article>
+          <article class="stage-type"><code>PostSelectionFilter</code><strong>선택 후 필터</strong><p>노출 판단처럼 비싼 최종 검사를 합니다.</p></article>
+          <article class="stage-type"><code>SideEffect</code><strong>후속 기록</strong><p>응답 결과를 기록·캐시·로그로 남깁니다.</p></article>
+        </div>
+
+        <div class="pipeline-ledger" aria-label="CandidatePipeline 실행 결과에 남는 세 후보 묶음">
+          <div class="ledger-item"><code>retrieved_candidates</code><p>소스에서 가져온 전체 후보</p></div>
+          <div class="ledger-item"><code>filtered_candidates</code><p>필터·선택 과정에서 빠진 후보</p></div>
+          <div class="ledger-item"><code>selected_candidates</code><p>마지막까지 남은 최종 후보</p></div>
+        </div>
+
+        <div class="truth-box">
+          <div class="truth-icon" aria-hidden="true">↔</div>
+          <div>
+            <strong>공식 7단계와 프레임워크 10부품의 숫자가 다른 이유</strong>
+            <p>공식 구조도는 For You 제품 흐름을 사람이 읽기 좋은 7단계로 묶습니다. 반면 <code>candidate-pipeline</code>은 개발자가 구현해야 할 세부 인터페이스를 더 잘게 나눕니다. 예를 들어 ‘선택 후 필터’ 앞의 Visibility 정보 조회는 <code>PostSelectionHydrator</code>입니다.</p>
+          </div>
+        </div>
+
+        <p class="source-note">공식 구조도와 단계: <a href="https://github.com/xai-org/x-algorithm#system-architecture" target="_blank" rel="noreferrer noopener">System Architecture ↗</a> · 프레임워크 구현과 실행 순서: <a href="https://github.com/xai-org/x-algorithm/blob/main/candidate-pipeline/candidate_pipeline.rs" target="_blank" rel="noreferrer noopener">candidate_pipeline.rs ↗</a> · 부품별 인터페이스: <a href="https://github.com/xai-org/x-algorithm/tree/main/candidate-pipeline" target="_blank" rel="noreferrer noopener">candidate-pipeline/ ↗</a></p>
+      </section>
+
+      <section class="chapter" id="candidates" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 02 · RETRIEVAL</span>
+          <h2>후보 게시물은<br>세 곳에서 온다</h2>
+          <p class="chapter-lede">전체 게시물에 무거운 모델을 돌리는 것은 너무 비쌉니다. 먼저 빠른 후보 수집기가 “볼 만한 몇 묶음”을 줄여 줍니다.</p>
+        </div>
+
+        <div class="one-line lime">후보 수집의 목표는 <strong>완벽한 순위</strong>가 아니라, 좋은 게시물을 <strong>놓치지 않는 작은 풀(pool)</strong>을 만드는 것입니다.</div>
+
+        <div class="trio-compare">
+          <h3>셋을 30초 만에 구분하기</h3>
+          <table class="filter-table">
+            <thead><tr><th>시스템</th><th>무엇을 보고 찾나</th><th>가져오는 게시물</th><th>쉬운 비유</th></tr></thead>
+            <tbody>
+              <tr><td>Thunder</td><td>내가 누구를 팔로우하는가</td><td>팔로우한 계정의 최신 게시물</td><td>구독함</td></tr>
+              <tr><td>SimClusters</td><td>비슷한 사람들이 무엇에 함께 반응했는가</td><td>관심사 집단에서 발견한 비팔로우 게시물</td><td>동호회 추천</td></tr>
+              <tr><td>Phoenix Retrieval</td><td>나의 최근 행동과 게시물 내용이 얼마나 가까운가</td><td>개인 취향 벡터와 가까운 비팔로우 게시물</td><td>AI 취향 검색</td></tr>
+            </tbody>
+          </table>
+
+          <div class="trio-flow" role="img" aria-label="Thunder, SimClusters, Phoenix Retrieval이 후보를 모으면 Phoenix Ranking이 세 출처의 후보를 함께 점수화하는 흐름">
+            <div class="trio-sources">
+              <div class="trio-source"><b>Thunder</b><small>아는 계정의 최신 글</small></div>
+              <div class="trio-source"><b>SimClusters</b><small>비슷한 집단이 반응한 글</small></div>
+              <div class="trio-source"><b>Phoenix Retrieval</b><small>내 행동과 가까운 글</small></div>
+            </div>
+            <div class="trio-arrow" aria-hidden="true">→</div>
+            <div class="trio-ranker"><b>Phoenix Ranking</b><small>세 출처의 후보를 같은 모델로 점수화</small></div>
+          </div>
+
+          <div class="truth-box">
+            <div class="truth-icon" aria-hidden="true">P</div>
+            <div>
+              <strong>Phoenix라는 이름이 두 번 나오는 이유</strong>
+              <p><strong>Phoenix Retrieval</strong>은 후보를 찾고, <strong>Phoenix Ranking</strong>은 Thunder·SimClusters·Phoenix Retrieval이 모은 후보의 행동 확률과 점수를 계산합니다. 같은 Phoenix 계열이지만 파이프라인에서 맡은 단계가 다릅니다.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="source-lanes">
+          <article class="lane in">
+            <div class="lane-head"><h3>In-Network</h3><span class="tag blue">팔로우 안쪽</span></div>
+            <div class="lane-flow">
+              <div class="source-module">
+                <strong>Thunder</strong>
+                <p>팔로우한 계정이 최근 올린 게시물을 메모리에 보관했다가 빠르게 돌려줍니다.</p>
+              </div>
+            </div>
+          </article>
+          <article class="lane out">
+            <div class="lane-head"><h3>Out-of-Network</h3><span class="tag purple">새로운 발견</span></div>
+            <div class="lane-flow">
+              <div class="source-module">
+                <strong>Phoenix Retrieval</strong>
+                <p>사용자와 게시물을 벡터로 표현하고, 사용자 벡터와 가까운 게시물을 찾습니다.</p>
+              </div>
+              <div class="source-module">
+                <strong>SimClusters</strong>
+                <p>“어떤 사람들이 무엇에 반응했는가”로 계정과 게시물을 군집화해 비슷한 관심사 후보를 찾습니다.</p>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="vector-demo" role="img" aria-label="사용자의 최근 행동을 숫자 벡터로, 게시물의 내용을 숫자 벡터로 바꿔 가까운 후보를 찾는 개념도">
+          <div class="vector-box"><strong>나의 최근 행동</strong><span class="vector-array">[0.8, 0.1, 0.7, …]</span></div>
+          <div class="vector-arrow" aria-hidden="true">≈</div>
+          <div class="vector-box"><strong>게시물의 표현</strong><span class="vector-array">[0.7, 0.2, 0.8, …]</span></div>
+        </div>
+
+        <div class="grid-3">
+          <article class="card">
+            <span class="tag blue">생활 비유</span>
+            <h3 style="margin-top:14px">Thunder = 구독함</h3>
+            <p>내가 구독한 채널의 새 영상 목록처럼, 관계가 이미 있는 출처의 최신 글을 모읍니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag purple">생활 비유</span>
+            <h3 style="margin-top:14px">Phoenix = 취향 검색</h3>
+            <p>내가 최근 읽은 책과 내용이 비슷한 책을 거대한 서점에서 찾아오는 검색대입니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag lime">생활 비유</span>
+            <h3 style="margin-top:14px">SimClusters = 동호회</h3>
+            <p>나와 비슷한 사람들이 많이 모이는 동호회에서 인기 있는 글을 발견하는 방식입니다.</p>
+          </article>
+        </div>
+
+        <div class="truth-box">
+          <div class="truth-icon" aria-hidden="true">i</div>
+          <div>
+            <strong>후보가 됐다고 노출이 보장되는 것은 아닙니다.</strong>
+            <p>세 소스에서 같은 게시물이 겹칠 수 있고, 오래됐거나 이미 봤거나 접근할 수 없는 글은 뒤의 필터에서 제거됩니다. 살아남은 후보만 랭킹 단계로 갑니다.</p>
+          </div>
+        </div>
+        <p class="source-note">공식 컴포넌트: <a href="https://github.com/xai-org/x-algorithm/tree/main/thunder" target="_blank" rel="noreferrer noopener">thunder/ ↗</a> · <a href="https://github.com/xai-org/x-algorithm/tree/main/phoenix" target="_blank" rel="noreferrer noopener">phoenix/ ↗</a> · <a href="https://github.com/xai-org/x-algorithm/tree/main/simclusters" target="_blank" rel="noreferrer noopener">simclusters/ ↗</a></p>
+      </section>
+
+      <section class="chapter" id="score" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 03 · PHOENIX RANKING</span>
+          <h2>“좋은 글 확률” 하나가 아니라<br>여러 행동을 따로 예측한다</h2>
+          <p class="chapter-lede">Phoenix는 후보마다 좋아요, 답글, 공유, 체류, 팔로우, 관심 없음, 뮤트, 신고 등 여러 행동이 일어날 확률을 예측합니다.</p>
+        </div>
+
+        <div class="model-diagram" role="img" aria-label="사용자의 최근 행동 문맥과 후보 게시물을 Phoenix Transformer에 넣어 여러 행동 확률을 예측하는 구조">
+          <div class="model-block context">
+            <strong>Viewer context</strong>
+            <p>최근 행동 순서<br>누구를 보고 무엇에 반응했나</p>
+          </div>
+          <div class="model-arrow" aria-hidden="true">+</div>
+          <div class="model-block phoenix">
+            <strong>Phoenix Transformer</strong>
+            <p>문맥 속에서 후보 게시물을 읽고 행동별 확률을 예측</p>
+          </div>
+          <div class="model-arrow" aria-hidden="true">→</div>
+          <div class="model-block output">
+            <strong>Multi-action probabilities</strong>
+            <div class="probabilities"><span>P(좋아요)</span><span>P(답글)</span><span>P(공유)</span><span>P(신고)</span></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <span class="tag blue">Candidate isolation</span>
+            <h3 style="margin-top:14px">후보끼리는 서로 답을 보여주지 않는다</h3>
+            <p>Transformer 안에서 후보는 다른 후보를 참고하지 않고 사용자 문맥만 봅니다. 그래서 같은 게시물의 점수가 함께 들어온 후보 묶음에 따라 흔들리지 않고, 캐시하기도 쉬워집니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag purple">Hash embeddings</span>
+            <h3 style="margin-top:14px">새 게시물도 바로 숫자로 표현한다</h3>
+            <p>Retrieval과 Ranking은 여러 해시 함수로 임베딩을 찾습니다. 별도 단어 사전을 계속 관리하지 않아도 새 게시물을 즉시 표현할 수 있다는 설계입니다.</p>
+          </article>
+        </div>
+
+        <div class="formula">
+          <div class="formula-main">최종 점수 = Σ (행동 가중치 × 그 행동의 예측 확률)</div>
+          <p>예를 들어 답글 확률 4%와 답글 가중치 5.0은 점수에 +0.20을 보탭니다. 신고 확률 0.1%와 신고 가중치 -234는 -0.234를 보탭니다.</p>
+        </div>
+
+        <div class="truth-box">
+          <div class="truth-icon" aria-hidden="true">!</div>
+          <div>
+            <strong>가중치를 “노출 배수”로 읽으면 안 됩니다.</strong>
+            <p><code>답글 5.0</code>은 답글 하나가 노출을 5배 만든다는 뜻이 아닙니다. 아직 일어나지 않은 행동의 <em>예측 확률</em>에 곱해지는 점수 계수이며, 행동마다 기본 발생 빈도도 다릅니다.</p>
+          </div>
+        </div>
+
+        <div class="weight-panels">
+          <article class="weight-panel positive">
+            <h3>주요 양의 가중치</h3>
+            <p class="weight-scale-note">이 패널의 막대 최대값은 20.0 · 코드 기본값 스냅샷</p>
+            <div class="weight-list">
+              <div class="weight-row"><span class="weight-label">링크 복사 공유</span><span class="weight-bar-track"><i class="weight-bar" style="width:100%"></i></span><span class="weight-value">+20.0</span></div>
+              <div class="weight-row"><span class="weight-label">답글</span><span class="weight-bar-track"><i class="weight-bar" style="width:25%"></i></span><span class="weight-value">+5.0</span></div>
+              <div class="weight-row"><span class="weight-label">DM 공유</span><span class="weight-bar-track"><i class="weight-bar" style="width:25%"></i></span><span class="weight-value">+5.0</span></div>
+              <div class="weight-row"><span class="weight-label">인용</span><span class="weight-bar-track"><i class="weight-bar" style="width:25%"></i></span><span class="weight-value">+5.0</span></div>
+              <div class="weight-row"><span class="weight-label">작성자 팔로우</span><span class="weight-bar-track"><i class="weight-bar" style="width:20%"></i></span><span class="weight-value">+4.0</span></div>
+              <div class="weight-row"><span class="weight-label">좋아요</span><span class="weight-bar-track"><i class="weight-bar" style="width:2.5%"></i></span><span class="weight-value">+0.5</span></div>
+            </div>
+          </article>
+          <article class="weight-panel negative">
+            <h3>주요 음의 가중치</h3>
+            <p class="weight-scale-note">이 패널의 막대 최대값은 234.0 · 양수 패널과 축이 다름</p>
+            <div class="weight-list">
+              <div class="weight-row"><span class="weight-label">신고</span><span class="weight-bar-track"><i class="weight-bar" style="width:100%"></i></span><span class="weight-value">−234.0</span></div>
+              <div class="weight-row"><span class="weight-label">작성자 뮤트</span><span class="weight-bar-track"><i class="weight-bar" style="width:25.1%"></i></span><span class="weight-value">−58.8</span></div>
+              <div class="weight-row"><span class="weight-label">관심 없음</span><span class="weight-bar-track"><i class="weight-bar" style="width:18.5%"></i></span><span class="weight-value">−43.2</span></div>
+              <div class="weight-row"><span class="weight-label">작성자 차단</span><span class="weight-bar-track"><i class="weight-bar" style="width:13.3%"></i></span><span class="weight-value">−31.2</span></div>
+              <div class="weight-row"><span class="weight-label">머무르지 않음</span><span class="weight-bar-track"><i class="weight-bar" style="width:.1%"></i></span><span class="weight-value">−0.02</span></div>
+            </div>
+          </article>
+        </div>
+        <p class="source-note">수치 확인일: 2026-08-14. 기본값은 production 주요 값에 맞춰 갱신될 수 있습니다. <a href="https://github.com/xai-org/x-algorithm/blob/main/home-mixer/params/param.rs#L710-L835" target="_blank" rel="noreferrer noopener">param.rs의 가중치 ↗</a> · <a href="https://github.com/xai-org/x-algorithm/blob/main/home-mixer/scorers/ranking_scorer.rs" target="_blank" rel="noreferrer noopener">ranking_scorer.rs ↗</a></p>
+
+        <div class="score-lab" aria-labelledby="lab-title">
+          <div class="lab-controls">
+            <div class="lab-head">
+              <div><h3 id="lab-title">점수 실험실</h3><p>예측 확률을 바꾸며 각 행동의 기여도를 관찰하세요.</p></div>
+              <button class="reset-button" id="score-reset" type="button">초기화</button>
+            </div>
+            <div class="slider-list" id="slider-list">
+              <div class="slider-row" data-weight="0.5"><label for="p-like">좋아요 +0.5</label><input id="p-like" type="range" min="0" max="100" step="1" value="20"><span class="prob-value">20.0%</span><span class="contribution">+0.100</span></div>
+              <div class="slider-row" data-weight="5"><label for="p-reply">답글 +5.0</label><input id="p-reply" type="range" min="0" max="100" step="1" value="4"><span class="prob-value">4.0%</span><span class="contribution">+0.200</span></div>
+              <div class="slider-row" data-weight="20"><label for="p-copy">링크복사 +20</label><input id="p-copy" type="range" min="0" max="100" step="1" value="1"><span class="prob-value">1.0%</span><span class="contribution">+0.200</span></div>
+              <div class="slider-row" data-weight="4"><label for="p-follow">팔로우 +4.0</label><input id="p-follow" type="range" min="0" max="20" step="0.5" value="0.5"><span class="prob-value">0.5%</span><span class="contribution">+0.020</span></div>
+              <div class="slider-row negative" data-weight="-43.2"><label for="p-notinterested">관심없음 −43.2</label><input id="p-notinterested" type="range" min="0" max="10" step="0.1" value="0.5"><span class="prob-value">0.5%</span><span class="contribution">−0.216</span></div>
+              <div class="slider-row negative" data-weight="-234"><label for="p-report">신고 −234</label><input id="p-report" type="range" min="0" max="5" step="0.1" value="0.1"><span class="prob-value">0.1%</span><span class="contribution">−0.234</span></div>
+            </div>
+          </div>
+          <div class="score-output" aria-live="polite">
+            <small>simplified score</small>
+            <div class="total-score" id="total-score">+0.070</div>
+            <p class="score-direction" id="score-direction">선택한 6개 행동만 보면 약한 양의 방향입니다.</p>
+            <div class="score-meter" aria-hidden="true"><span id="score-marker"></span></div>
+          </div>
+          <p class="lab-warning">교육용 단순 계산기입니다. 실제 점수에는 더 많은 행동, 후속 조정, 실험 설정이 들어가며 이 값만으로 실제 노출 순위를 재현할 수 없습니다.</p>
+        </div>
+
+        <h3 style="margin-top:54px">합산 뒤에도 세 번 더 손본다</h3>
+        <div class="adjustment-grid">
+          <article class="adjust-card">
+            <h3>작성자 다양성</h3>
+            <p>같은 작성자의 두 번째 이후 게시물은 반복될수록 감쇠합니다. 현재 기본 decay 0.5, floor 0.25.</p>
+            <div class="author-decay" aria-label="같은 작성자 게시물 배율이 1, 0.5, 0.25, 0.25로 줄어드는 예시"><span class="decay-bar">1.0</span><span class="decay-bar">.5</span><span class="decay-bar">.25</span><span class="decay-bar">.25</span></div>
+          </article>
+          <article class="adjust-card">
+            <h3>비팔로우 할인</h3>
+            <p>Out-of-Network 게시물에는 현재 기본 0.75 배율이 적용됩니다. 이미 관계가 있는 글보다 약간 보수적으로 다룹니다.</p>
+            <div class="oon-factor" aria-label="원래 점수에 0.75를 곱하는 예시"><span>score</span><b>× .75</b><span>OON score</span></div>
+          </article>
+          <article class="adjust-card">
+            <h3>새 작성자 부스트</h3>
+            <p>노출이 적은 작성자의 게시물을 목표 위치 쪽으로 올려 탐색 기회를 줍니다.</p>
+            <div class="new-author-stack" aria-label="새 작성자 게시물이 아래 위치에서 위쪽 목표 위치로 올라가는 예시"><span class="new-post">기존 후보 A</span><span class="new-post">NEW AUTHOR ↑</span><span class="new-post">기존 후보 B</span></div>
+          </article>
+        </div>
+
+        <div class="rerank-demo" role="img" aria-label="점수 순으로 비슷한 고양이 게시물이 연속된 목록을 VMRanker가 주제 다양성이 있는 순서로 재배열하는 모습">
+          <div class="rerank-list">
+            <div class="rerank-post"><span>고양이 영상</span><span>9.7</span></div>
+            <div class="rerank-post"><span>고양이 사진</span><span>9.5</span></div>
+            <div class="rerank-post"><span>고양이 밈</span><span>9.3</span></div>
+            <div class="rerank-post"><span>Rust 글</span><span>9.1</span></div>
+          </div>
+          <div class="rerank-arrow" aria-hidden="true">→</div>
+          <div class="rerank-list">
+            <div class="rerank-post"><span>고양이 영상</span><span>1st</span></div>
+            <div class="rerank-post"><span>Rust 글</span><span>2nd</span></div>
+            <div class="rerank-post"><span>고양이 사진</span><span>3rd</span></div>
+            <div class="rerank-post"><span>다른 주제</span><span>4th</span></div>
+          </div>
+        </div>
+        <p class="source-note"><code>VMRanker</code>는 임베딩 유사도를 사용해 인접 후보의 중복감을 줄이는 재정렬 서비스입니다. <a href="https://github.com/xai-org/x-algorithm/tree/main/vm-ranker" target="_blank" rel="noreferrer noopener">vm-ranker/ ↗</a></p>
+      </section>
+
+      <section class="chapter" id="visibility" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 04 · FILTERING &amp; VISIBILITY</span>
+          <h2>높은 점수와<br>보여줄 자격은 별개다</h2>
+          <p class="chapter-lede">X는 점수 계산 전의 기본 필터와, 점수 계산 뒤 Visibility Filtering의 결정을 분리합니다. 둘 다 “제거”할 수 있지만 이유와 입력이 다릅니다.</p>
+        </div>
+
+        <div class="filter-funnel" role="img" aria-label="후보 소스에서 모인 게시물이 기본 필터, 랭킹, Visibility Filtering을 통과해 최종 피드로 줄어드는 깔때기">
+          <div class="funnel-stage" style="--w:100%">후보 수집 <small>Thunder · Phoenix · SimClusters</small></div>
+          <div class="funnel-stage" style="--w:86%">Pre-scoring filters <small>중복·48시간·차단·이미 봄·접근 권한 등</small></div>
+          <div class="funnel-stage" style="--w:70%">Phoenix ranking <small>행동 확률 × 가중치 + 재조정</small></div>
+          <div class="funnel-stage" style="--w:54%">Post-selection + Visibility <small>DROP 제거 · 대화 중복 정리</small></div>
+        </div>
+
+        <h3>점수 전에 치우는 대표 항목</h3>
+        <table class="filter-table">
+          <thead><tr><th>필터</th><th>초보자 설명</th><th>왜 필요한가</th></tr></thead>
+          <tbody>
+            <tr><td>DropDuplicatesFilter</td><td>여러 소스가 가져온 같은 게시물은 하나만 남김</td><td>중복 노출 방지</td></tr>
+            <tr><td>AgeFilter</td><td>기본적으로 48시간보다 오래된 후보 제거</td><td>For You의 최신성 유지</td></tr>
+            <tr><td>PreviouslySeenPostsFilter</td><td>이미 본 게시물 제거</td><td>반복 피로 감소</td></tr>
+            <tr><td>MutedKeywordFilter</td><td>사용자가 뮤트한 단어와 맞는 게시물 제거</td><td>개인 설정 존중</td></tr>
+            <tr><td>AuthorSocialgraphFilter</td><td>차단·뮤트한 계정의 게시물 제거</td><td>관계 기반 안전·통제</td></tr>
+            <tr><td>IneligibleSubscriptionFilter</td><td>볼 권한이 없는 구독자 전용 게시물 제거</td><td>접근 권한 보장</td></tr>
+          </tbody>
+        </table>
+        <p class="source-note">전체 공개 목록과 순서: <a href="https://github.com/xai-org/x-algorithm/tree/main/home-mixer/filters" target="_blank" rel="noreferrer noopener">home-mixer/filters/ ↗</a>. README에 따르면 이미 본 게시물은 소스와 필터 양쪽에서 중복 방어됩니다.</p>
+
+        <div class="visibility-board" role="img" aria-label="게시물과 사용자 신호, 라벨, 국가와 설정이 Visibility Filtering에 들어가 ALLOW, INTERSTITIAL, DROP 중 하나로 나오는 구조">
+          <div class="vf-inputs">
+            <div class="vf-input">게시물·계정 라벨</div><div class="vf-input">차단·뮤트·팔로우</div>
+            <div class="vf-input">보호·정지 상태</div><div class="vf-input">구독 권한</div>
+            <div class="vf-input">사용자 설정</div><div class="vf-input">국가</div>
+          </div>
+          <div class="vf-engine">visibility-<br>filtering<br>rules</div>
+          <div class="vf-outcomes">
+            <div class="vf-outcome allow"><span class="status-dot">A</span><span>ALLOW · 정상 표시</span></div>
+            <div class="vf-outcome interstitial"><span class="status-dot">I</span><span>INTERSTITIAL · 경고 뒤 표시</span></div>
+            <div class="vf-outcome drop"><span class="status-dot">D</span><span>DROP · 피드에서 제외</span></div>
+          </div>
+        </div>
+
+        <div class="scenario-lab">
+          <h3>상황별 Visibility 연습</h3>
+          <p style="margin:0;color:var(--muted);font-size:.82rem">공개 README의 대표 규칙을 단순화한 학습 예시입니다. 실제 registry 전체를 재현하지 않습니다.</p>
+          <div class="scenario-buttons" role="group" aria-label="Visibility 상황 선택">
+            <button class="scenario-button is-active" type="button" data-scenario="ordinary">일반 게시물</button>
+            <button class="scenario-button" type="button" data-scenario="sensitive">민감 미디어</button>
+            <button class="scenario-button" type="button" data-scenario="blocked">차단한 작성자</button>
+            <button class="scenario-button" type="button" data-scenario="oonSpam">비팔로우 스팸 신호</button>
+            <button class="scenario-button" type="button" data-scenario="followerException">팔로우 중인 같은 글</button>
+          </div>
+          <div class="scenario-result" id="scenario-result" data-status="ALLOW" aria-live="polite">
+            <strong class="scenario-status" id="scenario-status">ALLOW</strong>
+            <p id="scenario-copy">차단·제한·민감 라벨 등 다른 제한 신호가 없다면 정상 표시됩니다.</p>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:28px">
+          <article class="card">
+            <span class="tag coral">First DROP wins</span>
+            <h3 style="margin-top:14px">DROP을 답한 첫 규칙에서 종료</h3>
+            <p>규칙을 순서대로 평가하다가 하나가 DROP을 답하면 더 진행하지 않습니다. 규칙 순서 자체가 중요한 이유입니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag purple">OON-only rules</span>
+            <h3 style="margin-top:14px">비팔로우 추천에만 더 엄격한 규칙</h3>
+            <p>고재현율 스팸 규칙처럼 Out-of-Network 추천일 때만 DROP할 수 있는 규칙이 있습니다. 같은 글이 팔로워에게는 허용될 수 있습니다.</p>
+          </article>
+        </div>
+        <p class="source-note">공식 결정·입력·예외 설명: <a href="https://github.com/xai-org/x-algorithm/tree/main/visibility-filtering" target="_blank" rel="noreferrer noopener">visibility-filtering/ ↗</a> · 실제 평가 순서: <a href="https://github.com/xai-org/x-algorithm/blob/main/visibility-filtering/rules/registry.rs" target="_blank" rel="noreferrer noopener">rules/registry.rs ↗</a></p>
+      </section>
+
+      <section class="chapter" id="labels" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 05 · LABELING PATH</span>
+          <h2>Visibility가 읽는 라벨은<br>어디서 생길까?</h2>
+          <p class="chapter-lede">라벨링은 피드 요청 순간에만 일어나는 것이 아닙니다. 게시물이 발행되거나 계정 행동이 쌓일 때 별도 시스템이 계속 분석하고, 결과를 저장해 두었다가 요청 경로가 읽습니다.</p>
+        </div>
+
+        <div class="one-line purple">Phoenix·Grox·CLIP·Agatha·BDSM·UserCredV2가 실제로 무엇을 입력받고 무엇을 내놓는지는 <a href="x-models-field-guide.html"><strong>모델 상세 동반편에서 하나씩 해부합니다 →</strong></a></div>
+
+        <div class="ecosystem-map" role="img" aria-label="콘텐츠와 계정 분석 시스템이 라벨 규칙 및 집행 시스템을 거쳐 저장되고 Visibility Filtering에서 읽히는 생태계">
+          <div class="eco-column">
+            <div class="eco-title">1 · 이해 / 점수</div>
+            <div class="eco-node"><b>Grox</b><span>텍스트·미디어 분류</span></div>
+            <div class="eco-node"><b>media-model-proxy · CLIP</b><span>이미지·영상·임베딩</span></div>
+            <div class="eco-node"><b>Agatha</b><span>차단·신고·스팸 반응</span></div>
+            <div class="eco-node"><b>BDSM · user-cred-v2</b><span>행동 순서·그래프 신뢰 신호</span></div>
+          </div>
+          <div class="eco-arrow" aria-hidden="true">→</div>
+          <div class="eco-column">
+            <div class="eco-title">2 · 규칙 / 조치</div>
+            <div class="eco-node"><b>Scarecrow</b><span>이벤트에 실시간 반응</span></div>
+            <div class="eco-node"><b>Botmaker + rules</b><span>조건을 읽어 라벨 적용</span></div>
+            <div class="eco-node"><b>abuse-enforcement-service</b><span>라벨·챌린지·정지 조치</span></div>
+            <div class="eco-node"><b>safety-label-user-agg</b><span>게시물 라벨을 계정 단위로 집계</span></div>
+          </div>
+          <div class="eco-arrow" aria-hidden="true">→</div>
+          <div class="eco-column">
+            <div class="eco-title">3 · 저장 / 사용</div>
+            <div class="eco-node"><b>Label storage</b><span>게시물·계정 라벨 보관</span></div>
+            <div class="eco-node"><b>Visibility Filtering</b><span>사용자별 ALLOW / I / DROP</span></div>
+            <div class="eco-node"><b>Under the Hood</b><span>계정·게시물 라벨 집계 보고서</span></div>
+          </div>
+        </div>
+
+        <div class="label-path-note"><strong>중요한 시간 차이:</strong> 후보 수집·랭킹은 사용자가 피드를 열 때의 <em>요청 경로</em>입니다. 반면 많은 콘텐츠·계정 분석과 라벨 생성은 계속 돌아가는 <em>라벨링 경로</em>입니다.</div>
+
+        <div class="grid-3" style="margin-top:28px">
+          <article class="card">
+            <span class="tag blue">콘텐츠</span>
+            <h3 style="margin-top:14px">Grox · Media · CLIP</h3>
+            <p>스팸, 성인물, 폭력성 같은 분류와 텍스트·이미지의 수치 표현을 만듭니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag purple">계정</span>
+            <h3 style="margin-top:14px">Agatha · BDSM · Cred</h3>
+            <p>다른 사용자의 반응, 계정의 행동 순서, 팔로우·참여 그래프를 분석해 계정 신호를 만듭니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag coral">집행</span>
+            <h3 style="margin-top:14px">Rules · Enforcement</h3>
+            <p>이벤트·모델 점수를 규칙과 결합해 라벨을 붙이거나, 챌린지·정지 같은 추가 조치를 수행합니다.</p>
+          </article>
+        </div>
+
+        <div class="one-line coral">공개되지 않은 것: 시스템 악용 위험을 줄이기 위해 <strong>Grox의 구체적 Jinja 프롬프트</strong>와 <strong>일부 Botmaker 규칙</strong>은 저장소에 없습니다.</div>
+        <p class="source-note">공식 컴포넌트 표: <a href="https://github.com/xai-org/x-algorithm#content-understanding" target="_blank" rel="noreferrer noopener">Content Understanding ↗</a> · 공개 제외 범위: <a href="https://github.com/xai-org/x-algorithm#whats-not-in-this-repo" target="_blank" rel="noreferrer noopener">What's not in this repo? ↗</a></p>
+
+        <div class="hood-card">
+          <div class="hood-gauge" aria-hidden="true">UNDER<br>THE HOOD</div>
+          <div>
+            <span class="tag blue">Transparency pilot</span>
+            <h3 style="margin-top:14px">코드뿐 아니라 “내게 적용된 결과”도 본다</h3>
+            <p>공식 README가 확정적으로 설명하는 범위는 계정과 게시물에 붙은 <strong>노출 영향 라벨의 집계 통계</strong>를 확인하는 파일럿이며, 보고서를 만드는 일일 작업과 서빙 코드도 <code>under-the-hood/</code>에 공개됐다는 것입니다.</p>
+            <p><strong>롤아웃 조건 주의:</strong> 제공된 요약에는 “최근 한 달 10회 이상 게시, 생성 1년 이상인 일부 계정부터 제공하며 라벨 다운로드 지원”이라고 되어 있습니다. 이 구체 조건은 현재 저장소 README에는 적혀 있지 않아, 서비스 화면·대상 범위가 바뀔 수 있는 운영 정보로 구분했습니다.</p>
+            <div class="tag-row"><a class="tag" href="https://x.com/i/under_the_hood" target="_blank" rel="noreferrer noopener">도구 열기 ↗</a><a class="tag" href="https://github.com/xai-org/x-algorithm/tree/main/under-the-hood" target="_blank" rel="noreferrer noopener">공개 코드 ↗</a></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter" id="release" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 06 · OPEN-SOURCE TIMELINE</span>
+          <h2>1월의 뼈대에서<br>8월의 실제 결정 경로까지</h2>
+          <p class="chapter-lede">“2026년 1월 공개”와 “이번 대폭 확장”은 같은 사건이 아닙니다. 공식 커밋 이력에는 1월 20일 최초 공개, 5월 15일 확장, 8월 13일 최신 확장이 분리되어 있습니다.</p>
+        </div>
+
+        <div class="release-timeline">
+          <article class="release-card">
+            <div class="release-dot">JAN 20</div>
+            <div class="release-body">
+              <h3>최초 공개</h3>
+              <ul><li>Thunder 기반 in-network 후보</li><li>Phoenix retrieval·ranking</li><li>Home Mixer와 후보 파이프라인</li><li>Transformer 중심 구조</li></ul>
+              <a href="https://github.com/xai-org/x-algorithm/commit/aaa167b" target="_blank" rel="noreferrer noopener">초기 커밋 보기 ↗</a>
+            </div>
+          </article>
+          <article class="release-card">
+            <div class="release-dot">MAY 15</div>
+            <div class="release-body">
+              <h3>실행 경로 확장</h3>
+              <ul><li>End-to-end inference 파이프라인</li><li>콘텐츠 이해 컴포넌트 추가</li><li>후보 소스·광고 관련 범위 확장</li><li>공개 코드의 실행 가능성 강화</li></ul>
+              <a href="https://github.com/xai-org/x-algorithm/commit/0bfc279" target="_blank" rel="noreferrer noopener">5월 커밋 보기 ↗</a>
+            </div>
+          </article>
+          <article class="release-card">
+            <div class="release-dot">AUG 13</div>
+            <div class="release-body">
+              <h3>설정·필터 대폭 공개</h3>
+              <ul><li>실제 점수 혼합 가중치·주요 설정</li><li>Phoenix 학습·실행·합성 데이터</li><li>SimClusters 후보 소스</li><li>Visibility·라벨·집행 경로</li></ul>
+              <a href="https://github.com/xai-org/x-algorithm/commit/a389166" target="_blank" rel="noreferrer noopener">최신 커밋 보기 ↗</a>
+            </div>
+          </article>
+        </div>
+
+        <div class="compare-table">
+          <div class="compare-column">
+            <h3>이전 공개의 중심</h3>
+            <ul><li>후보를 어디서 가져오는가</li><li>Transformer가 어떻게 점수를 예측하는가</li><li>파이프라인 단계가 어떻게 연결되는가</li></ul>
+          </div>
+          <div class="compare-column">
+            <h3>2026년 8월 공개가 더한 것</h3>
+            <ul><li>행동별 점수를 실제로 섞는 주요 가중치와 설정 기본값</li><li>게시물이 제외·경고 처리되는 Visibility Filtering 코드</li><li>그 판단의 입력이 되는 콘텐츠·계정 라벨 생성 시스템</li><li>모델 점수와 규칙을 조치로 바꾸는 enforcement 경로</li><li>Phoenix를 합성 데이터로 학습·실행하는 PoC</li></ul>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:28px">
+          <article class="card">
+            <span class="tag lime">production defaults</span>
+            <h3 style="margin-top:14px">기본값은 주기적으로 맞춘다</h3>
+            <p>X는 cron 스크립트로 저장소의 기본 설정을 주요 production 값에 맞춰 갱신한다고 설명합니다. 따라서 숫자는 “영구 법칙”이 아니라 확인 시점의 공개 스냅샷입니다.</p>
+          </article>
+          <article class="card">
+            <span class="tag purple">experiments ≥ 10%</span>
+            <h3 style="margin-top:14px">주요 실험도 보이게 하는 것이 목표</h3>
+            <p>타임라인 트래픽의 주목할 만한 비중, 예를 들어 10% 이상에서 돌아가는 실험을 저장소에 드러내는 것이 목표라고 명시했습니다.</p>
+          </article>
+        </div>
+        <p class="source-note">공식 커밋 이력: <a href="https://github.com/xai-org/x-algorithm/commits/main/" target="_blank" rel="noreferrer noopener">Commits ↗</a> · 8월 변경점과 설정 정책: <a href="https://github.com/xai-org/x-algorithm#latest-update--august-13th-2026" target="_blank" rel="noreferrer noopener">Latest update ↗</a> · <a href="https://github.com/xai-org/x-algorithm#experiments-and-configuration" target="_blank" rel="noreferrer noopener">Experiments and Configuration ↗</a></p>
+      </section>
+
+      <section class="chapter" id="build" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 07 · BUILD YOUR MINI FEED</span>
+          <h2>초보자가 가져갈<br>설계 청사진</h2>
+          <p class="chapter-lede">X 규모를 복제할 필요는 없습니다. 책임을 분리하는 방식만 가져오면 작은 추천 서비스도 훨씬 읽기 쉽고 실험하기 좋아집니다.</p>
+        </div>
+
+        <div class="blueprint">
+          <article class="blueprint-step"><div><h3>행동 로그부터 정의</h3><p>view, like, reply, hide처럼 사용자 행동을 일관된 이벤트로 남깁니다.</p></div><code>events[]</code></article>
+          <article class="blueprint-step"><div><h3>두 종류의 후보 소스</h3><p>팔로우·구독 기반 안정 소스와, 유사도·인기 기반 탐색 소스를 분리합니다.</p></div><code>retrieve()</code></article>
+          <article class="blueprint-step"><div><h3>싼 필터를 먼저</h3><p>중복, 오래됨, 이미 봄, 차단처럼 모델 없이 확정할 수 있는 조건을 먼저 제거합니다.</p></div><code>pre_filter()</code></article>
+          <article class="blueprint-step"><div><h3>행동별 확률 예측</h3><p>처음에는 단순 로지스틱 회귀여도 좋습니다. 하나의 모호한 relevance보다 여러 목표가 디버깅하기 쉽습니다.</p></div><code>predict()</code></article>
+          <article class="blueprint-step"><div><h3>가중치는 설정으로 분리</h3><p>모델 코드에 박아 두지 말고 실험·변경 가능한 설정으로 관리하고 버전을 기록합니다.</p></div><code>weights.yaml</code></article>
+          <article class="blueprint-step"><div><h3>안전·권한 판단은 별도</h3><p>랭킹 점수와 차단·권한·콘텐츠 정책을 섞지 말고 독립된 결과 타입으로 만듭니다.</p></div><code>visibility()</code></article>
+          <article class="blueprint-step"><div><h3>결정 이유를 남기기</h3><p>어떤 소스, 필터, 점수, 규칙이 영향을 줬는지 기록해야 운영과 사용자 설명이 가능합니다.</p></div><code>decision_log</code></article>
+        </div>
+
+        <pre class="pseudo-code" aria-label="미니 추천 피드의 의사 코드"><span class="comment"># 요청마다 실행되는 아주 작은 추천 파이프라인</span>
+context = <span class="fn">load_viewer_context</span>(viewer)
+
+candidates = <span class="fn">parallel</span>(
+    <span class="fn">recent_from_following</span>(context),
+    <span class="fn">similar_posts</span>(context),
+    <span class="fn">interest_clusters</span>(context)
+)
+
+candidates = <span class="fn">pre_filter</span>(candidates, rules=[
+    duplicate, too_old, already_seen, blocked, no_access
+])
+
+<span class="keyword">for</span> post <span class="keyword">in</span> candidates:
+    p = model.<span class="fn">predict_actions</span>(context, post)
+    post.score = <span class="fn">sum</span>(weights[action] * p[action])
+
+ranked = <span class="fn">rerank_for_diversity</span>(candidates)
+visible = [post <span class="keyword">for</span> post <span class="keyword">in</span> ranked
+           <span class="keyword">if</span> <span class="warn">visibility(viewer, post) != DROP</span>]
+
+<span class="keyword">return</span> <span class="fn">blend</span>(visible, ads, prompts)</pre>
+
+        <h3 style="margin-top:54px">오해를 막는 네 개의 안전핀</h3>
+        <div class="myth-grid">
+          <article class="myth"><div class="myth-head"><span class="myth-mark">×</span><strong>“답글 하나는 5배 노출”</strong></div><p>가중치는 관측된 행동 횟수에 곧장 곱하는 배수가 아니라, 모델이 예측한 행동 확률을 점수로 바꾸는 계수입니다.</p></article>
+          <article class="myth"><div class="myth-head"><span class="myth-mark">×</span><strong>“점수만 높으면 무조건 노출”</strong></div><p>랭킹 뒤 Visibility Filtering이 DROP하면 제외됩니다. 순서 결정과 출입 결정은 다른 시스템입니다.</p></article>
+          <article class="myth"><div class="myth-head"><span class="myth-mark">×</span><strong>“저장소가 production 전체”</strong></div><p>일부 프롬프트·규칙과 배포 인프라가 빠져 있고, 모든 컴포넌트가 end-to-end로 빌드되도록 공개된 것도 아닙니다.</p></article>
+          <article class="myth"><div class="myth-head"><span class="myth-mark">×</span><strong>“숫자는 앞으로도 고정”</strong></div><p>기본 설정은 주요 production 값과 실험 변화에 맞춰 갱신될 수 있습니다. 분석에는 커밋과 확인일을 함께 남겨야 합니다.</p></article>
+        </div>
+
+        <div class="knowledge-check">
+          <h3>30초 이해도 확인</h3>
+          <details>
+            <summary>Q1. Phoenix Retrieval과 Phoenix Ranking은 같은 일인가요?</summary>
+            <div class="details-body"><p>아닙니다. Retrieval은 거대한 게시물 집합에서 가까운 후보를 빠르게 찾고, Ranking은 모인 후보 각각에 대해 여러 행동 확률과 점수를 계산합니다. 같은 Phoenix 모델 계열이지만 파이프라인 책임이 다릅니다.</p></div>
+          </details>
+          <details>
+            <summary>Q2. INTERSTITIAL이면 게시물이 피드에서 사라지나요?</summary>
+            <div class="details-body"><p>아닙니다. 게시물은 남지만 사용자가 탭해서 통과할 수 있는 경고 화면 뒤에 놓입니다. 참고로 경고 UI를 그리는 코드는 이 저장소에 포함되지 않았습니다.</p></div>
+          </details>
+          <details>
+            <summary>Q3. SimClusters가 찾은 글도 Phoenix와 같은 모델로 랭킹되나요?</summary>
+            <div class="details-body"><p>예. 공식 README는 in-network와 out-of-network 후보가 함께 모여 같은 랭킹 모델로 평가된다고 설명합니다.</p></div>
+          </details>
+        </div>
+
+        <h3 style="margin-top:50px">다 읽었다면 체크해 보세요</h3>
+        <div class="checklist" aria-label="학습 완료 체크리스트">
+          <label class="check-item"><input type="checkbox" data-learn-check="0"><span>후보 수집, 랭킹, Visibility를 서로 다른 문장으로 설명할 수 있다.</span></label>
+          <label class="check-item"><input type="checkbox" data-learn-check="1"><span>Thunder, Phoenix Retrieval, SimClusters의 차이를 비유 없이 설명할 수 있다.</span></label>
+          <label class="check-item"><input type="checkbox" data-learn-check="2"><span>가중치가 “노출 배수”가 아니라 예측 확률의 계수임을 이해했다.</span></label>
+          <label class="check-item"><input type="checkbox" data-learn-check="3"><span>ALLOW / INTERSTITIAL / DROP이 무엇인지 구분할 수 있다.</span></label>
+          <label class="check-item"><input type="checkbox" data-learn-check="4"><span>공개된 코드와 여전히 비공개인 부분을 구분할 수 있다.</span></label>
+        </div>
+      </section>
+
+      <section class="chapter" id="glossary" data-nav-section>
+        <div class="chapter-head">
+          <span class="chapter-number">CHAPTER 08 · GLOSSARY &amp; SOURCES</span>
+          <h2>용어를 붙잡고<br>공식 코드로 넘어가기</h2>
+          <p class="chapter-lede">처음부터 저장소 전체를 읽지 마세요. 이 용어집으로 문장을 해석한 뒤, 궁금한 결정이 있는 파일만 따라가는 편이 훨씬 빠릅니다.</p>
+        </div>
+
+        <div class="glossary">
+          <details><summary>Candidate · 후보</summary><div class="details-body"><p><strong>아직 최종 노출이 결정되지 않은 게시물.</strong> 여러 소스가 찾은 뒤 필터와 랭킹을 거칩니다.</p></div></details>
+          <details><summary>Candidate Pipeline · 후보 파이프라인</summary><div class="details-body"><p><strong>후보를 조회·보강·필터·점수화·선택하는 공통 실행 뼈대.</strong> X의 <code>home-mixer</code>는 이 프레임워크에 실제 For You 부품과 설정을 꽂습니다.</p></div></details>
+          <details><summary>Home Mixer</summary><div class="details-body"><p><strong>For You 요청을 받아 Post Pipeline과 Blending Pipeline을 조립·실행하는 서비스.</strong> 후보 소스, 점수기, 필터, 선택기와 각종 클라이언트를 연결합니다.</p></div></details>
+          <details><summary>Retrieval · 후보 수집</summary><div class="details-body"><p><strong>거대한 전체 집합을 빠르게 줄이는 단계.</strong> 정확한 최종 순위보다 좋은 후보를 놓치지 않는 것이 중요합니다.</p></div></details>
+          <details><summary>Hydration · 정보 채우기</summary><div class="details-body"><p><strong>ID뿐인 요청·후보에 필요한 속성을 붙이는 일.</strong> 본문, 작성자, 언어, 라벨, 참여 수치 등을 가져옵니다.</p></div></details>
+          <details><summary>In / Out-of-Network</summary><div class="details-body"><p><strong>팔로우 관계 안 / 밖.</strong> OON은 새로운 발견을 담당하지만 추가 할인·전용 필터가 적용될 수 있습니다.</p></div></details>
+          <details><summary>Embedding · 임베딩</summary><div class="details-body"><p><strong>사용자·게시물의 특징을 숫자 벡터로 표현한 것.</strong> 가까운 벡터를 찾아 비슷한 취향과 내용을 연결합니다.</p></div></details>
+          <details><summary>Transformer</summary><div class="details-body"><p><strong>순서와 문맥을 함께 읽는 신경망 구조.</strong> Phoenix는 최근 행동 시퀀스를 문맥으로 후보의 여러 행동 확률을 예측합니다.</p></div></details>
+          <details><summary>Scorer · 점수기</summary><div class="details-body"><p><strong>후보에 숫자 점수를 붙이는 단계.</strong> Phoenix 예측, 가중합, 다양성·OON 조정 등이 연속으로 작동합니다.</p></div></details>
+          <details><summary>Visibility Filtering</summary><div class="details-body"><p><strong>사용자와 게시물 조합별 노출 가능 여부 판단.</strong> 점수와 별개로 ALLOW, INTERSTITIAL, DROP 중 하나를 답합니다.</p></div></details>
+          <details><summary>Interstitial · 경고 화면</summary><div class="details-body"><p><strong>민감할 수 있는 콘텐츠 앞에 놓는 확인 장벽.</strong> DROP과 달리 사용자가 통과해 게시물을 볼 수 있습니다.</p></div></details>
+          <details><summary>Label · 라벨</summary><div class="details-body"><p><strong>콘텐츠나 계정에 붙은 분류·상태 신호.</strong> 여러 모델과 규칙이 만들고 Visibility Filtering이 읽습니다.</p></div></details>
+        </div>
+
+        <h3 style="margin-top:52px">공식 소스 바로가기</h3>
+        <div class="source-grid">
+          <a class="source-card" href="x-models-field-guide.html"><small>COMPANION · BEGINNER GUIDE</small><strong>X의 추천·안전 모델 해부도</strong><span>Phoenix부터 BDSM까지 입력→처리→출력으로 설명</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener"><small>PRIMARY · GITHUB</small><strong>X For You Feed Algorithm README</strong><span>전체 구조, 2026년 8월 변경점, 컴포넌트, 공개 한계</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/commits/main/" target="_blank" rel="noreferrer noopener"><small>PRIMARY · HISTORY</small><strong>공식 커밋 타임라인</strong><span>2026-01-20 · 05-15 · 08-13 공개 이력</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/candidate-pipeline/candidate_pipeline.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · FRAMEWORK</small><strong>candidate_pipeline.rs</strong><span>10가지 단계 타입, 실행 순서, 병렬 처리, 결과 구조</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/home-mixer/candidate_pipeline/phoenix_candidate_pipeline.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · PRODUCT PIPELINE</small><strong>PhoenixCandidatePipeline</strong><span>범용 프레임워크에 실제 For You 부품을 조립하는 구현</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/home-mixer/params/param.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · CONFIG</small><strong>home-mixer/params/param.rs</strong><span>행동 가중치, OON factor, 작성자 다양성 등 현재 기본값</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/home-mixer/scorers/ranking_scorer.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · SCORING</small><strong>ranking_scorer.rs</strong><span>예측값을 점수로 합치고 조정하는 구현</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/visibility-filtering/rules/registry.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · VISIBILITY</small><strong>Visibility rule registry</strong><span>규칙 그룹과 실제 평가 순서</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/phoenix/QUICKSTART.md" target="_blank" rel="noreferrer noopener"><small>PRIMARY · HANDS-ON</small><strong>Phoenix Quickstart</strong><span>합성 데이터로 작은 모델을 학습·서빙하는 PoC</span></a>
+          <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/under-the-hood" target="_blank" rel="noreferrer noopener"><small>PRIMARY · TRANSPARENCY</small><strong>Under the Hood code</strong><span>계정·게시물 라벨 집계 보고서를 만드는 공개 경로</span></a>
+          <a class="source-card" href="https://help.x.com/en/resources/recommender-systems/for-you-home-timeline-recommendations" target="_blank" rel="noreferrer noopener"><small>PRIMARY · X HELP</small><strong>For You 공식 도움말</strong><span>하루 약 5억 게시물, 신호, 필터, 사용자의 제어 방법</span></a>
+        </div>
+
+        <div class="verification-stamp">VERIFIED 2026-08-14 KST · 공식 GitHub README/코드/커밋 이력 및 X Help 기준 · 설정값은 이후 변경될 수 있으므로 링크된 main 브랜치와 커밋을 함께 확인하세요.</div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <p>비공식 한국어 학습 가이드 · X/xAI와 제휴 관계 없음 · 공식 저장소 Apache 2.0</p>
+      <p><a href="#top">맨 위로 ↑</a></p>
+    </div>
+  </footer>
+
+  <script>
+    (() => {
+      const stageData = [
+        {
+          analogy: "비유: 주문서 작성",
+          title: "보는 사람의 상황을 채운다",
+          body: "최근 좋아요·답글·공유 같은 행동 순서, 팔로잉, 차단·뮤트, 뮤트 키워드, 이미 본 게시물, 팔로우 토픽 등을 요청에 붙입니다. 이 정보가 이후 후보 수집과 모델의 문맥이 됩니다.",
+          files: "home-mixer/query_hydrators/ · viewer context"
+        },
+        {
+          analogy: "비유: 세 도매상에서 재료 받기",
+          title: "세 소스를 병렬로 조회한다",
+          body: "Thunder는 팔로우 계정의 최신 글을, Phoenix Retrieval과 SimClusters는 팔로우하지 않은 계정의 관련 글을 가져옵니다. 독립된 소스는 가능한 한 병렬로 실행됩니다.",
+          files: "thunder/ · phoenix/ · simclusters/"
+        },
+        {
+          analogy: "비유: 이름표에 상세 정보 붙이기",
+          title: "후보 ID를 실제 게시물로 채운다",
+          body: "본문과 미디어, 작성자 정보와 계정 라벨, 인용 게시물, 언어, 참여 수치, 구독 상태 등 필터와 모델이 읽을 속성을 붙입니다.",
+          files: "home-mixer/candidate_hydrators/ · post and author features"
+        },
+        {
+          analogy: "비유: 오디션 전 자격 검사",
+          title: "확정적으로 부적합한 후보를 먼저 뺀다",
+          body: "중복, 48시간보다 오래됨, 내 글, 차단·뮤트 계정, 뮤트 키워드, 이미 본 글, 권한 없는 구독 글 등을 무거운 점수 계산 전에 제거합니다.",
+          files: "home-mixer/filters/ · cheap deterministic checks"
+        },
+        {
+          analogy: "비유: 여러 심사 점수의 가중 합산",
+          title: "행동 확률을 하나의 순위 점수로 만든다",
+          body: "Phoenix가 행동별 확률을 예측하고 RankingScorer가 가중합을 계산합니다. 작성자 다양성, 비팔로우 할인, 새 작성자 부스트를 적용한 뒤 VMRanker가 유사한 이웃을 줄이도록 재정렬합니다.",
+          files: "PhoenixScorer → RankingScorer → VMRanker"
+        },
+        {
+          analogy: "비유: 성적순으로 합격 정원 자르기",
+          title: "최종 점수 상위 K개를 선택한다",
+          body: "TopKScoreSelector가 후보를 최종 점수순으로 정렬하고 정해진 수만 남깁니다. 아직 피드 화면이 완성된 것은 아니며, 선택된 후보에만 필요한 비싼 최종 검사가 뒤따릅니다.",
+          files: "TopKScoreSelector · sort by final score · keep K"
+        },
+        {
+          analogy: "비유: 합격자 대상 최종 출입 심사",
+          title: "Visibility 결과와 대화 중복을 확인한다",
+          body: "선택한 게시물의 Visibility 응답을 받아 DROP을 제거합니다. 부모·인용·리포스트 원문이 DROP된 경우도 처리하고, 같은 대화의 여러 갈래가 과도하게 반복되지 않게 접습니다.",
+          files: "VFCandidateHydrator · VFFilter · DedupConversationFilter"
+        }
+      ];
+
+      const stageButtons = [...document.querySelectorAll(".stage-button")];
+      const stageDetail = document.getElementById("stage-detail");
+      stageButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const item = stageData[Number(button.dataset.stage)];
+          stageButtons.forEach((candidate) => {
+            const active = candidate === button;
+            candidate.classList.toggle("is-active", active);
+            candidate.setAttribute("aria-selected", String(active));
+          });
+          stageDetail.innerHTML = `<div><span class="stage-analogy">${item.analogy}</span><h3>${item.title}</h3></div><div><p>${item.body}</p><div class="stage-files">${item.files}</div></div>`;
+        });
+      });
+
+      const sliderRows = [...document.querySelectorAll(".slider-row")];
+      const totalScore = document.getElementById("total-score");
+      const scoreDirection = document.getElementById("score-direction");
+      const scoreMarker = document.getElementById("score-marker");
+      const initialValues = sliderRows.map((row) => row.querySelector("input").value);
+
+      function renderScore() {
+        let total = 0;
+        sliderRows.forEach((row) => {
+          const input = row.querySelector("input");
+          const probability = Number(input.value);
+          const contribution = Number(row.dataset.weight) * probability / 100;
+          total += contribution;
+          row.querySelector(".prob-value").textContent = `${probability.toFixed(1)}%`;
+          row.querySelector(".contribution").textContent = `${contribution >= 0 ? "+" : "−"}${Math.abs(contribution).toFixed(3)}`;
+        });
+        totalScore.textContent = `${total >= 0 ? "+" : "−"}${Math.abs(total).toFixed(3)}`;
+        totalScore.style.color = total > .001 ? "var(--lime)" : total < -.001 ? "#ff9288" : "#fff";
+        scoreDirection.textContent = total > .15
+          ? "선택한 6개 행동만 보면 양의 방향이 비교적 강합니다."
+          : total < -.15
+            ? "선택한 6개 행동만 보면 음의 방향이 비교적 강합니다."
+            : "선택한 6개 행동만 보면 중립에 가까운 범위입니다.";
+        const compressed = 50 + Math.tanh(total / 1.8) * 46;
+        scoreMarker.style.left = `${compressed}%`;
+      }
+      sliderRows.forEach((row) => row.querySelector("input").addEventListener("input", renderScore));
+      document.getElementById("score-reset").addEventListener("click", () => {
+        sliderRows.forEach((row, index) => { row.querySelector("input").value = initialValues[index]; });
+        renderScore();
+      });
+      renderScore();
+
+      const scenarios = {
+        ordinary: { status: "ALLOW", copy: "차단·제한·민감 라벨 등 다른 제한 신호가 없다면 정상 표시됩니다." },
+        sensitive: { status: "INTERSTITIAL", copy: "성인·그래픽 미디어 같은 라벨과 사용자의 민감 콘텐츠 설정에 따라, 탭해서 통과할 수 있는 경고 뒤에 표시될 수 있습니다." },
+        blocked: { status: "DROP", copy: "보는 사람이 작성자를 차단했다면 해당 게시물은 피드 후보에서 제거됩니다." },
+        oonSpam: { status: "DROP", copy: "팔로우하지 않은 계정의 추천에는 고재현율 스팸 같은 OON 전용 DROP 규칙이 추가로 적용될 수 있습니다." },
+        followerException: { status: "ALLOW", copy: "같은 게시물이라도 팔로우 중이라면 그 OON 전용 규칙은 적용되지 않습니다. 단, 다른 DROP 규칙이 없을 때의 설명입니다." }
+      };
+      const scenarioButtons = [...document.querySelectorAll(".scenario-button")];
+      const scenarioResult = document.getElementById("scenario-result");
+      scenarioButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const scenario = scenarios[button.dataset.scenario];
+          scenarioButtons.forEach((candidate) => candidate.classList.toggle("is-active", candidate === button));
+          scenarioResult.dataset.status = scenario.status;
+          document.getElementById("scenario-status").textContent = scenario.status;
+          document.getElementById("scenario-copy").textContent = scenario.copy;
+        });
+      });
+
+      const navLinks = [...document.querySelectorAll(".side-nav a, .mobile-toc a")];
+      const sections = [...document.querySelectorAll("[data-nav-section]")];
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entries) => {
+          const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          if (!visible) return;
+          navLinks.forEach((link) => link.classList.toggle("is-active", link.getAttribute("href") === `#${visible.target.id}`));
+        }, { rootMargin: "-18% 0px -64% 0px", threshold: [0, .1, .25] });
+        sections.forEach((section) => observer.observe(section));
+      }
+
+      const readingBar = document.getElementById("reading-bar");
+      function renderReadingProgress() {
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const percent = max > 0 ? Math.min(100, Math.max(0, window.scrollY / max * 100)) : 0;
+        readingBar.style.width = `${percent}%`;
+      }
+      window.addEventListener("scroll", renderReadingProgress, { passive: true });
+      window.addEventListener("resize", renderReadingProgress);
+      renderReadingProgress();
+
+      const checks = [...document.querySelectorAll("[data-learn-check]")];
+      const progressNumber = document.getElementById("progress-number");
+      const studyProgressBar = document.getElementById("study-progress-bar");
+      function renderStudyProgress() {
+        const count = checks.filter((check) => check.checked).length;
+        progressNumber.textContent = `${count} / ${checks.length}`;
+        studyProgressBar.style.width = `${count / checks.length * 100}%`;
+        try {
+          localStorage.setItem("x-guide-checks", JSON.stringify(checks.map((check) => check.checked)));
+        } catch (_) { /* local file privacy settings may block storage */ }
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem("x-guide-checks") || "[]");
+        saved.forEach((value, index) => { if (checks[index]) checks[index].checked = Boolean(value); });
+      } catch (_) { /* start unchecked */ }
+      checks.forEach((check) => check.addEventListener("change", renderStudyProgress));
+      renderStudyProgress();
+
+      document.getElementById("print-button").addEventListener("click", () => window.print());
+    })();
+  </script>
+</body>
+</html>
