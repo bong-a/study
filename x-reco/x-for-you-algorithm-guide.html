@@ -35,7 +35,7 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
     body {
       margin: 0;
       background:
@@ -49,6 +49,7 @@
       font-size: 17px;
       line-height: 1.75;
       word-break: keep-all;
+      overflow-wrap: anywhere;
     }
     a { color: inherit; text-underline-offset: .2em; }
     a:hover { text-decoration-thickness: 2px; }
@@ -932,8 +933,15 @@
       .hero { padding-right: 17px; padding-left: 17px; }
       .hero-tools { align-items: flex-start; }
       .brand-mark span:last-child { display: none; }
-      .tool-row .tool-button:nth-child(2) { display: none; }
+      .hero-tools { gap: 16px; }
+      .tool-row { display: grid; width: 100%; grid-template-columns: 1fr 1fr; }
+      .tool-row .tool-button { width: 100%; min-width: 0; padding-right: 10px; padding-left: 10px; }
+      .tool-row .tool-button:nth-child(3), .tool-row #print-button { display: none; }
       h1 { font-size: clamp(2.75rem, 15vw, 4.2rem); }
+      h2 { font-size: clamp(2rem, 11vw, 3.2rem); overflow-wrap: anywhere; }
+      main, .chapter, .one-line, p, li, td, code { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+      .pseudo-code { max-width: 100%; white-space: pre; }
+      .mobile-toc a { min-height: 44px; display: inline-flex; align-items: center; }
       .hero-visual { padding: 18px; box-shadow: 8px 8px 0 rgba(29,155,240,.2); }
       .hero-fact { padding: 16px; }
       .page-shell { padding-right: 17px; padding-left: 17px; }
@@ -947,7 +955,22 @@
       .score-lab { box-shadow: 4px 4px 0 var(--line); }
       .vf-inputs { grid-template-columns: 1fr; }
       .scenario-result { grid-template-columns: 1fr; }
-      .filter-table { display: block; overflow-x: auto; white-space: nowrap; }
+      .filter-table, .filter-table tbody, .filter-table tr, .filter-table td { display: block; width: 100%; }
+      .filter-table { border: 0; overflow: visible; background: transparent; }
+      .filter-table thead { display: none; }
+      .filter-table tbody { display: grid; gap: 10px; }
+      .filter-table tr { overflow: hidden; border: 2px solid var(--line); border-radius: 12px; background: #fff; }
+      .filter-table td { display: grid; grid-template-columns: 104px 1fr; gap: 10px; padding: 10px 12px; border-bottom: 1px solid #cfd4db; white-space: normal; }
+      .filter-table td::before { color: var(--muted); font-family: sans-serif; font-size: .65rem; font-weight: 850; }
+      .filter-table td:first-child { background: var(--blue-soft); }
+      .filter-table td:last-child { border-bottom: 0; }
+      .trio-compare .filter-table td:nth-child(1)::before { content: "시스템"; }
+      .trio-compare .filter-table td:nth-child(2)::before { content: "탐색 신호"; }
+      .trio-compare .filter-table td:nth-child(3)::before { content: "후보"; }
+      .trio-compare .filter-table td:nth-child(4)::before { content: "비유"; }
+      #visibility .filter-table td:nth-child(1)::before { content: "필터"; }
+      #visibility .filter-table td:nth-child(2)::before { content: "설명"; }
+      #visibility .filter-table td:nth-child(3)::before { content: "목적"; }
       .official-architecture { padding: 17px; box-shadow: 4px 4px 0 var(--line); }
       .arch-home { padding: 12px; }
       .arch-home-head { align-items: flex-start; flex-direction: column; }
@@ -995,6 +1018,7 @@
         <div class="brand-mark"><span class="x-tile" aria-hidden="true">X</span><span>For You · beginner field guide</span></div>
         <div class="tool-row">
           <a class="tool-button" href="x-models-field-guide.html">모델 상세편 →</a>
+          <a class="tool-button" href="x-search-developer-guide.html">AI 검색 응용편 →</a>
           <a class="tool-button" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener">공식 저장소 ↗</a>
           <button class="tool-button" id="print-button" type="button">PDF로 저장 / 인쇄</button>
         </div>
@@ -1803,6 +1827,7 @@ visible = [post <span class="keyword">for</span> post <span class="keyword">in</
         <h3 style="margin-top:52px">공식 소스 바로가기</h3>
         <div class="source-grid">
           <a class="source-card" href="x-models-field-guide.html"><small>COMPANION · BEGINNER GUIDE</small><strong>X의 추천·안전 모델 해부도</strong><span>Phoenix부터 BDSM까지 입력→처리→출력으로 설명</span></a>
+          <a class="source-card" href="x-search-developer-guide.html"><small>COMPANION · SEARCH ENGINEERING</small><strong>X에서 배우는 AI 검색 설계</strong><span>후보 수집·Reranking·ACL·RAG·단계별 진단으로 번역</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener"><small>PRIMARY · GITHUB</small><strong>X For You Feed Algorithm README</strong><span>전체 구조, 2026년 8월 변경점, 컴포넌트, 공개 한계</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm/commits/main/" target="_blank" rel="noreferrer noopener"><small>PRIMARY · HISTORY</small><strong>공식 커밋 타임라인</strong><span>2026-01-20 · 05-15 · 08-13 공개 이력</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm/blob/main/candidate-pipeline/candidate_pipeline.rs" target="_blank" rel="noreferrer noopener"><small>PRIMARY · FRAMEWORK</small><strong>candidate_pipeline.rs</strong><span>10가지 단계 타입, 실행 순서, 병렬 처리, 결과 구조</span></a>

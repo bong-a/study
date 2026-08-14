@@ -17,7 +17,7 @@
     }
     *,*::before,*::after{box-sizing:border-box}
     html{scroll-behavior:smooth}
-    body{margin:0;background:radial-gradient(circle at 80% 3%,rgba(124,108,242,.13),transparent 30rem),linear-gradient(rgba(22,27,34,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,27,34,.035) 1px,transparent 1px),var(--paper);background-size:auto,24px 24px,24px 24px,auto;color:var(--ink);font-family:Pretendard,"Apple SD Gothic Neo","Noto Sans KR",Inter,system-ui,sans-serif;font-size:17px;line-height:1.75;word-break:keep-all}
+    body{margin:0;background:radial-gradient(circle at 80% 3%,rgba(124,108,242,.13),transparent 30rem),linear-gradient(rgba(22,27,34,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(22,27,34,.035) 1px,transparent 1px),var(--paper);background-size:auto,24px 24px,24px 24px,auto;color:var(--ink);font-family:Pretendard,"Apple SD Gothic Neo","Noto Sans KR",Inter,system-ui,sans-serif;font-size:17px;line-height:1.75;word-break:keep-all;overflow-wrap:anywhere}
     a{color:inherit;text-underline-offset:.2em} a:hover{text-decoration-thickness:2px}
     code,.mono{font-family:"SFMono-Regular",Consolas,monospace;font-size:.9em}
     code{padding:.13em .38em;border:1px solid rgba(22,27,34,.18);border-radius:6px;background:rgba(255,255,255,.7)}
@@ -71,7 +71,7 @@
 
     @media(max-width:1000px){.layout{grid-template-columns:1fr;padding-top:27px}.side-nav{display:none}.mobile-nav{display:block;position:sticky;z-index:50;top:0;overflow-x:auto;border-bottom:2px solid var(--line);background:rgba(242,239,231,.96);backdrop-filter:blur(10px)}.mobile-nav div{display:flex;width:max-content;padding:9px 13px}.mobile-nav a{padding:7px 10px;border-radius:999px;font-size:.69rem;font-weight:850;text-decoration:none}.mobile-nav a.is-active{background:var(--ink);color:#fff}.chapter{scroll-margin-top:62px}.taxonomy{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:760px){body{font-size:16px}.hero{padding-top:38px}.hero-top{margin-bottom:36px}.fact-strip{grid-template-columns:repeat(2,1fr)}.fact:nth-child(3){border-top:1px solid rgba(255,255,255,.2);border-left:0}.fact:nth-child(4){border-top:1px solid rgba(255,255,255,.2)}.origin-box,.source-grid{grid-template-columns:1fr}.map-lane{grid-template-columns:1fr;gap:7px}.quick-index{grid-template-columns:repeat(2,1fr)}.model-head{grid-template-columns:62px 1fr}.model-meta{grid-column:2;text-align:left}.model-meta span{display:inline;margin-right:10px}.ipo-flow{grid-template-columns:1fr}.ipo-arrow{transform:rotate(90deg)}.explain-grid{grid-template-columns:1fr}.model-card{box-shadow:4px 4px 0 var(--line)}}
-    @media(max-width:520px){.hero{padding-right:17px;padding-left:17px}.brand span:last-child{display:none}.tool-row .tool-link:last-child{display:none}.fact{padding:14px}.layout{padding-right:17px;padding-left:17px}.chapter{padding-bottom:68px}.taxonomy,.quick-index{grid-template-columns:1fr}.model-head{grid-template-columns:1fr;padding:19px}.model-meta{grid-column:auto}.model-body{padding:19px}.read-step{grid-template-columns:42px 1fr}.read-step a{grid-column:2}.not-model-table{display:block;overflow-x:auto;white-space:nowrap}.footer-inner{align-items:flex-start;flex-direction:column}}
+    @media(max-width:520px){.hero{padding:30px 17px 38px}.hero-top{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:32px}.brand span:last-child{display:none}.tool-row{display:grid;width:100%;grid-template-columns:1fr 1fr}.tool-row .tool-link{width:100%;min-width:0;padding-right:8px;padding-left:8px}.tool-row .tool-link:last-child{display:none}h1{font-size:clamp(2.55rem,14vw,4rem);line-height:1.05}.hero-copy{font-size:1rem}.fact{padding:14px}.layout{padding-right:17px;padding-left:17px}.mobile-nav a{display:inline-flex;min-height:44px;align-items:center}.chapter{padding-bottom:68px}.chapter h2{font-size:clamp(2rem,11vw,3.1rem)}.taxonomy,.quick-index{grid-template-columns:1fr}.model-head{grid-template-columns:1fr;padding:18px}.model-meta{grid-column:auto;text-align:left}.model-meta span{display:block;margin-right:0;overflow-wrap:anywhere}.model-body{padding:18px}.ipo-box{min-height:0}.read-step{grid-template-columns:42px 1fr}.read-step a{display:inline-flex;grid-column:2;min-height:44px;align-items:center}.not-model-table,.not-model-table tbody,.not-model-table tr,.not-model-table td{display:block;width:100%}.not-model-table{border:0;overflow:visible;background:transparent}.not-model-table thead{display:none}.not-model-table tbody{display:grid;gap:10px}.not-model-table tr{overflow:hidden;border:2px solid var(--line);border-radius:12px;background:#fff}.not-model-table td{display:grid;grid-template-columns:92px 1fr;gap:9px;padding:10px 12px;border-bottom:1px solid rgba(22,27,34,.18);white-space:normal}.not-model-table td::before{color:var(--muted);font-size:.63rem;font-weight:850}.not-model-table td:nth-child(1)::before{content:"이름"}.not-model-table td:nth-child(2)::before{content:"정체"}.not-model-table td:nth-child(3)::before{content:"실제 역할"}.not-model-table td:first-child{background:var(--blue-soft)}.not-model-table td:last-child{border-bottom:0}.footer-inner{align-items:flex-start;flex-direction:column}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
     @media print{@page{size:A4;margin:14mm}body{background:#fff;color:#000;font-size:10pt}.reading-progress,.hero-top,.mobile-nav,.side-nav{display:none!important}.hero{padding:20px 0;background:#fff;color:#000}.hero::after{display:none}.hero h1{font-size:34pt}.hero-copy,.fact span{color:#333}.fact-strip{border-color:#000}.fact+.fact{border-color:#000}.fact strong{color:#000}.layout{display:block;max-width:none;padding:0}.chapter{padding:22px 0;break-before:page}.chapter:first-child{break-before:auto}.model-card,.system-map,.tax-card,details{break-inside:avoid;box-shadow:none!important}.system-map,.ipo-box.process{background:#fff;color:#000}.map-note,.ipo-box.process p{color:#333}a{color:#000;text-decoration:none}a[href^="http"]::after{content:" (" attr(href) ")";font-size:6pt;word-break:break-all}}
   </style>
@@ -86,6 +86,7 @@
         <div class="brand"><span class="x-tile" aria-hidden="true">X</span><span>Model field guide · companion</span></div>
         <div class="tool-row">
           <a class="tool-link" href="x-for-you-algorithm-guide.html">For You 본편 ←</a>
+          <a class="tool-link" href="x-search-developer-guide.html">AI 검색 응용편 →</a>
           <a class="tool-link" href="https://github.com/xai-org/x-algorithm" target="_blank" rel="noreferrer noopener">공식 저장소 ↗</a>
         </div>
       </div>
@@ -314,6 +315,7 @@
         <h3 style="margin-top:48px">공식 소스 묶음</h3>
         <div class="source-grid">
           <a class="source-card" href="https://github.com/xai-org/x-algorithm#components" target="_blank" rel="noreferrer noopener"><small>INVENTORY</small><strong>공식 Components 표</strong><span>이 가이드의 전체 범위를 정한 기준</span></a>
+          <a class="source-card" href="x-search-developer-guide.html"><small>COMPANION · SEARCH ENGINEERING</small><strong>X에서 배우는 AI 검색 설계</strong><span>공개 구조를 BM25·Reranking·ACL·RAG로 번역</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/phoenix" target="_blank" rel="noreferrer noopener"><small>RETRIEVAL + RANKING</small><strong>Phoenix</strong><span>production 모델 코드, 학습, Rust serving, 합성 데이터</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/simclusters" target="_blank" rel="noreferrer noopener"><small>GRAPH RETRIEVAL</small><strong>SimClusters</strong><span>클러스터·ANN 후보 수집 코드</span></a>
           <a class="source-card" href="https://github.com/xai-org/x-algorithm/tree/main/vm-ranker" target="_blank" rel="noreferrer noopener"><small>DIVERSITY</small><strong>VMRanker</strong><span>DPP 재정렬 서비스</span></a>
@@ -329,7 +331,7 @@
     </main>
   </div>
 
-  <footer><div class="footer-inner"><p>추천 개발 초보자를 위한 비공식 한국어 해설 · 공식 소스 링크와 확인일 포함</p><p><a href="x-for-you-algorithm-guide.html">For You 본편</a> · <a href="#top">맨 위로 ↑</a></p></div></footer>
+  <footer><div class="footer-inner"><p>추천 개발 초보자를 위한 비공식 한국어 해설 · 공식 소스 링크와 확인일 포함</p><p><a href="x-for-you-algorithm-guide.html">For You 본편</a> · <a href="x-search-developer-guide.html">AI 검색 응용편</a> · <a href="#top">맨 위로 ↑</a></p></div></footer>
 
   <script>
     (() => {
