@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>2장. 자연어 다루기 — 개념 정리</title>
+  <style>
+    :root {
+      --bg: #F4F5F7;
+      --surface: #FFFFFF;
+      --surface-alt: #EAEDF2;
+      --ink: #1B2130;
+      --ink-muted: #5B6475;
+      --ink-faint: #8A93A3;
+      --rule: #DBE0E8;
+      --accent: #3454D1;
+      --accent-soft: #E7ECFC;
+      --accent-2: #C97B1A;
+      --accent-2-soft: #F7EAD4;
+      --accent-fill: #3454D1;
+      --radius: 10px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #12151C;
+      --surface: #1A1F29;
+      --surface-alt: #212838;
+      --ink: #E7E9EE;
+      --ink-muted: #9AA3B2;
+      --ink-faint: #6B7383;
+      --rule: #2A3140;
+      --accent: #7C93FF;
+      --accent-soft: #262E48;
+      --accent-2: #E3A857;
+      --accent-2-soft: #3A2E1C;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12151C;
+        --surface: #1A1F29;
+        --surface-alt: #212838;
+        --ink: #E7E9EE;
+        --ink-muted: #9AA3B2;
+        --ink-faint: #6B7383;
+        --rule: #2A3140;
+        --accent: #7C93FF;
+        --accent-soft: #262E48;
+        --accent-2: #E3A857;
+        --accent-2-soft: #3A2E1C;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    .page {
+      display: flex;
+      align-items: flex-start;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 48px;
+    }
+    .toc {
+      position: sticky;
+      top: 24px;
+      flex: 0 0 224px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      padding: 8px 0 20px;
+      font-size: 13px;
+    }
+    .toc-eyebrow {
+      margin-bottom: 12px;
+      color: var(--ink-faint);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .toc a {
+      display: block;
+      margin: 1px 0;
+      padding: 6px 10px 6px 12px;
+      border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0;
+      color: var(--ink-muted);
+      text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+    }
+    .toc a:not(.sub) { margin-top: 12px; }
+    .toc-eyebrow + a { margin-top: 0; }
+    .toc a.sub { padding-left: 24px; color: var(--ink-faint); font-size: 12px; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a:active { transform: scale(.98); }
+    .toc a.active {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .toc a.sub.active {
+      border-left-color: var(--accent-2);
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+    }
+    .toc a:focus-visible, .back-nav:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .content { flex: 1 1 auto; min-width: 0; max-width: 720px; padding: 56px 0 96px; }
+    .back-nav {
+      display: inline-flex;
+      margin-bottom: 28px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+      font: 12px var(--mono);
+      text-decoration: none;
+    }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .hero { margin-bottom: 48px; }
+    .kicker, .sec-label {
+      color: var(--accent);
+      font: 700 12px var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      margin: 12px 0 16px;
+      font: 700 clamp(31px, 5vw, 42px)/1.25 var(--serif);
+      letter-spacing: -.02em;
+    }
+    h2 { margin: 8px 0 12px; font: 700 27px/1.35 var(--serif); }
+    h3 { margin: 32px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; }
+    .lede, .sec-sub { color: var(--ink-muted); }
+    .lede { font-size: 16px; }
+    .cover-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 22px; }
+    .cover-tags span {
+      padding: 4px 9px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      font: 11px var(--mono);
+    }
+    section { margin-top: 68px; scroll-margin-top: 22px; }
+    section section { margin-top: 42px; }
+    .thesis {
+      position: relative;
+      margin: 34px 0 56px;
+      padding: 28px 30px 25px;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--accent-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .thesis::after {
+      content: "“";
+      position: absolute;
+      right: 16px;
+      top: -26px;
+      color: var(--accent-2-soft);
+      font: 120px/1 var(--serif);
+    }
+    .thesis-eyebrow { color: var(--accent-2); font: 700 11px var(--mono); text-transform: uppercase; }
+    .thesis blockquote { position: relative; z-index: 1; margin: 13px 0 9px; font: 700 20px/1.65 var(--serif); }
+    .thesis p { margin-bottom: 0; color: var(--ink-muted); font-size: 13px; }
+    .hit {
+      padding: 0 4px;
+      border-radius: 3px;
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+    .core-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-fill);
+      color: #fff;
+      font: 700 10px var(--mono);
+      vertical-align: middle;
+    }
+    .box, .inset {
+      margin: 22px 0;
+      padding: 19px 21px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .inset { border-left: 3px solid var(--accent-2); background: var(--accent-2-soft); }
+    .box-title { margin-bottom: 6px; color: var(--accent); font-weight: 750; }
+    .box p:last-child, .inset p:last-child { margin-bottom: 0; }
+    .figure-pair {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin: 24px 0;
+    }
+    .book-figure {
+      margin: 24px 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .figure-pair .book-figure { margin: 0; }
+    .book-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .book-figure figcaption {
+      padding: 12px 15px 14px;
+      border-top: 1px solid var(--rule);
+      background: var(--surface);
+      color: var(--ink-muted);
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+    .book-figure figcaption strong { color: var(--accent); }
+    .glossary-grid, .card-grid, .knowledge-grid, .challenge-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+    .term-card, .card, .knowledge-card, .challenge-card {
+      padding: 17px 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .term-card dt { color: var(--accent); font-weight: 750; }
+    .term-card dd { margin: 5px 0 0; color: var(--ink-muted); font-size: 13.5px; }
+    .card strong, .knowledge-card strong, .challenge-card strong { color: var(--accent); }
+    .card p, .knowledge-card p, .challenge-card p { margin-bottom: 0; color: var(--ink-muted); font-size: 13.5px; }
+    .flow-wrap { max-width: 100%; margin: 24px 0; overflow-x: auto; }
+    .semantic-flow {
+      display: flex;
+      align-items: center;
+      min-width: 690px;
+      padding: 17px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .flow-node { flex: 1; text-align: center; }
+    .flow-node b { display: block; color: var(--accent); font-size: 13px; }
+    .flow-node span { color: var(--ink-faint); font: 11px var(--mono); }
+    .flow-arrow { color: var(--accent-2); font-weight: 800; }
+    .compare {
+      width: 100%;
+      margin: 22px 0;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      font-size: 13.5px;
+    }
+    .compare th, .compare td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    .compare th { background: var(--surface-alt); color: var(--accent); }
+    .compare tr:last-child td { border-bottom: 0; }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--surface-alt);
+      color: var(--accent-2);
+      font: .88em var(--mono);
+    }
+    .formula {
+      margin: 20px 0;
+      padding: 17px;
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+      text-align: center;
+      font: 14px var(--mono);
+    }
+    .summary-box { margin-top: 22px; border-top: 1px solid var(--rule); }
+    .summary-item { display: grid; grid-template-columns: 36px 1fr; gap: 14px; padding: 17px 0; border-bottom: 1px solid var(--rule); }
+    .summary-item .num { color: var(--accent-2); font: 700 12px var(--mono); }
+    .summary-item p { margin: 0; }
+    .page-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+    @media (max-width: 900px) {
+      .toc { display: none; }
+      .page { padding: 0 20px; }
+      .content { max-width: none; padding-top: 32px; }
+    }
+    @media (max-width: 620px) {
+      .glossary-grid, .card-grid, .knowledge-grid, .challenge-grid, .figure-pair { grid-template-columns: 1fr; }
+      .thesis { padding: 23px 21px; }
+      .thesis blockquote { font-size: 18px; }
+      .compare { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <nav class="toc" aria-label="목차">
+      <div class="toc-eyebrow">목차</div>
+      <a href="#intro" data-toc>이 장의 목표</a>
+      <a href="#glossary" data-toc>공통 용어 정리</a>
+      <a href="#sec21" data-toc>2.1 비정형 데이터의 신화</a>
+      <a href="#s211" class="sub" data-toc>2.1.1 비정형 데이터의 유형</a>
+      <a href="#s212" class="sub" data-toc>2.1.2 구조화 DB의 데이터</a>
+      <a href="#s213" class="sub" data-toc>2.1.3 조인과 엔티티 해소</a>
+      <a href="#sec22" data-toc>2.2 자연어의 구조</a>
+      <a href="#sec23" data-toc>2.3 분포 의미론과 임베딩</a>
+      <a href="#sec24" data-toc>2.4 도메인 지식 모델링</a>
+      <a href="#sec25" data-toc>2.5 검색 NLU의 과제</a>
+      <a href="#s251" class="sub" data-toc>2.5.1 중의성</a>
+      <a href="#s252" class="sub" data-toc>2.5.2 맥락</a>
+      <a href="#s253" class="sub" data-toc>2.5.3 개인화</a>
+      <a href="#s254" class="sub" data-toc>2.5.4 쿼리와 문서</a>
+      <a href="#s255" class="sub" data-toc>2.5.5 쿼리 의도</a>
+      <a href="#sec26" data-toc>2.6 콘텐츠 + 신호</a>
+      <a href="#summary" data-toc>멘탈 모델 요약</a>
+    </nav>
+
+    <main class="content">
+      <a class="back-nav" href="../index.html">← 스터디 인덱스</a>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 2</div>
+        <h1>자연어 다루기</h1>
+        <p class="lede">이 장의 목표는 개별 검색 기술을 곧바로 구현하는 것이 아니다. 앞으로 해결할 상위 수준의 문제를 같은 관점에서 바라볼 수 있도록, 자연어·의미·도메인 지식·검색 의도에 관한 <strong>공통 멘탈 모델과 용어</strong>를 먼저 맞추는 것이다.</p>
+        <div class="cover-tags">
+          <span>Hyper-structured data</span><span>Distributional semantics</span><span>Embeddings</span><span>Knowledge graph</span><span>Query intent</span>
+        </div>
+      </header>
+
+      <div class="thesis">
+        <div class="thesis-eyebrow">먼저 맞출 공통 멘탈 모델</div>
+        <blockquote>자연어는 구조가 없는 데이터가 아니라, 엔티티와 맥락과 관계가 겹겹이 담긴 <span class="hit">거대한 도메인 지식 그래프</span>다.</blockquote>
+        <p>이 관점에 합의하면 동의어, 임베딩, 지식 그래프, 개인화와 LLM을 서로 분리된 기능이 아니라 같은 검색 문제를 해결하는 도구들로 연결해 이해할 수 있다.</p>
+      </div>
+
+      <section id="intro">
+        <div class="sec-label">Chapter Goal</div>
+        <h2>구현에 앞서 공통 멘탈 모델 맞추기</h2>
+        <p>검색은 콘텐츠와 쿼리 양쪽의 자연어를 다뤄야 한다. 그 안에는 키워드뿐 아니라 엔티티, 개념, 오탈자, 동의어, 약어, 모호한 표현, 명시적·암묵적 관계, 계층과 지식 그래프가 한꺼번에 존재한다.</p>
+        <p>따라서 개별 문제를 곧바로 고치기 전에, 우리가 무엇을 같은 개념으로 부르고 각 기술이 어떤 문제를 담당하는지 합의해야 한다. 이 장은 이후의 동의어 학습, 지식 그래프, 개인화, 벡터 검색과 LLM 활용을 하나의 시스템으로 묶는 <strong>개념 지도</strong>다.</p>
+
+        <div class="box">
+          <div class="box-title">이 장을 잘 읽었다는 기준</div>
+          <p>구현 코드를 기억하는 것이 아니라, <strong>자연어에 어떤 구조가 숨어 있는지</strong>, <strong>그 의미를 어떤 수준으로 표현하고 계산하는지</strong>, <strong>검색에서 무엇이 아직 어려운지</strong>를 같은 용어로 설명할 수 있으면 된다.</p>
+        </div>
+
+        <div class="card-grid">
+          <div class="card"><strong>① 대상을 보는 관점 · 2.1~2.2</strong><p>자연어를 비정형 문자열이 아니라 여러 해상도의 구조와 관계를 가진 데이터로 본다.</p></div>
+          <div class="card"><strong>② 의미를 계산하는 방법 · 2.3</strong><p>분포 의미론과 임베딩으로 표현 사이의 관계를 수치화하고 매칭·랭킹에 활용한다.</p></div>
+          <div class="card"><strong>③ 지식을 표현하는 층위 · 2.4</strong><p>대체 레이블에서 지식 그래프까지, 도메인 지식을 점점 풍부하게 모델링한다.</p></div>
+          <div class="card"><strong>④ 해결할 문제 지도 · 2.5~2.6</strong><p>중의성·맥락·개인화·의도를 정의하고, 콘텐츠와 행동 신호를 해결의 연료로 본다.</p></div>
+        </div>
+
+        <div class="formula">언어관 정렬 → 공통 용어 정의 → 의미 표현 방법 → 검색 난제 정의 → 이후 장의 해결 기술</div>
+      </section>
+
+      <section id="glossary">
+        <div class="sec-label">Shared Vocabulary</div>
+        <h2>앞으로 함께 쓸 공통 용어</h2>
+        <p class="sec-sub">같은 단어를 서로 다른 뜻으로 사용하지 않도록, 이후 장에서 반복해서 사용할 개념의 기준을 먼저 맞춘다.</p>
+        <dl class="glossary-grid">
+          <div class="term-card"><dt>엔티티 해소</dt><dd>“Trey”, “Trey Grainger”, “그”처럼 표현은 달라도 같은 실체를 가리킨다고 판별하는 과정.</dd></div>
+          <div class="term-card"><dt>다의성·중의성</dt><dd>같은 표기의 단어나 구가 맥락에 따라 여러 의미를 갖는 현상. 책에서는 polysemy로 설명한다.</dd></div>
+          <div class="term-card"><dt>역색인</dt><dd>각 용어를 그 용어가 등장하는 문서 목록(postings list)에 연결하는 어휘 검색의 핵심 자료구조.</dd></div>
+          <div class="term-card"><dt>분포 가설</dt><dd>비슷한 맥락에서 함께 나타나는 단어들은 비슷한 의미를 갖는다는 가설.</dd></div>
+          <div class="term-card"><dt>임베딩</dt><dd>텍스트·이미지·행동 등의 의미를 벡터 공간의 수치 좌표로 표현한 것.</dd></div>
+          <div class="term-card"><dt>코사인 유사도</dt><dd>두 벡터 사이의 각도를 이용해 방향, 즉 의미적 유사성을 비교하는 척도.</dd></div>
+          <div class="term-card"><dt>분류 체계</dt><dd>사물을 상하위 범주로 분류하는 taxonomy. 탐색과 필터링의 뼈대가 된다.</dd></div>
+          <div class="term-card"><dt>온톨로지</dt><dd>도메인에서 “종류들 사이의 관계”를 정의한 모델. 알려진 사실로부터 새 사실을 추론할 수 있다.</dd></div>
+          <div class="term-card"><dt>지식 그래프</dt><dd>온톨로지의 관계에 실제 엔티티와 사실 인스턴스까지 채워 넣은 도메인 지식 표현.</dd></div>
+          <div class="term-card"><dt>쿼리 의도</dt><dd>질의어 너머의 목표. 탐색, 구매, 지원, 정답 찾기, 이동, 특정 행동 수행 등이 있다.</dd></div>
+        </dl>
+      </section>
+
+      <section id="sec21">
+        <div class="sec-label">2.1</div>
+        <h2>비정형 데이터라는 신화</h2>
+        <p class="sec-sub"><strong>멘탈 모델 ①:</strong> 자연어는 구조가 없는 데이터가 아니라, 아직 명시적인 스키마로 펼쳐지지 않은 관계 데이터다.</p>
+        <p>텍스트는 미리 정의된 표 스키마에 맞지 않는다는 이유로 “비정형”이라 불린다. 그러나 문장 구조, 문법, 구두점, 품사, 단어 사이 관계는 강한 구조를 이룬다. 노래를 단지 “임의의 음파”라 부르면 박자·선율·화음이 사라지는 것처럼, 텍스트를 비정형이라고 부르면 그 안의 의미 구조를 놓치기 쉽다.</p>
+
+        <section id="s211">
+          <h3>2.1.1 비정형 데이터의 유형</h3>
+          <div class="card-grid">
+            <div class="card"><strong>텍스트</strong><p>단어와 문장 규칙으로 의미를 부호화한다.</p></div>
+            <div class="card"><strong>오디오</strong><p>말뿐 아니라 감정, 억양, 음악, 겹치는 소리까지 담는다.</p></div>
+            <div class="card"><strong>이미지·비디오</strong><p>색의 격자와 시간에 따른 프레임·오디오의 결합으로 의미를 만든다.</p></div>
+            <div class="card"><strong>이벤트 로그</strong><p>날짜·이벤트 유형 같은 정형 필드와 자유 텍스트가 섞인 반정형 데이터다.</p></div>
+          </div>
+        </section>
+
+        <section id="s212">
+          <h3>2.1.2 전통적 구조화 DB와 비교</h3>
+          <p>관계형 데이터베이스의 열에는 ID나 이름 같은 <strong>이산 값</strong>, 날짜·수치 같은 <strong>연속 값</strong>이 들어간다. 서로 다른 행과 표는 공통 ID, 즉 외래 키로 조인한다.</p>
+          <div class="inset"><div class="box-title">관점을 바꾸는 질문</div><p>텍스트의 여러 문서에도 같은 이름이나 사건이 반복된다. 그렇다면 공유된 엔티티를 외래 키처럼 사용해 문서를 연결할 수 있지 않을까?</p></div>
+        </section>
+
+        <section id="s213">
+          <h3>2.1.3 조인, 퍼지 조인, 엔티티 해소 <span class="core-badge">★ 핵심</span></h3>
+          <p>두 문서에 “Haystack”이 공통으로 등장하면 엄격한 외래 키처럼 연결할 수 있다. “Trey Grainger”와 “Trey”, 대명사 “그”와 “그의”처럼 표현이 다르지만 동일 인물을 가리키는 경우에는 엔티티 해소가 <strong>퍼지 외래 키</strong> 역할을 한다.</p>
+
+          <div class="figure-pair">
+            <figure class="book-figure">
+              <img src="assets/ch02/figure-2-4-foreign-key.png" alt="Haystack이라는 동일한 표현으로 두 텍스트 문서를 연결하는 외래 키 예시" loading="lazy">
+              <figcaption><strong>그림 2.4 · 외래 키</strong><br>서로 다른 텍스트 블록의 <em>Haystack</em>이라는 정확히 같은 표현이 두 문서를 연결한다.</figcaption>
+            </figure>
+            <figure class="book-figure">
+              <img src="assets/ch02/figure-2-5-entity-resolution.png" alt="Trey Grainger, Trey, he, his와 이미지·영상·음성을 같은 엔티티로 연결하는 퍼지 외래 키 예시" loading="lazy">
+              <figcaption><strong>그림 2.5 · 퍼지 외래 키</strong><br><em>Trey Grainger</em>, <em>Trey</em>, <em>he</em>, <em>his</em>와 여러 매체의 단서가 하나의 인물로 해소된다.</figcaption>
+            </figure>
+          </div>
+
+          <div class="inset">
+            <div class="box-title">그림 2.4에서 2.5로: 정확 일치에서 의미 일치로</div>
+            <p><strong>① 정확 조인:</strong> 두 문서에 동일한 “Haystack”이 있어 그대로 연결한다.<br>
+            <strong>② 엔티티 해소:</strong> 이름의 전체형·축약형과 대명사를 주변 문맥으로 같은 인물에 연결한다.<br>
+            <strong>③ 멀티모달 연결:</strong> 텍스트뿐 아니라 얼굴 이미지, 영상 속 이름, 음성까지 동일 엔티티의 증거로 합친다.</p>
+          </div>
+
+          <p>하지만 표기가 같다고 실체도 같지는 않다. 검색 결과에는 저자와 동명이인인 “Trey Grainger”의 프로필 이미지가 함께 나타난다. 같은 문자열이 여러 실체나 의미를 가리키는 <strong>중의성(polysemy)</strong> 때문에, 검색은 주변 맥락을 이용해 연결해야 할 대상과 끊어야 할 대상을 구분해야 한다.</p>
+
+          <figure class="book-figure">
+            <img src="assets/ch02/figure-2-6-polysemy.png" alt="Trey Grainger 검색 결과에 동명이인의 이미지가 함께 노출되어 이름의 중의성을 보여 주는 예시" loading="lazy">
+            <figcaption><strong>그림 2.6 · 중의성</strong><br>“Trey Grainger”라는 같은 표기가 서로 다른 사람을 가리킨다. 문자열 일치만으로는 올바른 엔티티를 결정할 수 없다.</figcaption>
+          </figure>
+
+          <div class="box"><div class="box-title">비정형이 아니라 “초구조화(hyper-structured)”</div><p>사람, 회사, 장소, 행사, 날짜와 이들 사이 관계를 연결하면 작은 문서 집합에서도 거대한 그래프가 드러난다. LLM은 대규모 학습 데이터의 이런 관계를 내부 파라미터에 담고, 역색인은 우리 코퍼스 안의 용어↔문서 연결을 빠르게 순회하게 한다. 일반 LLM에는 도메인 지식의 미세조정과 오류 검증이 여전히 필요하다.</p></div>
+
+          <figure class="book-figure">
+            <img src="assets/ch02/figure-2-7-relationship-graph.png" alt="사람, 회사, 행사, 장소, 날짜, 학력과 여러 매체를 연결한 거대한 관계 그래프 예시" loading="lazy">
+            <figcaption><strong>그림 2.7 · 거대한 관계 그래프</strong><br>정확 조인과 엔티티 해소를 누적하면 사람·회사·행사·장소·날짜·학력이 연결된다. 중의성이 해소된 동명이인 이미지는 이 그래프에서 제외된다.</figcaption>
+          </figure>
+        </section>
+      </section>
+
+      <section id="sec22">
+        <div class="sec-label">2.2</div>
+        <h2>자연어의 구조</h2>
+        <p class="sec-sub"><strong>멘탈 모델 ②:</strong> 의미는 문자부터 코퍼스까지 여러 해상도에 존재하며, 검색은 필요한 단위를 골라 연결한다.</p>
+        <p>검색 관점에서 의미는 여러 해상도로 존재한다. 각 수준은 도메인 언어를 이해하는 서로 다른 단서를 준다.</p>
+        <div class="flow-wrap" aria-label="자연어 의미 계층">
+          <div class="semantic-flow">
+            <div class="flow-node"><b>문자열</b><span>e → eng → engineer</span></div><div class="flow-arrow">→</div>
+            <div class="flow-node"><b>용어</b><span>engineer</span></div><div class="flow-arrow">→</div>
+            <div class="flow-node"><b>용어 시퀀스</b><span>software engineer</span></div><div class="flow-arrow">→</div>
+            <div class="flow-node"><b>필드</b><span>title, text</span></div><div class="flow-arrow">→</div>
+            <div class="flow-node"><b>문서</b><span>record</span></div><div class="flow-arrow">→</div>
+            <div class="flow-node"><b>코퍼스</b><span>collection</span></div>
+          </div>
+        </div>
+        <p><strong>구(phrase)</strong>는 용어들이 연속해서 나타나는 용어 시퀀스다. <code>"chief executive officer"</code>는 구이자 용어 시퀀스지만, 두 위치 이내를 허용하는 <code>"chief officer"~2</code>는 연속되지 않을 수 있어 용어 시퀀스일 뿐이다.</p>
+        <p>텍스트 분석기는 공백·구두점 분리, 소문자화, 불용어 제거, 어간 추출·표제어 추출, 악센트 제거 등을 수행한다. 쿼리가 실행되면 전체 코퍼스는 해당 쿼리와 관계있는 <strong>문서 집합</strong>으로 좁혀지고, 이 집합 자체가 의미를 해석하는 하나의 맥락이 된다.</p>
+      </section>
+
+      <section id="sec23">
+        <div class="sec-label">2.3</div>
+        <h2>분포 의미론과 임베딩 <span class="core-badge">★ 핵심</span></h2>
+        <p class="sec-sub"><strong>공통 계산 언어:</strong> 함께 등장하는 맥락에서 의미 관계를 배우고, 그 관계를 비교 가능한 벡터와 점수로 표현한다.</p>
+        <p><strong>분포 가설</strong>은 비슷한 맥락에 나타나는 단어가 비슷한 의미를 가진다고 본다. “machine learning”과 함께 “software engineer”가 자주 등장하고 “food service worker”는 거의 등장하지 않는다면, 검색엔진은 전자와 더 강한 의미 관계를 추론할 수 있다.</p>
+        <div class="box"><div class="box-title">역색인이 제공하는 세 가지 탐색</div><p><code>c?o</code> 같은 문자열 패턴, <code>"VP Engineering"~2</code> 같은 근접 용어 시퀀스, <code>(Microsoft OR MS) AND Word</code> 같은 불리언 조건으로 다양한 문서 집합을 만들 수 있다. 그 집합에서 함께 나타나는 표현을 세면 도메인 고유의 의미를 학습할 수 있다.</p></div>
+
+        <h3>벡터에서 임베딩으로</h3>
+        <p>벡터는 어떤 대상을 설명하는 속성 값의 목록이다. 집을 <code>[가격, 면적, 침실 수]</code>로 나타내면, 같은 벡터 공간의 다른 집과 수학적으로 비교할 수 있다. 임베딩은 이 생각을 확장해 텍스트·이미지·오디오·행동의 <strong>개념적 의미</strong>를 수치 좌표로 표현한다.</p>
+        <table class="compare">
+          <thead><tr><th>표현</th><th>특징</th><th>검색에서의 결과</th></tr></thead>
+          <tbody>
+            <tr><td>희소 어휘 벡터</td><td>색인의 각 용어가 차원이며 등장 여부·빈도를 기록</td><td>정확한 키워드에는 강하지만 “soda”와 “drink”의 관계를 스스로 모름</td></tr>
+            <tr><td>밀집 임베딩</td><td>더 적은 수의 추상적 특징으로 의미를 압축</td><td>표면 단어가 달라도 의미가 가까운 문서와 쿼리를 비교 가능</td></tr>
+          </tbody>
+        </table>
+        <div class="formula">cos(θ) = (a · b) / (|a| × |b|)</div>
+        <p>코사인 유사도는 벡터 사이의 방향이 얼마나 비슷한지 점수화한다. 책의 예에서는 “green tea”가 물·카푸치노·라테와, “cheese pizza”가 치즈 브레드스틱과 높은 유사도를 보인다.</p>
+        <div class="inset"><div class="box-title">매칭과 랭킹은 구분한다</div><p>검색은 보통 먼저 후보 문서를 <strong>매칭</strong>한 뒤 그 후보를 <strong>랭킹</strong>한다. 모든 문서에 고비용 벡터 점수를 계산하지 않는다면, 임베딩을 쓰더라도 합리적인 초기 후보 생성이 필요하다.</p></div>
+        <p>임베딩의 단위는 단어·문장·문단·문서가 될 수 있고, 사람이 이름 붙이기 어려운 추상 차원도 예측력과 관련성을 높인다면 유용하다. 동일한 원리로 이미지·오디오·비디오·행동 신호까지 함께 다루는 멀티모달 검색도 가능하다.</p>
+      </section>
+
+      <section id="sec24">
+        <div class="sec-label">2.4</div>
+        <h2>도메인별 지식 모델링</h2>
+        <p class="sec-sub"><strong>공통 지식 지도:</strong> 명칭 치환부터 개념의 관계와 실제 사실까지, 무엇을 어느 수준으로 모델링하는지 구분한다.</p>
+        <p>도메인 지식을 표현하는 기법은 단순한 명칭 정규화에서 구체적 사실 그래프로 확장된다. 이들은 서로 대체 관계라기보다 포함·확장 관계에 가깝다.</p>
+
+        <figure class="book-figure">
+          <img src="assets/ch02/figure-2-12-knowledge-modeling-levels.png" alt="대체 레이블, 동의어, 분류 체계, 온톨로지, 지식 그래프가 안쪽에서 바깥쪽으로 확장되는 다섯 개의 동심원" loading="lazy">
+          <figcaption><strong>그림 2.12 · 도메인별 지식 모델링의 층위</strong><br>대체 레이블을 동의어가 확장하고, 동의어는 분류 체계의 항목에 매핑된다. 분류 체계를 온톨로지가, 온톨로지를 실제 엔티티가 담긴 지식 그래프가 확장한다.</figcaption>
+        </figure>
+
+        <div class="inset">
+          <div class="box-title">동심원을 읽는 방법: 이름에서 사실로</div>
+          <p><strong>① 대체 레이블</strong>은 같은 의미의 표기를 정규화한다.<br>
+          <strong>② 동의어</strong>는 같거나 가까운 표현까지 검색 범위를 넓힌다.<br>
+          <strong>③ 분류 체계</strong>는 개념을 상하위 범주에 배치한다.<br>
+          <strong>④ 온톨로지</strong>는 개념의 종류 사이에 다양한 관계 규칙을 정의한다.<br>
+          <strong>⑤ 지식 그래프</strong>는 그 규칙에 실제 사람·사물·사건과 구체적인 사실을 채운다.</p>
+        </div>
+
+        <div class="knowledge-grid">
+          <div class="knowledge-card"><strong>대체 레이블</strong><p>의미가 동일한 치환 표현. <code>CTO → Chief Technology Officer</code>, 철자 변형, 약어, 오탈자가 대표적이다.</p></div>
+          <div class="knowledge-card"><strong>동의어</strong><p>같거나 매우 유사한 대상을 나타내는 확장 표현. 완전 치환보다 재현율을 높이기 위해 원 표현 옆에 추가하는 경우가 많다.</p></div>
+          <div class="knowledge-card"><strong>분류 체계</strong><p><code>human → mammal → animal</code>처럼 상하위 범주를 정의해 탐색, 패싯, 동적 필터를 이끈다.</p></div>
+          <div class="knowledge-card"><strong>온톨로지</strong><p><code>animal eats food</code>처럼 “종류 사이의 관계”를 모델링하고 알려진 사실에서 새 결론을 도출한다.</p></div>
+          <div class="knowledge-card"><strong>지식 그래프</strong><p><code>John is human</code>, <code>John eats food</code>처럼 온톨로지에 실제 엔티티와 사실을 채운다.</p></div>
+        </div>
+        <div class="box">
+          <div class="box-title">Elasticsearch 규칙으로 보는 치환과 확장</div>
+          <p>Elasticsearch 공식 문서는 두 방식을 명시적으로 구분한다.</p>
+          <p><strong>대표 표현으로 치환:</strong> <code>i-pod, i pod =&gt; ipod</code><br>
+          왼쪽 표현을 오른쪽의 대표 표현으로만 바꾸는 한 방향 규칙이다. 책에서 말하는 대체 레이블의 <em>replacement terms</em>에 가깝다.</p>
+          <p><strong>서로 확장:</strong> <code>ipod, i-pod, i pod</code><br>
+          여러 표현을 동등한 그룹으로 정의해 관련 표현까지 검색한다. 원 표현과 함께 용어를 추가하는 동의어의 <em>expansion terms</em>에 가깝다.</p>
+          <p><a href="https://www.elastic.co/docs/solutions/search/full-text/search-with-synonyms">Elasticsearch 공식 문서에서 규칙 형식 확인하기</a></p>
+        </div>
+        <p>책은 이후 주로 대체 레이블, 동의어, 지식 그래프에 집중한다. 분류 체계와 온톨로지의 기능을 지식 그래프가 상당 부분 포괄하기 때문이다.</p>
+      </section>
+
+      <section id="sec25">
+        <div class="sec-label">2.5</div>
+        <h2>검색을 위한 자연어 이해의 과제</h2>
+        <p class="sec-sub"><strong>이후 장의 문제 지도:</strong> 앞으로 배울 기술이 각각 어떤 검색 실패를 해결하려는지 먼저 정의한다.</p>
+        <p>앞 절에서는 텍스트 안의 의미 그래프, 분포 의미론과 임베딩, 도메인 지식 모델링을 살펴봤다. 이제 문제는 이 지식을 실제 검색에 적용하는 일이다. 검색의 자연어 이해(NLU)는 단어를 해석하는 데서 끝나지 않고, <strong>사용자가 무엇을 뜻하며 어떤 결과나 행동을 원하는지 판단해 매칭과 랭킹에 반영하는 과정</strong>이다.</p>
+
+        <div class="formula">쿼리 → 용어·구 인식 → 엔티티·개념 해석 → 맥락 적용 → 의도 판단 → 검색·랭킹·행동</div>
+
+        <div class="challenge-grid">
+          <div class="challenge-card"><strong>중의성 · Ambiguity</strong><p>같은 표현이 여러 의미나 실체를 가리킨다. 검색은 현재 쿼리에서 어느 의미인지 골라야 한다.</p></div>
+          <div class="challenge-card"><strong>맥락 · Context</strong><p>용어의 의미가 주변 단어, 문서, 도메인, 세션과 상황에 따라 달라진다.</p></div>
+          <div class="challenge-card"><strong>개인화 · Personalization</strong><p>같은 쿼리라도 사용자마다 원하는 결과가 다를 수 있지만, 과거 행동만으로 현재 의도를 단정하면 안 된다.</p></div>
+          <div class="challenge-card"><strong>쿼리–문서 비대칭</strong><p>쿼리는 짧고 암시적이지만 문서는 길고 풍부하다. 같은 NLP 방법을 양쪽에 그대로 적용하기 어렵다.</p></div>
+          <div class="challenge-card"><strong>쿼리 의도 · Query intent</strong><p>사용자가 문서를 찾는지, 정답을 원하는지, 구매·결제 같은 행동을 하려는지 판별해야 한다.</p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">다섯 과제는 서로 연결된다</div>
+          <p><strong>중의성</strong>은 가능한 의미 후보를 만들고, <strong>맥락</strong>은 그중 하나를 선택한다. <strong>개인화</strong>는 사용자 맥락을 추가하지만 과잉 추론의 위험을 만든다. 짧은 <strong>쿼리와 긴 문서의 비대칭</strong>을 극복해 둘을 연결한 뒤, 최종적으로 <strong>쿼리 의도</strong>에 맞는 결과 형태와 순위를 결정한다.</p>
+        </div>
+
+        <section id="s251">
+          <h3>2.5.1 중의성의 문제</h3>
+          <div class="box"><div class="box-title">한 줄 정의</div><p><strong>중의성</strong>은 하나의 표면 표현이 여러 의미·개념·엔티티를 가리키는 현상이다.</p></div>
+          <p>예를 들어 <code>driver</code>는 운전자, 골프채, 장치 드라이버, 공구 또는 성공의 동력을 뜻할 수 있다. 운전자라는 의미 안에서도 택시·버스·트럭 운전자처럼 더 구체적인 하위 개념이 존재한다.</p>
+          <table class="compare">
+            <thead><tr><th>쿼리</th><th>가능한 의미</th><th>문맥이 주는 단서</th></tr></thead>
+            <tbody>
+              <tr><td>driver update</td><td>장치 드라이버</td><td><code>update</code>, 소프트웨어 도메인</td></tr>
+              <tr><td>driver distance</td><td>골프채</td><td><code>distance</code>, 골프 도메인</td></tr>
+              <tr><td>delivery driver</td><td>운전자·직업</td><td><code>delivery</code>, 채용·물류 도메인</td></tr>
+            </tbody>
+          </table>
+          <p><strong>검색 실패 형태:</strong> 의미를 너무 좁게 고르면 관련 문서를 놓치고, 모든 의미로 확장하면 무관한 결과가 섞인다. 특히 고정 동의어 목록이 한 표현에 단 하나의 의미만 있다고 가정하면 잘못된 쿼리 확장이 발생한다.</p>
+          <p><strong>대응 방향:</strong> 주변 용어, 검색 필드, 현재 카테고리, 엔티티 타입과 세션을 함께 사용해 의미별 점수를 계산한다. 확신이 낮다면 한 의미로 강제하기보다 기본 키워드 결과를 유지하거나 의미 후보를 함께 보여주는 편이 안전하다.</p>
+          <div class="inset">
+            <div class="box-title">뒤에서 다시 다룬다 · 5장 지식 그래프 학습</div>
+            <p>5장에서는 코퍼스에서 엔티티·개념과 그 관계를 학습해 <strong>시맨틱 지식 그래프</strong>를 만들고, 문맥 속 관계를 이용해 중의적인 표현의 의미를 근사하는 기술을 다룬다. 즉, 여기서 제시한 “여러 의미 중 무엇인가?”라는 문제를 지식 그래프 관점에서 구체화한다.</p>
+          </div>
+        </section>
+
+        <section id="s252">
+          <h3>2.5.2 맥락 이해의 문제</h3>
+          <div class="box"><div class="box-title">책의 핵심 정의</div><p>모든 용어는 <strong>“모호한 레이블이 붙은, 맥락 의존적 의미 군집”</strong>이다. 의미는 쿼리 주변 토큰만이 아니라 문서, 도메인, 사용자 맥락에 따라 달라진다.</p></div>
+          <p>맥락은 단순히 앞뒤 단어만 뜻하지 않는다. 검색에서는 여러 층의 맥락이 동시에 의미를 바꾼다.</p>
+          <table class="compare">
+            <thead><tr><th>맥락의 층위</th><th>예시</th><th>검색에서 하는 일</th></tr></thead>
+            <tbody>
+              <tr><td>쿼리 내부</td><td><code>apple watch</code></td><td><code>apple</code>을 과일보다 회사로 해석</td></tr>
+              <tr><td>문서·필드</td><td>브랜드 필드의 Apple</td><td>일반 본문의 같은 단어보다 기업 의미를 강하게 판단</td></tr>
+              <tr><td>도메인</td><td>의료 사이트의 <code>cold</code></td><td>날씨보다 질환 의미를 우선</td></tr>
+              <tr><td>세션</td><td><code>아이폰</code> 다음의 <code>충전기</code></td><td>아이폰 호환 충전기를 우선</td></tr>
+              <tr><td>상황</td><td>현재 위치·시간·기기</td><td><code>open pharmacy</code>에 지금 영업 중인 근처 약국을 우선</td></tr>
+            </tbody>
+          </table>
+          <p>Transformer는 주변 토큰에 attention을 적용해 언어적 맥락을 모델링하지만, 모델 하나가 도메인·세션·비즈니스 맥락을 자동으로 모두 아는 것은 아니다. 구 인식, 엔티티 해소, 도메인 동의어, 오탈자 교정과 구조화 필터가 함께 필요하다.</p>
+          <div class="inset"><div class="box-title">안전망</div><p>맥락 해석의 확신이 낮을 때는 기본 키워드 검색을 유지한다. 잘못 이해한 똑똑한 검색보다, 정확히 일치하는 평범한 검색이 더 유용할 수 있다.</p></div>
+          <div class="inset">
+            <div class="box-title">뒤에서 다시 다룬다 · 13장과 14장</div>
+            <p><strong>13장 ‘밀집 벡터를 활용한 시맨틱 검색’</strong>에서는 쿼리와 문서의 전체 맥락을 벡터 표현에 담아 의미적으로 매칭하는 방법을 다룬다. <strong>14장 ‘미세조정 LLM을 활용한 질의응답’</strong>에서는 질문과 관련 문맥을 함께 해석해 문서 목록을 넘어 답을 생성하는 방법으로 맥락 이해를 확장한다.</p>
+          </div>
+        </section>
+
+        <section id="s253">
+          <h3>2.5.3 개인화의 문제</h3>
+          <div class="box"><div class="box-title">한 줄 정의</div><p><strong>개인화</strong>는 사용자의 과거 행동이나 선호를 현재 쿼리 해석과 랭킹에 반영하는 것이다.</p></div>
+          <p>사용자가 iPhone을 자주 검색했다고 해서 시계·컴퓨터·헤드폰 검색에서도 Apple 제품을 모두 올려야 한다고 단정할 수 없다. 실제 선호일 수도 있지만, 단순 비교 조사나 타인을 위한 검색이었을 수도 있다.</p>
+          <table class="compare">
+            <thead><tr><th>좋은 활용</th><th>위험한 활용</th></tr></thead>
+            <tbody>
+              <tr><td>현재 쿼리가 모호할 때 약한 보조 신호로 사용</td><td>과거 클릭만으로 현재 의도를 확정</td></tr>
+              <tr><td>최근 세션의 명확한 조건을 이어받음</td><td>오래된 관심사를 모든 검색에 적용</td></tr>
+              <tr><td>기본 관련성이 높은 후보 안에서 순위를 미세 조정</td><td>관련 없는 결과를 선호 브랜드라는 이유로 노출</td></tr>
+            </tbody>
+          </table>
+          <p><strong>핵심 원칙:</strong> 먼저 쿼리와 문서의 기본 관련성을 확보하고, 개인화는 그 위에서 제한적으로 적용한다. 추천 시스템과 달리 검색은 사용자가 이번에 명시한 표현을 우선 존중해야 한다.</p>
+          <div class="inset">
+            <div class="box-title">뒤에서 다시 다룬다 · 9장 개인화 검색</div>
+            <p>9장에서는 사용자·세션·쿼리·클릭 같은 행동 신호로 선호와 현재 관심을 추정하고, 이를 검색 결과의 매칭과 랭킹에 반영하는 방법을 다룬다. 동시에 과거 행동을 현재 의도로 과잉 해석하지 않도록 개인화 신호의 범위와 강도를 조절하는 문제가 이어진다.</p>
+          </div>
+        </section>
+
+        <section id="s254">
+          <h3>2.5.4 쿼리와 문서 해석의 차이</h3>
+          <div class="box"><div class="box-title">핵심 차이</div><p><strong>문서는 설명을 제공하지만 쿼리는 요구를 압축한다.</strong> 따라서 두 텍스트를 같은 방식으로 분석해도 같은 수준의 정보를 얻을 수 없다.</p></div>
+          <table class="compare">
+            <thead><tr><th>구분</th><th>쿼리</th><th>문서</th></tr></thead>
+            <tbody>
+              <tr><td>길이</td><td>대개 몇 개의 단어</td><td>문장·문단·전체 페이지</td></tr>
+              <tr><td>표현</td><td>축약, 오타, 키워드 나열</td><td>문법과 설명이 비교적 풍부</td></tr>
+              <tr><td>맥락</td><td>부족하고 암시적</td><td>주변 문장과 메타데이터가 제공</td></tr>
+              <tr><td>핵심 질문</td><td>사용자는 무엇을 원하는가?</td><td>이 문서는 무엇에 관한 것인가?</td></tr>
+              <tr><td>주요 신호</td><td>세션, 빈도, 클릭, 전환</td><td>제목, 본문, 필드, 엔티티, 링크</td></tr>
+            </tbody>
+          </table>
+          <p>언어 감지, 품사 분석, 구 감지, 감성 분석 같은 전통 NLP는 대개 충분한 길이의 텍스트를 전제로 한다. 반면 <code>iphone black screen</code> 같은 쿼리는 “아이폰 화면이 갑자기 검게 변했으니 해결 방법을 찾고 싶다”라는 생각을 압축한다.</p>
+          <p><strong>대응 방향:</strong> 쿼리 표현을 실제 코퍼스에서 찾아 도메인별 용례를 확인하고, 과거 세션의 용어 동시 출현·클릭·전환 신호를 이용해 압축된 의미를 복원한다. 검색 중심 데이터 과학이 일반 NLP만 적용하는 것보다 적합한 이유다.</p>
+        </section>
+
+        <section id="s255">
+          <h3>2.5.5 쿼리 의도의 문제</h3>
+          <div class="box"><div class="box-title">한 줄 정의</div><p><strong>쿼리 의도</strong>는 사용자가 입력한 단어가 아니라, 검색을 통해 달성하려는 최종 목표다.</p></div>
+          <p>같은 검색창을 사용하더라도 사용자는 문서 목록, 하나의 정답, 특정 페이지, 문제 해결 절차 또는 즉시 실행할 행동을 원할 수 있다. 따라서 의도에 따라 검색 결과의 내용뿐 아니라 <strong>결과를 보여주는 방식</strong>도 달라져야 한다.</p>
+          <table class="compare">
+            <thead><tr><th>쿼리 예</th><th>표면어 너머의 의도</th><th>바람직한 반응</th></tr></thead>
+            <tbody>
+              <tr><td>who is the CEO?</td><td>사실형 정답</td><td>문서 목록보다 직접 답변</td></tr>
+              <tr><td>support</td><td>탐색·연락</td><td>지원 섹션으로 이동</td></tr>
+              <tr><td>iphone screen blacked out</td><td>문제 해결</td><td>구체적 문제 해결 문서 우선</td></tr>
+              <tr><td>iphone</td><td>일반 탐색·조사</td><td>선택지를 보여주는 랜딩 페이지</td></tr>
+              <tr><td>verizon silver iphone 8 plus 64GB</td><td>알려진 상품·구매</td><td>구매 가능한 상세 페이지</td></tr>
+              <tr><td>sale / refrigerators</td><td>할인 필터 / 범주 탐색</td><td>규칙·필터·카테고리 적용</td></tr>
+              <tr><td>pay my bill</td><td>행동 수행</td><td>결제 화면으로 직접 이동</td></tr>
+            </tbody>
+          </table>
+          <p>더 구체적인 쿼리는 알려진 항목 탐색이나 구매 의도일 가능성이 높고, 더 일반적인 쿼리는 탐색 단계일 가능성이 높다. 다만 가능한 모든 도메인 의도를 자동 분류하는 일은 여전히 어렵고, 실제 시스템에서는 분류기와 명시적 비즈니스 규칙이 함께 쓰인다.</p>
+          <div class="inset"><div class="box-title">의도 분류의 목적</div><p>의도 라벨을 붙이는 것 자체가 목적은 아니다. 의도에 따라 검색 필드, 필터, 부스팅, 정답 카드, 랜딩 페이지 또는 실행 화면 중 무엇을 사용할지 결정하는 것이 목적이다.</p></div>
+        </section>
+      </section>
+
+      <section id="sec26">
+        <div class="sec-label">2.6</div>
+        <h2>콘텐츠 + 신호: AI 기반 검색의 연료 <span class="core-badge">★ 핵심</span></h2>
+        <p class="sec-sub"><strong>시스템 관점:</strong> 의미를 학습하는 재료는 문서만이 아니라 사용자의 질의·클릭·세션이며, LLM도 이 도구 상자의 한 부분이다.</p>
+        <p>문서에서 함께 나타나는 표현으로 의미를 배우는 분포 가설은 사용자 행동에도 적용된다. 비슷한 사용자는 비슷한 질의를 하고 비슷한 결과와 상호작용할 가능성이 높다. 문서의 용어↔필드 관계를 보듯, 질의·클릭↔세션↔사용자 관계를 분석하면 동의어, 관련어, 오탈자와 의도를 학습할 수 있다.</p>
+        <div class="card-grid">
+          <div class="card"><strong>콘텐츠가 풍부한 경우</strong><p>코퍼스의 용어 분포와 문서 관계에서 도메인 의미를 학습한다.</p></div>
+          <div class="card"><strong>신호가 풍부한 경우</strong><p>검색, 클릭, 세션 패턴에서 실제 사용자 의도와 표현 관계를 학습한다.</p></div>
+        </div>
+        <p>가장 좋은 조건은 양질의 콘텐츠와 충분한 행동 신호를 함께 확보하는 것이다. LLM은 일반 지식의 문서·질의 해석을 크게 발전시켰지만, 학습 데이터에 없는 폐쇄 도메인은 그대로 잘 알지 못한다. 미세조정 같은 적응과 함께 전통적 검색, 그래프, 벡터, 행동 학습 도구를 조합해야 한다.</p>
+        <div class="inset">
+          <div class="box-title">LLM은 만능이 아니라 도구 상자의 한 부분이다</div>
+          <p>좋은 AI 검색은 <strong>LLM + 키워드 검색 + 벡터 + 지식 그래프 + 행동 신호</strong>를 목적에 맞게 조합한다. 여기에 도메인 전문가의 검토와 사용자의 클릭·수정·평가가 피드백으로 돌아오는 <strong>Human-in-the-loop</strong>가 더해져 시스템을 지속적으로 교정한다. 이는 1장의 핵심 관점과 같다.</p>
+        </div>
+      </section>
+
+      <section id="summary">
+        <div class="sec-label">Summary</div>
+        <h2>이 장에서 맞춘 공통 멘탈 모델</h2>
+        <p class="sec-sub">이후 장에서는 아래 합의를 바탕으로 각 문제의 구체적인 해결 기술을 배운다.</p>
+        <div class="summary-box">
+          <div class="summary-item"><div class="num">01</div><p><strong>대상:</strong> 자연어는 구조 없는 문자열이 아니라 엔티티·맥락·관계가 숨어 있는 초구조화 데이터다.</p></div>
+          <div class="summary-item"><div class="num">02</div><p><strong>표현과 계산:</strong> 의미는 문자열부터 코퍼스까지 여러 수준에 존재한다. 역색인·분포 의미론·임베딩으로 관계를 찾고 점수화하되, 후보 매칭과 결과 랭킹을 함께 설계한다.</p></div>
+          <div class="summary-item"><div class="num">03</div><p><strong>도메인 지식:</strong> 대체 레이블 → 동의어 → 분류 체계 → 온톨로지 → 지식 그래프는 이름의 정규화에서 실제 사실과 관계로 확장되는 모델링 층위다.</p></div>
+          <div class="summary-item"><div class="num">04</div><p><strong>문제 지도:</strong> 검색 NLU는 중의성, 맥락, 개인화, 쿼리–문서 비대칭과 표면어 너머의 의도를 해결해야 한다. 이후 장의 기술은 이 문제들에 대한 서로 다른 해법이다.</p></div>
+          <div class="summary-item"><div class="num">05</div><p><strong>시스템:</strong> 콘텐츠와 사용자 행동은 모두 학습 연료다. LLM은 강력하지만 유일한 도구가 아니며, 키워드·벡터·그래프·규칙과 Human-in-the-loop를 함께 사용한다.</p></div>
+        </div>
+      </section>
+
+      <footer class="page-foot">출처: <em>AI-Powered Search</em>, Chapter 2 — Working with natural language (Manning). 원문을 바탕으로 개념 중심으로 재구성·요약한 자료입니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+      function setActive(link) {
+        links.forEach(function (item) { item.classList.remove('active'); });
+        if (link) link.classList.add('active');
+      }
+      var suppressUntil = 0;
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+        });
+      });
+      if (!('IntersectionObserver' in window)) return;
+      var observer = new IntersectionObserver(function (entries) {
+        if (Date.now() < suppressUntil) return;
+        entries.forEach(function (entry) {
+          var index = sections.indexOf(entry.target);
+          if (index !== -1 && entry.isIntersecting) setActive(links[index]);
+        });
+      }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+      sections.forEach(function (section) { if (section) observer.observe(section); });
+    })();
+  </script>
+</body>
+</html>

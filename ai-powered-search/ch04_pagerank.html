@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="PageRank를 랜덤 서퍼, 링크 그래프, 감쇠·텔레포트 수식, power iteration 손계산, Personalized PageRank와 원 논문으로 설명한 한국어 학습 노트">
+  <title>PageRank — 링크를 따라 흐르는 권위도 계산하기</title>
+  <style>
+    :root {
+      --bg: #f4f5f7; --surface: #fff; --surface-alt: #eaedf2; --ink: #1b2130; --ink-muted: #5b6475; --ink-faint: #7d8798; --rule: #dbe0e8;
+      --accent: #3454d1; --accent-soft: #e7ecfc; --accent-2: #b96012; --accent-2-soft: #f8e9d4; --good: #14745c; --good-soft: #dff2eb;
+      --purple: #6a50b7; --purple-soft: #eee9fb; --danger: #a54149; --danger-soft: #f8e2e4; --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151c; --surface: #1a1f29; --surface-alt: #222938; --ink: #e7e9ee; --ink-muted: #a6aebc; --ink-faint: #7d8798; --rule: #2a3140;
+        --accent: #8ea1ff; --accent-soft: #262e48; --accent-2: #e3a857; --accent-2-soft: #3a2e1c; --good: #67d4b5; --good-soft: #17372f;
+        --purple: #b5a1f5; --purple-soft: #302b45; --danger: #f08d94; --danger-soft: #402428;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body { margin: 0; max-width: 100%; overflow-x: clip; background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.72; -webkit-font-smoothing: antialiased; }
+    a { color: inherit; } strong { font-weight: 780; }
+    code { padding: 2px 5px; border-radius: 4px; background: var(--surface-alt); color: var(--accent-2); font: .88em var(--mono); }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .reading-progress { position: fixed; z-index: 30; top: 0; left: 0; width: 0; height: 3px; background: var(--accent-2); }
+    .page { display: flex; align-items: flex-start; width: 100%; min-width: 0; max-width: 1240px; margin: 0 auto; padding: 0 24px; gap: 48px; }
+    .toc { position: sticky; top: 24px; flex: 0 0 232px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 8px 0 20px; font-size: 13px; }
+    .toc-eyebrow { margin-bottom: 12px; color: var(--ink-faint); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .toc a { display: block; margin: 2px 0; padding: 7px 10px 7px 12px; border-left: 2px solid var(--rule); border-radius: 0 6px 6px 0; color: var(--ink-muted); text-decoration: none; transition: color .12s, border-color .12s, background-color .12s; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a.active { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    .content { flex: 1 1 auto; width: 100%; min-width: 0; max-width: 800px; padding: 56px 0 96px; }
+    .back-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .back-nav, .source-link { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 14px; border-radius: 999px; font: 12px var(--mono); text-decoration: none; }
+    .back-nav { background: var(--accent-2-soft); color: var(--accent-2); }
+    .back-nav.secondary { background: var(--surface-alt); color: var(--ink-muted); }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .back-nav.secondary:hover { background: var(--ink); color: var(--bg); }
+    .back-nav:focus-visible, .toc a:focus-visible, .mobile-toc a:focus-visible, .source-link:focus-visible, summary:focus-visible, .table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 56px; }
+    .kicker, .sec-label { color: var(--accent); font: 700 12px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 { margin: 12px 0 16px; font: 700 clamp(34px, 5vw, 48px)/1.2 var(--serif); letter-spacing: -.03em; }
+    h2 { margin: 8px 0 14px; font: 700 29px/1.35 var(--serif); }
+    h3 { margin: 30px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; } li + li { margin-top: 7px; }
+    .lede, .section-intro { max-width: 68ch; color: var(--ink-muted); } .lede { font-size: 17px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .hero-meta span { padding: 5px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-muted); font-size: 12px; }
+    .thesis { margin-top: 28px; padding: 24px 26px; border-left: 4px solid var(--accent-2); border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); }
+    .thesis-label { color: var(--accent-2); font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .thesis p { margin: 8px 0 0; font: 700 20px/1.55 var(--serif); }
+    section { padding: 54px 0; border-top: 1px solid var(--rule); scroll-margin-top: 24px; }
+    .plain-box, .note, .warning, .example { margin: 22px 0; padding: 20px 22px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .example { border-color: color-mix(in srgb, var(--accent) 35%, var(--rule)); background: var(--accent-soft); }
+    .note { border-color: color-mix(in srgb, var(--good) 34%, var(--rule)); background: var(--good-soft); }
+    .warning { border-color: color-mix(in srgb, var(--danger) 35%, var(--rule)); background: var(--danger-soft); }
+    .box-title { margin-bottom: 7px; color: var(--accent); font: 750 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+    .note .box-title { color: var(--good); } .warning .box-title { color: var(--danger); }
+    .plain-box p:last-child, .note p:last-child, .warning p:last-child, .example p:last-child { margin-bottom: 0; }
+    .compare-table { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0; }
+    .compare-card { padding: 20px; border: 1px solid var(--rule); border-top: 3px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
+    .compare-card.ltr { border-top-color: var(--accent-2); }
+    .tag { display: inline-block; margin-bottom: 8px; color: var(--accent); font: 700 11px var(--mono); letter-spacing: .05em; }
+    .compare-card p { margin: 7px 0 0; color: var(--ink-muted); font-size: 14px; }
+    .graph-card { margin: 26px 0; padding: 16px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .graph-card svg { display: block; width: 100%; height: auto; color: var(--ink-muted); }
+    .graph-edge { fill: none; stroke: currentColor; stroke-width: 3; }
+    .graph-node { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+    .graph-node.hot { fill: var(--accent-2-soft); stroke: var(--accent-2); }
+    .graph-label { fill: var(--ink); font: 800 24px var(--sans); text-anchor: middle; dominant-baseline: middle; }
+    .graph-caption { margin: 10px 0 0; color: var(--ink-muted); font-size: 13px; text-align: center; }
+    .formula { margin: 18px 0; padding: 19px; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface-alt); color: var(--ink); font: 700 15px/1.8 var(--mono); text-align: center; white-space: nowrap; }
+    .formula .muted { color: var(--ink-muted); font-weight: 500; }
+    .symbol-grid, .risk-grid, .step-grid { display: grid; gap: 12px; margin: 24px 0; }
+    .symbol-grid { grid-template-columns: repeat(3, 1fr); }
+    .risk-grid, .step-grid { grid-template-columns: repeat(2, 1fr); }
+    .symbol-card, .risk-card, .step-card { min-width: 0; padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .symbol-card strong { color: var(--accent); font: 750 16px var(--mono); }
+    .symbol-card p, .risk-card p, .step-card p { margin: 7px 0 0; color: var(--ink-muted); font-size: 14px; line-height: 1.6; }
+    .risk-card { border-left: 3px solid var(--danger); }
+    .risk-no { color: var(--danger); font: 700 11px var(--mono); }
+    .table-scroll { max-width: 100%; margin: 22px 0; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 14px; }
+    caption { padding: 14px 16px; border-bottom: 1px solid var(--rule); color: var(--ink-muted); font-size: 13px; text-align: left; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+    th { background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; }
+    tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.final { background: var(--accent-soft); font-weight: 700; }
+    .swipe-hint { display: none; margin: -12px 0 16px; color: var(--ink-faint); font-size: 12px; }
+    .rank-bars { display: grid; gap: 12px; margin: 24px 0; }
+    .rank-bar { display: grid; grid-template-columns: 80px 1fr 64px; gap: 12px; align-items: center; }
+    .bar-track { height: 16px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+    .bar-fill.top { background: var(--accent-2); }
+    .bar-value { font: 750 13px var(--mono); text-align: right; }
+    .pseudo { margin: 22px 0; padding: 19px; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: #141820; color: #e9ecf2; font: 13px/1.75 var(--mono); white-space: pre; }
+    .teleport-demo { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 24px 0; }
+    .choice-box { padding: 20px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); text-align: center; }
+    .choice-value { display: block; margin: 8px 0; color: var(--accent); font: 800 32px var(--mono); }
+    .choice-arrow { color: var(--accent-2); font: 800 20px var(--mono); }
+    .vector { display: flex; gap: 6px; justify-content: center; margin-top: 12px; }
+    .vector span { display: grid; min-width: 42px; height: 38px; place-items: center; border-radius: 7px; background: var(--surface-alt); font: 700 12px var(--mono); }
+    .vector span.seed { background: var(--accent-soft); color: var(--accent); }
+    .pipeline { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: stretch; margin: 26px 0; }
+    .pipeline-step { padding: 16px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); text-align: center; }
+    .pipeline-step b { display: block; color: var(--accent); }
+    .pipeline-step span { color: var(--ink-muted); font-size: 13px; }
+    .pipeline-arrow { align-self: center; color: var(--accent-2); font: 800 18px var(--mono); }
+    .paper-list { display: grid; gap: 10px; margin: 24px 0; }
+    .paper { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; align-items: start; padding: 17px 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .paper-year { color: var(--accent-2); font: 750 13px var(--mono); }
+    .paper strong { display: block; }
+    .paper small { display: block; margin-top: 4px; color: var(--ink-muted); line-height: 1.5; }
+    .paper a { color: var(--accent); font: 700 12px var(--mono); text-decoration: none; white-space: nowrap; }
+    .paper a:hover { text-decoration: underline; }
+    .takeaways { display: grid; gap: 10px; margin: 24px 0; }
+    .takeaway { display: grid; grid-template-columns: 42px 1fr; gap: 14px; align-items: start; padding: 16px 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .takeaway-no { color: var(--accent-2); font: 750 18px var(--mono); } .takeaway p { margin: 0; }
+    .source-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+    .source-link { border: 1px solid var(--rule); background: var(--surface); color: var(--ink-muted); }
+    .source-link:hover { border-color: var(--accent); color: var(--accent); }
+    .page-foot { margin-top: 54px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+    @media (max-width: 900px) {
+      .page { display: block; max-width: 800px; padding: 0 22px; } .toc { display: none; } .content { max-width: none; padding-top: 30px; }
+      .mobile-toc { display: block; margin-bottom: 34px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+      .mobile-toc summary { padding: 13px 16px; cursor: pointer; font-weight: 700; } .mobile-toc nav { display: grid; padding: 0 10px 12px; }
+      .mobile-toc a { padding: 8px; border-radius: 6px; color: var(--ink-muted); text-decoration: none; } .mobile-toc a.active { background: var(--accent-soft); color: var(--accent); }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 0 16px; } .content { padding-bottom: 64px; }
+      h1, h2, h3 { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; } h1 { font-size: 34px; } h2 { font-size: 25px; }
+      section { padding: 44px 0; } .thesis { padding: 20px; } .thesis p { font-size: 18px; }
+      .compare-table, .symbol-grid, .risk-grid, .step-grid { grid-template-columns: 1fr; }
+      .teleport-demo { grid-template-columns: 1fr; } .choice-arrow { transform: rotate(90deg); justify-self: center; }
+      .pipeline { grid-template-columns: 1fr; } .pipeline-arrow { transform: rotate(90deg); justify-self: center; }
+      .paper { grid-template-columns: 48px 1fr; } .paper a { grid-column: 2; }
+      .swipe-hint { display: block; } .takeaway { grid-template-columns: 34px 1fr; }
+      .rank-bar { grid-template-columns: 52px 1fr 58px; gap: 8px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+    @media print { .reading-progress, .toc, .mobile-toc, .back-row { display: none; } body { background: #fff; color: #111; } .page { display: block; max-width: 800px; padding: 0; } .content { max-width: none; padding: 0; } section { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <nav class="toc" aria-label="PageRank 학습 목차">
+      <div class="toc-eyebrow">PageRank Study map</div>
+      <a href="#mental-model" data-toc>1. 한 문장으로 이해하기</a>
+      <a href="#graph" data-toc>2. 링크는 가중 투표다</a>
+      <a href="#equation" data-toc>3. 실제 PageRank 수식</a>
+      <a href="#iteration" data-toc>4. 반복 계산 예시</a>
+      <a href="#stability" data-toc>5. 감쇠·댕글링·수렴</a>
+      <a href="#personalized" data-toc>6. Personalized PageRank</a>
+      <a href="#search" data-toc>7. 검색 랭킹에서의 역할</a>
+      <a href="#papers" data-toc>8. 대표 논문</a>
+      <a href="#recap" data-toc>9. 핵심 정리</a>
+    </nav>
+
+    <main class="content">
+      <div class="back-row">
+        <a class="back-nav" href="ch04_summary.html#content-crowd">← 4장 요약의 PageRank</a>
+        <a class="back-nav secondary" href="ch04_learning_to_rank.html">LTR 정리</a>
+        <a class="back-nav secondary" href="../index.html">전체 목차</a>
+      </div>
+      <details class="mobile-toc"><summary>이 페이지의 학습 순서</summary><nav aria-label="모바일용 PageRank 학습 목차">
+        <a href="#mental-model">1. 한 문장으로 이해하기</a><a href="#graph">2. 링크는 가중 투표다</a><a href="#equation">3. 실제 PageRank 수식</a>
+        <a href="#iteration">4. 반복 계산 예시</a><a href="#stability">5. 감쇠·댕글링·수렴</a><a href="#personalized">6. Personalized PageRank</a>
+        <a href="#search">7. 검색 랭킹에서의 역할</a><a href="#papers">8. 대표 논문</a><a href="#recap">9. 핵심 정리</a>
+      </nav></details>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 4.2.6 / Graph ranking</div>
+        <h1>PageRank</h1>
+        <p class="lede">어떤 페이지가 중요한지 그 페이지의 본문만으로 판단하지 않고, <strong>다른 페이지들이 보내는 링크의 흐름</strong>으로 계산한다. 중요한 페이지가 보내는 링크일수록 더 무거운 추천이 된다.</p>
+        <div class="hero-meta" aria-label="문서 특징"><span>읽는 시간 약 13분</span><span>4노드 손계산</span><span>Power iteration</span><span>원 논문 연결</span></div>
+        <div class="thesis"><div class="thesis-label">한 줄 핵심</div><p>“많이 링크된 페이지보다, 중요한 페이지들로부터 링크된 페이지가 중요하다.”</p></div>
+      </header>
+
+      <section id="mental-model">
+        <div class="sec-label">01 · Mental model</div>
+        <h2>랜덤 서퍼가 오래 머무는 페이지를 찾는다</h2>
+        <p class="section-intro">웹 사용자가 현재 페이지의 링크 중 하나를 무작위로 따라가고, 가끔은 전혀 다른 페이지로 순간 이동한다고 상상한다. 이 과정을 아주 오래 반복했을 때 각 페이지에 머무를 확률이 PageRank다.</p>
+        <div class="teleport-demo" aria-label="랜덤 서퍼의 두 가지 행동">
+          <div class="choice-box"><strong>링크 따라가기</strong><span class="choice-value">85%</span><small>현재 페이지의 outlink 중 하나</small></div>
+          <div class="choice-arrow" aria-hidden="true">+</div>
+          <div class="choice-box"><strong>텔레포트</strong><span class="choice-value">15%</span><small>임의의 페이지로 이동</small></div>
+        </div>
+        <div class="compare-table">
+          <article class="compare-card"><span class="tag">PAGERANK</span><strong>그래프 권위도 계산</strong><p>라벨 없이 링크 구조를 사용한다. 기본형은 질의와 무관한 페이지별 사전 점수다.</p></article>
+          <article class="compare-card ltr"><span class="tag">LEARNING TO RANK</span><strong>감독학습 랭킹 함수</strong><p>관련성 판단과 여러 특징을 사용한다. 질의–문서 쌍마다 점수가 달라진다.</p></article>
+        </div>
+      </section>
+
+      <section id="graph">
+        <div class="sec-label">02 · Weighted votes</div>
+        <h2>링크 하나는 한 표지만, 표의 무게는 같지 않다</h2>
+        <p class="section-intro">페이지 <code>j</code>는 자신의 PageRank를 나가는 링크 수 <code>L(j)</code>로 나눠 각 목적지에 전달한다. 권위가 높은 페이지의 표는 크고, 링크를 많이 내보내는 페이지의 표는 여러 곳으로 나뉜다.</p>
+        <figure class="graph-card">
+          <svg viewBox="0 0 700 360" role="img" aria-labelledby="graphTitle graphDesc">
+            <title id="graphTitle">A, B, C, D 네 페이지의 링크 그래프</title>
+            <desc id="graphDesc">A는 B와 C로, B는 C로, C는 A로, D는 C로 링크한다.</desc>
+            <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"></path></marker></defs>
+            <path class="graph-edge" marker-end="url(#arrow)" d="M170 156 L302 90"></path>
+            <path class="graph-edge" marker-end="url(#arrow)" d="M174 178 L514 178"></path>
+            <path class="graph-edge" marker-end="url(#arrow)" d="M378 89 L526 157"></path>
+            <path class="graph-edge" marker-end="url(#arrow)" d="M526 201 Q350 300 174 201"></path>
+            <path class="graph-edge" marker-end="url(#arrow)" d="M378 287 L526 203"></path>
+            <circle class="graph-node" cx="130" cy="178" r="44"></circle><text class="graph-label" x="130" y="178">A</text>
+            <circle class="graph-node" cx="340" cy="70" r="44"></circle><text class="graph-label" x="340" y="70">B</text>
+            <circle class="graph-node hot" cx="560" cy="178" r="44"></circle><text class="graph-label" x="560" y="178">C</text>
+            <circle class="graph-node" cx="340" cy="307" r="44"></circle><text class="graph-label" x="340" y="307">D</text>
+          </svg>
+          <figcaption class="graph-caption">A→B,C · B→C · C→A · D→C. C는 세 페이지에서 권위 흐름을 받는다.</figcaption>
+        </figure>
+        <div class="example"><div class="box-title">A의 한 표는 반으로 나뉜다</div><p>A의 outlink가 B와 C 두 개이므로 A가 가진 점수의 절반씩 전달한다. B와 D는 C에만 링크하므로 각자의 링크 몫 전부를 C에 전달한다.</p></div>
+      </section>
+
+      <section id="equation">
+        <div class="sec-label">03 · Equation</div>
+        <h2>들어오는 링크 몫과 텔레포트 확률을 더한다</h2>
+        <div class="formula" aria-label="페이지 i의 스칼라 PageRank 수식">PR(i) = (1 − d) / N + d · Σ<sub>j∈In(i)</sub> PR(j) / L(j)</div>
+        <div class="symbol-grid">
+          <article class="symbol-card"><strong>d</strong><p>감쇠 계수. 링크를 따라갈 확률이며 흔히 0.85를 예시로 쓴다.</p></article>
+          <article class="symbol-card"><strong>N</strong><p>그래프의 전체 페이지 수. 균등 텔레포트면 각 페이지가 <code>(1-d)/N</code>을 받는다.</p></article>
+          <article class="symbol-card"><strong>L(j)</strong><p>페이지 j의 나가는 링크 수. j의 점수는 이 수로 나뉘어 전달된다.</p></article>
+        </div>
+        <h3>행렬로 쓰면 반복 계산이 선명해진다</h3>
+        <p><code>Mᵢⱼ=1/L(j)</code> if <code>j→i</code>로 두면 각 열의 합이 1인 전이 행렬이 된다. <code>v</code>는 합이 1인 텔레포트 벡터다.</p>
+        <div class="formula" aria-label="PageRank 벡터 고정점 수식">r = dMr + (1 − d)v</div>
+        <div class="formula" aria-label="PageRank power iteration 수식">r<sup>(t+1)</sup> = dMr<sup>(t)</sup> + (1 − d)v</div>
+        <div class="note"><div class="box-title">행·열 표기 주의</div><p>여기서는 점수 벡터를 열벡터로 두어 <code>M</code>의 열 합이 1이다. 행벡터 관례를 쓰는 자료는 전치된 행렬을 사용한다. 수학이 다른 것이 아니라 저장 방향이 다른 것이다.</p></div>
+        <div class="plain-box"><div class="box-title">원 논문과 상수항이 달라 보이는 이유</div><p>초기 논문은 <code>(1-d)</code> 형태로 쓰기도 한다. 확률 합을 1로 정규화한 현대적 표기는 균등 텔레포트에서 <code>(1-d)/N</code>이다. 전체 점수의 스케일만 달라질 수 있고 페이지 순서는 동일하다.</p></div>
+      </section>
+
+      <section id="iteration">
+        <div class="sec-label">04 · Worked example</div>
+        <h2>모두 0.25에서 시작해 링크를 따라 점수를 흘려보낸다</h2>
+        <p class="section-intro">앞의 4노드 그래프에서 <code>d=0.85</code>, <code>v=[0.25,0.25,0.25,0.25]</code>로 둔다. 매 반복마다 이전 점수만 사용해 네 값을 동시에 갱신한다.</p>
+        <div class="formula" aria-label="4노드 예시에서 각 노드의 PageRank 갱신식">A=.0375+.85C &nbsp; B=.0375+.85(A/2) &nbsp; C=.0375+.85(A/2+B+D) &nbsp; D=.0375</div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="PageRank power iteration 값 변화">
+          <table><caption>Power iteration · 소수 넷째 자리 반올림</caption><thead><tr><th scope="col">반복 t</th><th scope="col">A</th><th scope="col">B</th><th scope="col">C</th><th scope="col">D</th><th scope="col">관찰</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>0.2500</td><td>0.2500</td><td>0.2500</td><td>0.2500</td><td>균등 시작</td></tr>
+            <tr><td>1</td><td>0.2500</td><td>0.1437</td><td>0.5687</td><td>0.0375</td><td>C로 점수 집중</td></tr>
+            <tr><td>2</td><td>0.5209</td><td>0.1437</td><td>0.2978</td><td>0.0375</td><td>C→A 영향</td></tr>
+            <tr><td>5</td><td>0.3885</td><td>0.2026</td><td>0.3714</td><td>0.0375</td><td>진동 감소</td></tr>
+            <tr><td>10</td><td>0.3751</td><td>0.1949</td><td>0.3925</td><td>0.0375</td><td>거의 수렴</td></tr>
+            <tr class="final"><td>20</td><td>0.3725</td><td>0.1958</td><td>0.3942</td><td>0.0375</td><td>C &gt; A &gt; B &gt; D</td></tr>
+          </tbody></table>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">← 표를 좌우로 밀어 전체 내용을 볼 수 있습니다 →</p>
+        <div class="rank-bars" aria-label="수렴한 PageRank 비교">
+          <div class="rank-bar"><strong>C</strong><div class="bar-track"><div class="bar-fill top" style="width:100%"></div></div><span class="bar-value">0.3942</span></div>
+          <div class="rank-bar"><strong>A</strong><div class="bar-track"><div class="bar-fill" style="width:94.5%"></div></div><span class="bar-value">0.3725</span></div>
+          <div class="rank-bar"><strong>B</strong><div class="bar-track"><div class="bar-fill" style="width:49.7%"></div></div><span class="bar-value">0.1958</span></div>
+          <div class="rank-bar"><strong>D</strong><div class="bar-track"><div class="bar-fill" style="width:9.5%"></div></div><span class="bar-value">0.0375</span></div>
+        </div>
+        <pre class="pseudo" aria-label="PageRank power iteration 의사 코드">r = [1/N, ..., 1/N]
+repeat:
+    next = d * M * r + (1-d) * v
+    if L1_distance(next, r) &lt; epsilon: stop
+    r = next</pre>
+      </section>
+
+      <section id="stability">
+        <div class="sec-label">05 · Stability</div>
+        <h2>텔레포트는 막다른 길과 무한 순환을 함께 끊는다</h2>
+        <div class="step-grid">
+          <article class="step-card"><span class="tag">DANGLING NODE</span><strong>나가는 링크가 없는 페이지</strong><p>그 열을 텔레포트 벡터 <code>v</code>로 바꿔 점수가 사라지지 않게 한다.</p></article>
+          <article class="step-card"><span class="tag">RANK SINK</span><strong>밖으로 나오지 못하는 링크 집합</strong><p>확률 <code>1-d</code>의 텔레포트가 닫힌 순환에서 빠져나오게 한다.</p></article>
+          <article class="step-card"><span class="tag">IRREDUCIBLE</span><strong>어디서든 다른 곳으로 갈 가능성</strong><p><code>v</code>가 모든 페이지에 양수이면 텔레포트로 그래프 전체가 연결된다.</p></article>
+          <article class="step-card"><span class="tag">APERIODIC</span><strong>고정 주기의 진동 방지</strong><p>텔레포트가 규칙적인 순환을 깨므로 반복값이 하나의 정상분포로 수렴한다.</p></article>
+        </div>
+        <div class="note"><div class="box-title">왜 고유한 해가 생기나</div><p><code>0&lt;d&lt;1</code>이고 <code>v</code>가 적절히 양수이면 Google matrix는 양의 확률 전이 행렬이 된다. Perron–Frobenius 관점에서 고유한 정상분포가 존재하고 power iteration이 그 분포로 수렴한다.</p></div>
+      </section>
+
+      <section id="personalized">
+        <div class="sec-label">06 · Personalization</div>
+        <h2>텔레포트 목적지를 바꾸면 관심사별 PageRank가 된다</h2>
+        <p class="section-intro">기본 PageRank의 <code>v</code>는 모든 페이지가 같은 균등 분포다. 관심 주제나 신뢰할 수 있는 seed 페이지에 더 큰 텔레포트 확률을 주면 Personalized PageRank(PPR)가 된다.</p>
+        <div class="teleport-demo" aria-label="균등 PageRank와 Personalized PageRank 텔레포트 벡터 비교">
+          <div class="choice-box"><strong>기본 PageRank</strong><div class="vector"><span>.25</span><span>.25</span><span>.25</span><span>.25</span></div><small>v · 모든 페이지 균등</small></div>
+          <div class="choice-arrow" aria-hidden="true">→</div>
+          <div class="choice-box"><strong>A 중심 PPR</strong><div class="vector"><span class="seed">.70</span><span>.10</span><span>.10</span><span>.10</span></div><small>v · A와 가까운 영역 강조</small></div>
+        </div>
+        <div class="formula" aria-label="Personalized PageRank 수식">r<sub>personal</sub> = dMr<sub>personal</sub> + (1 − d)v<sub>personal</sub></div>
+        <div class="plain-box"><div class="box-title">Topic-Sensitive PageRank</div><p>Haveliwala의 연구는 주제별로 편향된 PageRank 벡터들을 미리 계산하고, 검색 시 질의 주제에 맞는 벡터를 결합했다. 전역 권위도 하나가 모든 관심사를 대표하지 못하는 문제를 줄이려는 접근이다.</p></div>
+      </section>
+
+      <section id="search">
+        <div class="sec-label">07 · Search integration</div>
+        <h2>PageRank는 관련도 그 자체가 아니라 강한 사전 신호다</h2>
+        <p class="section-intro">PageRank가 높은 요리 사이트라도 “행렬 분해” 질의에는 관련이 없을 수 있다. 따라서 텍스트 관련도로 후보를 찾고, PageRank는 권위도 특징이나 부스트로 결합하는 것이 자연스럽다.</p>
+        <div class="pipeline" aria-label="PageRank를 검색 랭킹에 결합하는 흐름">
+          <div class="pipeline-step"><b>질의 관련 후보</b><span>BM25·semantic retrieval</span></div><div class="pipeline-arrow" aria-hidden="true">→</div>
+          <div class="pipeline-step"><b>권위도 특징</b><span>log(PageRank)·PPR</span></div><div class="pipeline-arrow" aria-hidden="true">→</div>
+          <div class="pipeline-step"><b>최종 랭킹</b><span>규칙 또는 LTR로 결합</span></div>
+        </div>
+        <div class="formula" aria-label="검색 점수와 PageRank 결합 예시">final_score = α · text_relevance + β · log(ε + PageRank) + γ · other_features</div>
+        <div class="risk-grid">
+          <article class="risk-card"><span class="risk-no">LIMIT 01</span><strong>질의 독립성</strong><p>기본형은 사용자의 현재 정보 요구를 모른다. 반드시 관련도 신호와 결합해야 한다.</p></article>
+          <article class="risk-card"><span class="risk-no">LIMIT 02</span><strong>링크 스팸</strong><p>링크 팜이 인위적으로 권위 흐름을 만들 수 있다. 신뢰 seed·스팸 탐지·링크 품질 제약이 필요하다.</p></article>
+          <article class="risk-card"><span class="risk-no">LIMIT 03</span><strong>인기·역사 편향</strong><p>오래된 대형 사이트가 새롭고 전문적인 페이지보다 유리할 수 있다. 주제·시간 보정이 필요하다.</p></article>
+          <article class="risk-card"><span class="risk-no">LIMIT 04</span><strong>그래프 품질 의존</strong><p>링크가 추천·인용을 뜻하지 않는 도메인에서는 간선 정의와 가중치를 다시 설계해야 한다.</p></article>
+        </div>
+      </section>
+
+      <section id="papers">
+        <div class="sec-label">08 · Primary papers</div>
+        <h2>원 논문에서 개인화·스팸 대응까지</h2>
+        <div class="paper-list">
+          <article class="paper"><span class="paper-year">1998</span><div><strong>The Anatomy of a Large-Scale Hypertextual Web Search Engine</strong><small>Sergey Brin, Lawrence Page · 초기 Google 검색 구조와 PageRank의 검색 결합 맥락.</small></div><a href="https://infolab.stanford.edu/~backrub/google.html" target="_blank" rel="noopener">Stanford ↗</a></article>
+          <article class="paper"><span class="paper-year">1999</span><div><strong>The PageRank Citation Ranking: Bringing Order to the Web</strong><small>Lawrence Page, Sergey Brin, Rajeev Motwani, Terry Winograd · 랜덤 서퍼와 대규모 계산을 설명한 Stanford 기술 보고서.</small></div><a href="https://ilpubs.stanford.edu/422/" target="_blank" rel="noopener">InfoLab ↗</a></article>
+          <article class="paper"><span class="paper-year">2002</span><div><strong>Topic-Sensitive PageRank</strong><small>Taher H. Haveliwala · 주제별 편향 벡터로 질의 맥락을 반영.</small></div><a href="https://snap.stanford.edu/class/cs224w-readings/Haveliwala02Topicsenitive.pdf" target="_blank" rel="noopener">PDF ↗</a></article>
+          <article class="paper"><span class="paper-year">2003</span><div><strong>Scaling Personalized Web Search</strong><small>Glen Jeh, Jennifer Widom · personalized PageRank 벡터의 확장 가능한 계산.</small></div><a href="https://www.vldb.org/conf/2003/papers/S05P01.pdf" target="_blank" rel="noopener">VLDB ↗</a></article>
+          <article class="paper"><span class="paper-year">2004</span><div><strong>Combating Web Spam with TrustRank</strong><small>Zoltán Gyöngyi, Hector Garcia-Molina, Jan Pedersen · 신뢰 seed에서 좋은 페이지를 전파해 스팸을 줄이는 변형.</small></div><a href="https://www.vldb.org/conf/2004/RS15P3.PDF" target="_blank" rel="noopener">VLDB ↗</a></article>
+        </div>
+      </section>
+
+      <section id="recap">
+        <div class="sec-label">09 · Recap</div>
+        <h2>이 다섯 문장만 남겨도 된다</h2>
+        <div class="takeaways">
+          <div class="takeaway"><span class="takeaway-no">01</span><p>PageRank는 링크를 따라 움직이는 랜덤 서퍼의 <strong>정상분포</strong>, 즉 장기 체류 확률이다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">02</span><p>페이지는 자신의 점수를 outlink 수로 나눠 전달하므로 중요한 페이지가 보내는 희소한 링크가 강하다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">03</span><p>감쇠 계수와 텔레포트는 막다른 노드·순환을 해결하고 power iteration의 안정적인 수렴을 만든다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">04</span><p>텔레포트 벡터를 seed·주제에 치우치게 하면 Personalized 또는 Topic-Sensitive PageRank가 된다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">05</span><p>기본 PageRank는 질의 독립 권위도이므로 텍스트 관련도와 결합하거나 LTR의 특징으로 사용하는 것이 자연스럽다.</p></div>
+        </div>
+        <div class="source-row"><a class="source-link" href="ch04_summary.html#content-crowd">4장 전체 요약</a><a class="source-link" href="ch04_learning_to_rank.html">Learning to Rank와 비교하기</a><a class="source-link" href="https://ilpubs.stanford.edu/422/" target="_blank" rel="noopener">PageRank 원 보고서 ↗</a></div>
+      </section>
+      <footer class="page-foot">출처: <em>AI-Powered Search</em> Chapter 4와 위 Stanford·WWW·VLDB 1차 논문. 4노드 그래프와 반복값은 수식에 따라 계산한 학습용 예시이며 소수 넷째 자리에서 반올림했습니다.</footer>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var desktopLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var links = desktopLinks.concat(mobileLinks);
+      var sections = desktopLinks.map(function (link) { return document.querySelector(link.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress'); var mobileToc = document.querySelector('.mobile-toc');
+      function setActive(href) { links.forEach(function (link) { link.classList.toggle('active', link.getAttribute('href') === href); }); }
+      function updateProgress() { var root = document.documentElement; var max = root.scrollHeight - root.clientHeight; var ratio = max > 0 ? root.scrollTop / max : 0; progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%'; }
+      links.forEach(function (link) { link.addEventListener('click', function () { setActive(link.getAttribute('href')); if (mobileToc && mobileToc.contains(link)) mobileToc.removeAttribute('open'); }); });
+      if ('IntersectionObserver' in window) { var observer = new IntersectionObserver(function (entries) { entries.forEach(function (entry) { if (entry.isIntersecting) setActive('#' + entry.target.id); }); }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 }); sections.forEach(function (section) { if (section) observer.observe(section); }); }
+      window.addEventListener('scroll', updateProgress, { passive: true }); updateProgress(); setActive('#mental-model');
+    })();
+  </script>
+</body>
+</html>

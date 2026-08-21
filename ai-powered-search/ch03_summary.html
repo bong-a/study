@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="AI-Powered Search 3장 랭킹과 콘텐츠 기반 관련성 개념 정리 및 실습 계획">
+  <title>3장. 랭킹과 콘텐츠 기반 관련성 — 개념과 실습</title>
+  <style>
+    :root {
+      --bg: #F4F5F7;
+      --surface: #FFFFFF;
+      --surface-alt: #EAEDF2;
+      --ink: #1B2130;
+      --ink-muted: #5B6475;
+      --ink-faint: #8A93A3;
+      --rule: #DBE0E8;
+      --accent: #3454D1;
+      --accent-soft: #E7ECFC;
+      --accent-2: #C97B1A;
+      --accent-2-soft: #F7EAD4;
+      --good: #167D63;
+      --good-soft: #DFF2EB;
+      --warn: #A85616;
+      --warn-soft: #FBE9D8;
+      --danger: #B4444B;
+      --danger-soft: #F8E2E4;
+      --radius: 10px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #12151C;
+      --surface: #1A1F29;
+      --surface-alt: #212838;
+      --ink: #E7E9EE;
+      --ink-muted: #A6AEBC;
+      --ink-faint: #747D8D;
+      --rule: #2A3140;
+      --accent: #8EA1FF;
+      --accent-soft: #262E48;
+      --accent-2: #E3A857;
+      --accent-2-soft: #3A2E1C;
+      --good: #67D4B5;
+      --good-soft: #17372F;
+      --warn: #F0B16D;
+      --warn-soft: #3C2B1F;
+      --danger: #F08D94;
+      --danger-soft: #402428;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12151C;
+        --surface: #1A1F29;
+        --surface-alt: #212838;
+        --ink: #E7E9EE;
+        --ink-muted: #A6AEBC;
+        --ink-faint: #747D8D;
+        --rule: #2A3140;
+        --accent: #8EA1FF;
+        --accent-soft: #262E48;
+        --accent-2: #E3A857;
+        --accent-2-soft: #3A2E1C;
+        --good: #67D4B5;
+        --good-soft: #17372F;
+        --warn: #F0B16D;
+        --warn-soft: #3C2B1F;
+        --danger: #F08D94;
+        --danger-soft: #402428;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input { font: inherit; }
+    a { color: inherit; }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--surface-alt);
+      color: var(--accent-2);
+      font: .88em var(--mono);
+    }
+    pre {
+      margin: 18px 0;
+      padding: 17px 19px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: #141820;
+      color: #E9ECF2;
+      font: 12.5px/1.65 var(--mono);
+      tab-size: 2;
+    }
+    pre, .formula, .vector-space, .compare-wrap { max-width: 100%; }
+    pre code { padding: 0; background: none; color: inherit; font: inherit; }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: var(--accent-2);
+    }
+    .page {
+      display: flex;
+      align-items: flex-start;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 48px;
+    }
+    .toc {
+      position: sticky;
+      top: 24px;
+      flex: 0 0 232px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      padding: 8px 0 20px;
+      font-size: 13px;
+    }
+    .toc-eyebrow {
+      margin-bottom: 12px;
+      color: var(--ink-faint);
+      font-size: 11px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .toc a {
+      display: block;
+      margin: 1px 0;
+      padding: 6px 10px 6px 12px;
+      border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0;
+      color: var(--ink-muted);
+      text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+    }
+    .toc a:not(.sub) { margin-top: 10px; }
+    .toc-eyebrow + a { margin-top: 0; }
+    .toc a.sub { padding-left: 24px; color: var(--ink-faint); font-size: 12px; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a:active { transform: scale(.98); }
+    .toc a.active {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 750;
+    }
+    .toc a.sub.active {
+      border-left-color: var(--accent-2);
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+    }
+    .content {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 780px;
+      padding: 56px 0 96px;
+    }
+    .back-nav {
+      display: inline-flex;
+      margin-bottom: 28px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+      font: 12px var(--mono);
+      text-decoration: none;
+    }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .back-nav:focus-visible, .toc a:focus-visible, button:focus-visible, input:focus-visible, .source-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .hero { margin-bottom: 48px; }
+    .kicker, .sec-label {
+      color: var(--accent);
+      font: 700 12px var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      margin: 12px 0 16px;
+      font: 700 clamp(32px, 5vw, 45px)/1.24 var(--serif);
+      letter-spacing: -.025em;
+    }
+    h2 { margin: 8px 0 12px; font: 700 28px/1.35 var(--serif); }
+    h3 { margin: 32px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; }
+    .lede, .sec-sub { color: var(--ink-muted); }
+    .lede { max-width: 68ch; font-size: 16.5px; }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 23px;
+    }
+    .hero-meta span, .level-badge {
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      font: 11px var(--mono);
+    }
+    .thesis {
+      position: relative;
+      margin: 34px 0 56px;
+      padding: 28px 30px 25px;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--accent-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .thesis::after {
+      content: "ƒ";
+      position: absolute;
+      right: 17px;
+      top: -20px;
+      color: var(--accent-2-soft);
+      font: italic 112px/1 Georgia, serif;
+    }
+    .thesis-eyebrow { color: var(--accent-2); font: 700 11px var(--mono); text-transform: uppercase; }
+    .thesis blockquote { position: relative; z-index: 1; margin: 13px 0 9px; font: 700 20px/1.65 var(--serif); }
+    .thesis p { position: relative; z-index: 1; margin-bottom: 0; color: var(--ink-muted); font-size: 13px; }
+    .hit { padding: 0 4px; border-radius: 3px; background: var(--accent-2-soft); color: var(--accent-2); font-weight: 700; }
+    section { margin-top: 72px; scroll-margin-top: 22px; }
+    section section { margin-top: 44px; }
+    .box, .inset {
+      margin: 22px 0;
+      padding: 19px 21px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .inset { border-left: 3px solid var(--accent-2); background: var(--accent-2-soft); }
+    .box-title { margin-bottom: 6px; color: var(--accent); font-weight: 750; }
+    .box p:last-child, .inset p:last-child { margin-bottom: 0; }
+    .core-badge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font: 700 10px var(--mono);
+      vertical-align: middle;
+    }
+
+    .learning-path {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+      margin: 24px 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--rule);
+    }
+    .path-step { min-height: 148px; padding: 16px 14px; background: var(--surface); }
+    .path-step .num { color: var(--accent-2); font: 700 11px var(--mono); }
+    .path-step strong { display: block; margin: 10px 0 5px; font-size: 14px; }
+    .path-step p { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.55; }
+    .path-step .arrow { display: block; margin-top: 8px; color: var(--ink-faint); font: 11px var(--mono); }
+
+    .glossary-grid, .card-grid, .domain-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+    .term-card, .card, .domain-card {
+      padding: 17px 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .term-card dt { color: var(--accent); font-weight: 750; }
+    .term-card dd { margin: 5px 0 0; color: var(--ink-muted); font-size: 13.5px; }
+    .card strong, .domain-card strong { color: var(--accent); }
+    .card p, .domain-card p { margin-bottom: 0; color: var(--ink-muted); font-size: 13.5px; }
+
+    .vector-space {
+      margin: 24px 0;
+      padding: 22px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .vector-line {
+      display: grid;
+      grid-template-columns: 90px minmax(520px, 1fr);
+      align-items: center;
+      gap: 14px;
+      margin: 10px 0;
+    }
+    .vector-name { color: var(--ink-muted); font: 12px var(--mono); }
+    .vector-cells { display: grid; grid-template-columns: repeat(8, minmax(42px, 1fr)); gap: 5px; }
+    .vector-cell { padding: 7px 5px; border-radius: 5px; background: var(--surface-alt); text-align: center; font: 11px var(--mono); }
+    .vector-cell.match { background: var(--accent-soft); color: var(--accent); font-weight: 800; }
+    .vector-cell .term { display: block; margin-top: 4px; color: var(--ink-faint); font-size: 9px; }
+    .vector-note { margin: 14px 0 0; color: var(--ink-faint); font-size: 12px; }
+
+    .formula {
+      margin: 20px 0;
+      padding: 19px;
+      overflow-x: auto;
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+      text-align: center;
+      font: 14px var(--mono);
+      white-space: nowrap;
+    }
+    .formula b { color: var(--accent); }
+    .formula small { display: block; margin-top: 10px; color: var(--ink-muted); font: 12px var(--sans); white-space: normal; }
+    .equation-journey {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 24px 0;
+    }
+    .equation-card {
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .equation-card .eyebrow { color: var(--accent-2); font: 700 10px var(--mono); }
+    .equation-card strong { display: block; margin: 8px 0 5px; font-size: 14px; }
+    .equation-card p { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.55; }
+
+    .score-lab {
+      margin: 26px 0;
+      padding: 22px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .score-lab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .score-lab-head h3 { margin: 0 0 4px; }
+    .score-lab-head p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+    .score-tabs { display: flex; flex-wrap: wrap; gap: 7px; margin: 20px 0; }
+    .score-tab, .filter-btn, .reset-btn {
+      min-height: 38px;
+      padding: 7px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .score-tab:hover, .filter-btn:hover, .reset-btn:hover { border-color: var(--accent); color: var(--ink); }
+    .score-tab[aria-pressed="true"], .filter-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    .score-row {
+      display: grid;
+      grid-template-columns: 58px minmax(120px, 1fr) 66px;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 0;
+    }
+    .doc-label { font: 700 12px var(--mono); }
+    .score-track { height: 12px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .score-fill { width: 0; height: 100%; border-radius: inherit; background: var(--accent); transition: width .35s ease; }
+    .score-row:nth-child(2) .score-fill { background: var(--accent-2); }
+    .score-row:nth-child(3) .score-fill { background: var(--good); }
+    .score-value { color: var(--ink-muted); text-align: right; font: 12px var(--mono); }
+    .score-verdict { margin: 17px 0 0; padding-top: 15px; border-top: 1px solid var(--rule); color: var(--ink-muted); font-size: 13px; }
+    .score-verdict strong { color: var(--ink); }
+
+    .compare-wrap { max-width: 100%; margin: 22px 0; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); }
+    .compare { width: 100%; min-width: 620px; border-collapse: collapse; background: var(--surface); font-size: 13.5px; }
+    .compare th, .compare td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    .compare th { background: var(--surface-alt); color: var(--accent); }
+    .compare tr:last-child td { border-bottom: 0; }
+    .compare td:first-child { font-weight: 650; }
+    .tag-good, .tag-warn, .tag-danger {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font: 10px var(--mono);
+      white-space: nowrap;
+    }
+    .tag-good { background: var(--good-soft); color: var(--good); }
+    .tag-warn { background: var(--warn-soft); color: var(--warn); }
+    .tag-danger { background: var(--danger-soft); color: var(--danger); }
+
+    .bm25-anatomy {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 22px 0;
+    }
+    .bm25-part { padding: 17px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .bm25-part .symbol { color: var(--accent-2); font: 700 18px var(--mono); }
+    .bm25-part strong { display: block; margin: 7px 0 4px; }
+    .bm25-part p { margin: 0; color: var(--ink-muted); font-size: 12.5px; }
+
+    .signal-stack { margin: 22px 0; padding: 19px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .signal-row { display: grid; grid-template-columns: 150px 1fr 48px; align-items: center; gap: 12px; margin: 10px 0; }
+    .signal-name { font-size: 13px; }
+    .signal-bar { height: 9px; border-radius: 999px; background: var(--surface-alt); }
+    .signal-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+    .signal-row:nth-child(2) .signal-bar span { background: var(--accent-2); }
+    .signal-row:nth-child(3) .signal-bar span { background: var(--good); }
+    .signal-row:nth-child(4) .signal-bar span { background: var(--warn); }
+    .signal-score { color: var(--ink-muted); text-align: right; font: 12px var(--mono); }
+    .signal-total { margin-top: 15px; padding-top: 14px; border-top: 1px solid var(--rule); text-align: right; font-weight: 750; }
+
+    .split-flow {
+      display: grid;
+      grid-template-columns: 1fr 44px 1fr 44px 1fr;
+      align-items: stretch;
+      gap: 8px;
+      margin: 24px 0;
+    }
+    .flow-box { padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); text-align: center; }
+    .flow-box b { display: block; color: var(--accent); }
+    .flow-box span { display: block; margin-top: 6px; color: var(--ink-muted); font-size: 12px; }
+    .flow-arrow { display: grid; place-items: center; color: var(--accent-2); font-weight: 800; }
+
+    .practice-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 20px;
+      margin: 24px 0 18px;
+    }
+    .practice-progress { min-width: 210px; }
+    .progress-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; color: var(--ink-muted); font: 11px var(--mono); }
+    .progress-track { height: 9px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .progress-fill { width: 0; height: 100%; border-radius: inherit; background: var(--good); transition: width .25s ease; }
+    .practice-tools { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
+    .reset-btn { margin-left: auto; color: var(--danger); }
+    .practice-list { display: grid; gap: 12px; }
+    .practice-card {
+      display: grid;
+      grid-template-columns: 36px 1fr auto;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      transition: border-color .15s, opacity .15s;
+    }
+    .practice-card[data-hidden="true"] { display: none; }
+    .practice-card.is-done { border-color: var(--good); }
+    .practice-card.is-done .practice-copy { opacity: .65; }
+    .practice-check { display: grid; place-items: start center; padding-top: 2px; }
+    .practice-check input { width: 20px; height: 20px; accent-color: var(--good); cursor: pointer; }
+    .practice-copy strong { display: block; margin-bottom: 5px; font-size: 15px; }
+    .practice-copy p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+    .practice-copy .listing { display: inline-block; margin-top: 8px; color: var(--ink-faint); font: 10.5px var(--mono); }
+    .level-badge { align-self: start; white-space: nowrap; }
+    .level-core { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .level-advanced { border-color: var(--accent-2); background: var(--accent-2-soft); color: var(--accent-2); }
+    .level-synthesis { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+    .empty-practice { display: none; padding: 28px; border: 1px dashed var(--rule); border-radius: var(--radius); color: var(--ink-muted); text-align: center; }
+    .practice-complete { display: none; margin-top: 15px; padding: 14px 17px; border-radius: var(--radius); background: var(--good-soft); color: var(--good); font-weight: 700; }
+    .practice-complete.show { display: block; }
+
+    .summary-box { margin-top: 22px; border-top: 1px solid var(--rule); }
+    .summary-item { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 17px 0; border-bottom: 1px solid var(--rule); }
+    .summary-item .num { color: var(--accent-2); font: 700 12px var(--mono); }
+    .summary-item p { margin: 0; }
+    .source-links { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 25px; }
+    .source-link { padding: 7px 12px; border: 1px solid var(--rule); border-radius: 999px; color: var(--accent); font: 11px var(--mono); text-decoration: none; }
+    .source-link:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .page-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+
+    @media (max-width: 900px) {
+      .toc { display: none; }
+      .page { width: 100%; max-width: 100%; padding: 0 20px; overflow: hidden; }
+      .content { width: 100%; max-width: 100%; padding-top: 32px; }
+      h1, h2, h3, p { overflow-wrap: anywhere; }
+      .learning-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .path-step:last-child { grid-column: 1 / -1; min-height: auto; }
+      .equation-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .glossary-grid, .card-grid, .domain-grid, .bm25-anatomy, .equation-journey { grid-template-columns: 1fr; }
+      .learning-path { grid-template-columns: 1fr; }
+      .path-step:last-child { grid-column: auto; }
+      .thesis { padding: 23px 21px; }
+      .thesis blockquote { font-size: 18px; }
+      .score-lab { padding: 18px 15px; }
+      .score-lab-head, .practice-head { display: block; }
+      .practice-progress { margin-top: 18px; }
+      .score-row { grid-template-columns: 50px minmax(100px, 1fr) 58px; gap: 8px; }
+      .signal-row { grid-template-columns: 112px 1fr 40px; gap: 8px; }
+      .split-flow { grid-template-columns: 1fr; }
+      .flow-arrow { min-height: 28px; transform: rotate(90deg); }
+      .practice-card { grid-template-columns: 32px 1fr; }
+      .practice-card .level-badge { grid-column: 2; grid-row: 2; justify-self: start; }
+      .reset-btn { margin-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .score-fill, .progress-fill { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <nav class="toc" aria-label="이 장의 목차">
+      <div class="toc-eyebrow">Chapter 3</div>
+      <a href="#overview" data-toc>이 장의 목표</a>
+      <a href="#map" data-toc>랭킹 개선 지도</a>
+      <a href="#vectors" data-toc>3.1 벡터와 유사도</a>
+      <a href="#tf" class="sub" data-toc>TF와 정규화</a>
+      <a href="#idf" class="sub" data-toc>IDF와 TF-IDF</a>
+      <a href="#score-explorer" class="sub" data-toc>점수 변화 실험</a>
+      <a href="#bm25" data-toc>3.2 BM25</a>
+      <a href="#functions" class="sub" data-toc>질의는 함수다</a>
+      <a href="#boosting" class="sub" data-toc>부스팅 설계</a>
+      <a href="#matching" class="sub" data-toc>매칭과 랭킹</a>
+      <a href="#domain" data-toc>3.3 도메인 관련도</a>
+      <a href="#labs" data-toc>실습 로드맵</a>
+      <a href="#summary" data-toc>핵심 요약</a>
+    </nav>
+
+    <main class="content">
+      <a class="back-nav" href="../index.html">← 스터디 인덱스</a>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 3</div>
+        <h1>랭킹과 콘텐츠 기반 관련성</h1>
+        <p class="lede">키워드가 “있다”는 사실만으로는 좋은 검색 순서를 만들 수 없다. 이 장은 단어의 <strong>빈도</strong>와 <strong>희소성</strong>에서 출발해 BM25를 이해하고, 거리·최신성·인기도 같은 도메인 신호를 하나의 관련도 함수로 조립하는 방법까지 연결한다.</p>
+        <div class="hero-meta">
+          <span>원문 29쪽</span><span>코드 Listing 12개</span><span>필수·심화 실습 17개</span><span>TF-IDF</span><span>BM25</span><span>Function query</span>
+        </div>
+      </header>
+
+      <div class="thesis">
+        <div class="thesis-eyebrow">이 장의 한 문장</div>
+        <blockquote>좋은 랭킹은 “무엇이 일치했는가”를 넘어, <span class="hit">각 일치와 신호가 얼마나 중요했는가</span>를 숫자로 모델링하는 일이다.</blockquote>
+        <p>키워드 점수도 하나의 함수다. 이 관점을 잡으면 텍스트 관련도와 비즈니스·사용자 신호를 같은 계산 안에서 다룰 수 있다.</p>
+      </div>
+
+      <section id="overview">
+        <div class="sec-label">Chapter Goal</div>
+        <h2>검색 결과의 “후보”와 “순서”를 설계한다</h2>
+        <p>검색 엔진의 핵심은 콘텐츠를 색인하고, 질의와 맞는 후보를 찾고, 그 후보를 관련도 순으로 정렬하는 것이다. 여기서 <strong>관련도(relevance)</strong>는 질의와 문서가 얼마나 잘 맞는지를 나타내는 개념이며, 검색 엔진은 이를 수치 점수로 계산한다.</p>
+        <div class="card-grid">
+          <div class="card"><strong>① 표현</strong><p>질의와 문서를 같은 특징 공간의 벡터로 바꾼다.</p></div>
+          <div class="card"><strong>② 가중치</strong><p>TF와 IDF로 단어의 문서 설명력과 중요도를 계산한다.</p></div>
+          <div class="card"><strong>③ 결합</strong><p>BM25와 함수 질의로 텍스트·거리·시간·인기도를 묶는다.</p></div>
+          <div class="card"><strong>④ 분리</strong><p>필터링과 스코어링을 분리해 후보와 순서를 독립적으로 제어한다.</p></div>
+        </div>
+        <div class="box">
+          <div class="box-title">이 장을 잘 읽었다는 기준</div>
+          <p>TF, IDF, BM25 공식을 외우는 것보다 <strong>앞선 방식이 어떤 실패를 만들었고 다음 방식이 무엇을 보완했는지</strong> 설명할 수 있어야 한다. 또한 새 도메인을 만났을 때 후보 필터와 랭킹 신호를 구분해 설계할 수 있어야 한다.</p>
+        </div>
+      </section>
+
+      <section id="map">
+        <div class="sec-label">Learning Map</div>
+        <h2>랭킹은 실패를 고치며 진화한다</h2>
+        <p class="sec-sub">이 장의 전개는 알고리즘 목록이 아니라, 하나의 점수 모델을 반복해서 개선하는 과정이다.</p>
+        <div class="learning-path" aria-label="랭킹 개선 학습 경로">
+          <div class="path-step"><span class="num">01</span><strong>존재 여부</strong><p>질의어가 문서에 있는지만 0과 1로 표시한다.</p><span class="arrow">문제: 강도 없음 →</span></div>
+          <div class="path-step"><span class="num">02</span><strong>TF</strong><p>많이 등장하는 단어가 문서를 더 잘 설명한다고 본다.</p><span class="arrow">문제: 반복·길이 편향 →</span></div>
+          <div class="path-step"><span class="num">03</span><strong>정규화 TF</strong><p>반복 효과를 감쇠하고 문서 길이 차이를 보정한다.</p><span class="arrow">문제: 단어 중요도 없음 →</span></div>
+          <div class="path-step"><span class="num">04</span><strong>TF-IDF / BM25</strong><p>희귀한 단어에 무게를 주고 빈도 포화까지 제어한다.</p><span class="arrow">다음: 도메인 신호 →</span></div>
+          <div class="path-step"><span class="num">05</span><strong>맞춤 랭킹</strong><p>거리·시간·인기도·사용자 신호를 함수로 결합한다.</p><span class="arrow">10장: Learning to Rank</span></div>
+        </div>
+
+        <h3>공통 용어</h3>
+        <dl class="glossary-grid">
+          <div class="term-card"><dt>매칭 · Matching</dt><dd>점수를 계산할 후보 문서를 논리 조건으로 좁히는 단계. 실무에서는 필터링과 함께 설명한다.</dd></div>
+          <div class="term-card"><dt>랭킹 · Ranking</dt><dd>후보 문서마다 관련도 점수를 계산하고 높은 점수부터 정렬하는 단계.</dd></div>
+          <div class="term-card"><dt>TF</dt><dd>특정 단어가 한 문서에 얼마나 강하게 나타나는지를 측정하는 값.</dd></div>
+          <div class="term-card"><dt>IDF</dt><dd>전체 문서에서 드문 단어일수록 더 중요한 질의어라고 보는 가중치.</dd></div>
+          <div class="term-card"><dt>희소 벡터</dt><dd>대부분의 특징값이 0인 벡터. 키워드 검색은 보통 역색인으로 0이 아닌 값만 다룬다.</dd></div>
+          <div class="term-card"><dt>부스팅 · Boosting</dt><dd>필드, 구문 또는 외부 신호가 최종 관련도 점수에 더 크게 기여하도록 조정하는 것.</dd></div>
+        </dl>
+      </section>
+
+      <section id="vectors">
+        <div class="sec-label">3.1 · Vector Scoring</div>
+        <h2>질의와 문서를 같은 벡터 공간에 놓기</h2>
+        <p>질의 <code>apple juice</code>와 두 문서가 있다고 하자. 전체 문서에 등장한 모든 단어를 차원으로 만들면, 질의는 <code>apple</code>과 <code>juice</code> 위치만 1이고 나머지는 0인 벡터가 된다. 문서도 같은 차원에 맞춰 표현해야 서로 비교할 수 있다.</p>
+
+        <div class="vector-space" role="img" aria-label="apple과 juice 차원에서 질의와 두 문서를 표현한 단순화된 벡터">
+          <div class="vector-line">
+            <div class="vector-name">query</div>
+            <div class="vector-cells">
+              <div class="vector-cell">0<span class="term">and</span></div><div class="vector-cell match">1<span class="term">apple</span></div><div class="vector-cell">0<span class="term">cat</span></div><div class="vector-cell">0<span class="term">fresh</span></div><div class="vector-cell match">1<span class="term">juice</span></div><div class="vector-cell">0<span class="term">organic</span></div><div class="vector-cell">0<span class="term">salad</span></div><div class="vector-cell">0<span class="term">water</span></div>
+            </div>
+          </div>
+          <div class="vector-line">
+            <div class="vector-name">document 1</div>
+            <div class="vector-cells">
+              <div class="vector-cell">1<span class="term">and</span></div><div class="vector-cell match">1<span class="term">apple</span></div><div class="vector-cell">0<span class="term">cat</span></div><div class="vector-cell">0<span class="term">fresh</span></div><div class="vector-cell match">1<span class="term">juice</span></div><div class="vector-cell">0<span class="term">organic</span></div><div class="vector-cell">1<span class="term">salad</span></div><div class="vector-cell">1<span class="term">water</span></div>
+            </div>
+          </div>
+          <div class="vector-line">
+            <div class="vector-name">document 2</div>
+            <div class="vector-cells">
+              <div class="vector-cell">0<span class="term">and</span></div><div class="vector-cell match">1<span class="term">apple</span></div><div class="vector-cell">0<span class="term">cat</span></div><div class="vector-cell">1<span class="term">fresh</span></div><div class="vector-cell match">1<span class="term">juice</span></div><div class="vector-cell">1<span class="term">organic</span></div><div class="vector-cell">0<span class="term">salad</span></div><div class="vector-cell">0<span class="term">water</span></div>
+            </div>
+          </div>
+          <p class="vector-note">책의 48차원 예제를 핵심 차원만 남겨 단순화했다. 실제 키워드 공간에서는 대부분 값이 0이므로 희소 표현이 효율적이다.</p>
+        </div>
+
+        <div class="formula"><b>cosine(q, d)</b> = (q · d) / (‖q‖ × ‖d‖)<small>방향이 비슷할수록 1에 가까워진다. 하지만 벡터의 크기는 정규화되므로, 반복 출현의 강도를 그대로 보상하지 않는다.</small></div>
+
+        <div class="inset">
+          <div class="box-title">내적·코사인 유사도·Euclidean distance는 무엇을 선호하는가?</div>
+          <p><strong>내적</strong>은 질의와 일치하는 용어의 가중치가 더 큰 문서를 선호한다. <strong>코사인 유사도</strong>는 크기를 제거하고 용어별 가중치의 상대적 구성과 방향이 질의와 비슷한 문서를 선호한다. 여기서 “비율”은 단순한 일치 용어 수의 비율이 아니라 <strong>벡터 각 차원의 상대적 비중</strong>을 뜻한다. <strong>Euclidean distance</strong>는 가중치 값 자체가 얼마나 가까운지를 측정하며, 값이 작을수록 유사하다.</p>
+        </div>
+
+        <p>질의 <code>q = [1, 1]</code>, 문서 <code>d₁ = [1, 1]</code>, <code>d₂ = [3, 4]</code>를 같은 세 척도로 비교해 보자.</p>
+        <div class="compare-wrap">
+          <table class="compare">
+            <thead><tr><th>척도</th><th>계산</th><th>d₁</th><th>d₂</th><th>판단과 선호</th></tr></thead>
+            <tbody>
+              <tr><td>내적</td><td><code>q · d</code></td><td>2</td><td>7</td><td><span class="tag-good">d₂ 우선</span> 방향과 크기를 함께 반영하므로 일치 용어의 가중치가 큰 문서가 유리하다.</td></tr>
+              <tr><td>코사인 유사도</td><td><code>(q · d) / (‖q‖ × ‖d‖)</code></td><td>1.0000</td><td>0.9899</td><td><span class="tag-good">d₁ 우선</span> 질의와 용어별 가중치 비율 및 방향이 같은 문서가 유리하다. 클수록 유사하다.</td></tr>
+              <tr><td>Euclidean distance</td><td><code>‖q − d‖₂</code></td><td>0</td><td>√13 ≈ 3.6055</td><td><span class="tag-good">d₁ 우선</span> 좌표값이 질의에 가까운 문서가 유리하다. 작을수록 유사하다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="formula"><b>단위 벡터에서는</b> q · d = cosine(q, d), &nbsp; ‖q − d‖² = 2 − 2cosine(q, d)<small>모든 벡터를 길이 1로 정규화하면 내적 최대화, 코사인 유사도 최대화, Euclidean distance 최소화가 같은 순위를 만든다. 원시 TF 벡터에서는 그렇지 않으므로, 반복 출현량을 직접 보상하려면 내적이 더 적합하다.</small></div>
+
+        <div class="compare-wrap">
+          <table class="compare">
+            <thead><tr><th>구분</th><th>벡터의 성질</th><th>표현 방식</th><th>검색에서의 의미</th></tr></thead>
+            <tbody>
+              <tr><td>밀집 벡터</td><td>대부분 값이 0이 아님</td><td>모든 차원의 값을 배열로 저장</td><td>임베딩 검색에서 흔함</td></tr>
+              <tr><td>희소 벡터</td><td>대부분 값이 0</td><td>0이 아닌 위치와 값만 저장 가능</td><td>키워드·역색인 검색에서 흔함</td></tr>
+              <tr><td>주의</td><td colspan="3">“희소한 벡터”와 “희소한 저장 표현”은 다른 개념이다. 차원 수가 많다는 이유만으로 밀집 벡터가 되는 것도 아니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <section id="tf">
+          <h3>TF: 일치 여부에서 일치 강도로 <span class="core-badge">★ 핵심</span></h3>
+          <p>0과 1만 사용하면 질의어가 한 번 등장한 문서와 여러 번 등장한 문서를 구별하기 어렵다. <strong>Term Frequency</strong>는 문서 안의 출현 횟수를 특징값으로 사용해 이 문제를 보완한다.</p>
+          <div class="equation-journey">
+            <div class="equation-card"><span class="eyebrow">BINARY</span><strong>있으면 1</strong><p>일치 여부만 알 수 있고 문서가 그 단어를 얼마나 강하게 설명하는지는 모른다.</p></div>
+            <div class="equation-card"><span class="eyebrow">RAW TF</span><strong>횟수 그대로</strong><p>강도를 반영하지만 반복 단어와 긴 문서가 과도하게 유리하다.</p></div>
+            <div class="equation-card"><span class="eyebrow">DAMPEN</span><strong>제곱근·로그</strong><p>같은 단어의 추가 출현이 주는 이득을 점점 줄인다.</p></div>
+            <div class="equation-card"><span class="eyebrow">NORMALIZE</span><strong>문서 길이 보정</strong><p>긴 문서가 우연히 더 많이 일치하는 효과를 줄인다.</p></div>
+          </div>
+
+          <div class="inset">
+            <div class="box-title">p.57–58 반례: 단순 출현 횟수가 의미를 이길 때</div>
+            <p>질의 <code>the cat in the hat</code>을 토큰 순서 그대로 <code>q = [1, 1, 1, 1, 1]</code>로 두고, 각 문서의 원시 TF 벡터와 내적을 계산한다. Listing 3.5는 질의 토큰 목록 <code>[the, cat, in, the, hat]</code>을 그대로 레이블로 사용하므로, 질의에 두 번 나온 <code>the</code>의 점수 기여도 두 번 반영된다.</p>
+          </div>
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead><tr><th>문서</th><th>내용과 실제 관련성</th><th>원시 TF 벡터</th><th>단순 횟수 점수</th></tr></thead>
+              <tbody>
+                <tr><td>doc1</td><td>인터뷰와 의사결정에 관한 글. <code>the</code>와 <code>in</code>만 반복되고 <code>cat</code>, <code>hat</code>은 없다.</td><td><code>[5, 0, 4, 5, 0]</code></td><td><strong>14 · 계산상 1위</strong></td></tr>
+                <tr><td>doc2</td><td>책 『The Cat in the Hat』을 직접 설명한다. 의미상 가장 관련 있다.</td><td><code>[3, 2, 2, 3, 2]</code></td><td><strong>12 · 계산상 2위</strong></td></tr>
+                <tr><td>doc3</td><td>길고양이와 망가진 모자 이야기. <code>cat</code>, <code>in</code>, <code>hat</code>과 일치하지만 책과는 무관하다.</td><td><code>[0, 1, 2, 0, 1]</code></td><td><strong>4 · 계산상 3위</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="box">
+            <div class="box-title">횟수 순위와 의미 순위가 뒤집힌다</div>
+            <p><strong>원시 TF 순위는 doc1(14) → doc2(12) → doc3(4)</strong>지만, 의미상 기대 순위는 <strong>doc2 → doc3 → doc1</strong>이다. 단순 횟수 합은 같은 단어가 추가될 때마다 점수를 선형으로 올리므로, 여러 질의어를 폭넓게 만족하는 문서보다 흔한 일부 단어만 반복하는 문서를 과대평가한다.</p>
+            <p><strong>결론:</strong> TF는 0/1 존재 여부보다 낫지만 원시 횟수만으로는 부족하다. 같은 단어의 반복 효과는 제곱근·로그로 감쇠하고, 긴 문서의 자연스러운 반복은 문서 길이로 정규화해야 한다. 이후 IDF를 더해 <code>the</code>, <code>in</code> 같은 흔한 단어보다 <code>cat</code>, <code>hat</code> 같은 구별력 있는 단어에 더 큰 가중치를 준다.</p>
+          </div>
+
+          <div class="formula"><b>TF(t, d)</b> = √( count(t, d) / length(d) )<small>이 책에서 설명을 위해 사용한 정규화 TF. 실제 검색 엔진은 다른 감쇠·길이 보정 방식을 사용할 수 있다.</small></div>
+          <div class="formula"><b>OpenSearch 2.18 · LegacyBM25 TF(t, d)</b> = [ f(t,d) × (k₁ + 1) ] / [ f(t,d) + k₁ × (1 − b + b × dl / avgdl) ]<small>이 저장소의 기본 계산. <code>f(t,d)</code>는 용어 빈도, <code>dl</code>은 현재 필드 길이, <code>avgdl</code>은 평균 필드 길이다. 기본값 <code>k₁ = 1.2</code>, <code>b = 0.75</code>이며, 제곱근 대신 TF 포화와 길이 보정을 하나의 항에서 처리한다. OpenSearch 3.x의 BM25는 분자의 상수 <code>k₁ + 1</code>을 제거한다.</small></div>
+        </section>
+
+        <section id="idf">
+          <h3>IDF: 모든 단어가 같은 중요도를 갖지는 않는다</h3>
+          <p><code>the cat in the hat</code>을 단순 출현 횟수로 계산하면 <code>the</code>와 <code>in</code>이 많은 문서가 상위에 오른다. 전체 문서에서 흔한 단어는 정보량이 적고, 드문 단어는 질의를 구분하는 힘이 크다.</p>
+          <div class="formula"><b>IDF(t)</b> = 1 + log((|D| + 1) / (DF(t) + 1))<small>DF(t)는 단어 t가 등장한 문서 수다. DF가 작을수록 IDF는 커진다.</small></div>
+          <div class="formula"><b>OpenSearch BM25 IDF(t)</b> = ln(1 + (N − n(t) + 0.5) / (n(t) + 0.5))<small><code>N</code>은 해당 필드를 가진 전체 문서 수, <code>n(t)</code>는 용어 t가 그 필드에 등장한 문서 수다. 0.5 보정으로 극단적인 문서 빈도에서도 안정적으로 계산하며, OpenSearch 2.18 LegacyBM25와 3.x BM25가 같은 형태를 사용한다.</small></div>
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead><tr><th>단어</th><th>가정한 DF</th><th>IDF</th><th>해석</th></tr></thead>
+              <tbody>
+                <tr><td>the</td><td>9,500 / 10,000</td><td>1.0513</td><td><span class="tag-warn">약한 신호</span> 거의 모든 문서에 등장</td></tr>
+                <tr><td>in</td><td>9,000 / 10,000</td><td>1.1053</td><td><span class="tag-warn">약한 신호</span> 문서를 잘 구분하지 못함</td></tr>
+                <tr><td>cat</td><td>100 / 10,000</td><td>5.5953</td><td><span class="tag-good">강한 신호</span> 질의 주제를 구분</td></tr>
+                <tr><td>hat</td><td>50 / 10,000</td><td>6.2786</td><td><span class="tag-good">가장 강함</span> 가장 희귀한 질의어</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <h3 id="tfidf">TF-IDF: 문서 안의 강도와 코퍼스의 중요도를 결합한다</h3>
+          <p>TF는 한 문서 안에서 용어가 얼마나 강하게 나타나는지를, IDF는 전체 문서 집합에서 그 용어가 얼마나 구별력 있는지를 나타낸다.</p>
+          <div class="formula"><b>TF-IDF(t, d)</b> = TF(t, d) × IDF(t)²<small>책의 예제는 질의와 문서 양쪽에 IDF를 적용한 효과를 제곱으로 표현한다. 핵심은 “문서 안의 강도 × 코퍼스 안의 중요도”다.</small></div>
+          <div class="formula"><b>OpenSearch scripted TF-IDF term score</b> = boost × √f(t,d) × [ ln((N + 1) / (n(t) + 1)) + 1 ] × 1 / √dl<small>OpenSearch 공식 문서의 사용자 정의 <code>scripted</code> similarity 예제다. <code>√f</code>와 <code>1/√dl</code>을 따로 계산해 곱하며 IDF는 한 번 적용한다. 이것은 기본 랭킹이 아니며, OpenSearch의 기본 텍스트 랭킹은 아래의 BM25다.</small></div>
+        </section>
+
+        <section id="score-explorer">
+          <div class="score-lab">
+            <div class="score-lab-head">
+              <div>
+                <h3>같은 문서, 다른 점수 모델</h3>
+                <p>버튼을 바꿔 세 문서의 순위가 어떻게 교정되는지 확인한다.</p>
+              </div>
+              <span class="level-badge level-core">interactive</span>
+            </div>
+            <div class="score-tabs" role="group" aria-label="점수 계산 방식 선택">
+              <button class="score-tab" type="button" data-score-model="count" aria-pressed="true">단순 횟수</button>
+              <button class="score-tab" type="button" data-score-model="tf" aria-pressed="false">정규화 TF</button>
+              <button class="score-tab" type="button" data-score-model="tfidf" aria-pressed="false">TF-IDF</button>
+              <button class="score-tab" type="button" data-score-model="bm25" aria-pressed="false">BM25</button>
+            </div>
+            <div id="scoreRows" aria-live="polite">
+              <div class="score-row" data-doc="doc1"><span class="doc-label">doc1</span><span class="score-track"><span class="score-fill"></span></span><span class="score-value"></span></div>
+              <div class="score-row" data-doc="doc2"><span class="doc-label">doc2</span><span class="score-track"><span class="score-fill"></span></span><span class="score-value"></span></div>
+              <div class="score-row" data-doc="doc3"><span class="doc-label">doc3</span><span class="score-track"><span class="score-fill"></span></span><span class="score-value"></span></div>
+            </div>
+            <p class="score-verdict" id="scoreVerdict"></p>
+          </div>
+          <div class="box">
+            <div class="box-title">문서의 실제 의미</div>
+            <p><strong>doc1</strong>은 <code>the</code>와 <code>in</code>만 많이 포함한 관련 낮은 문서, <strong>doc2</strong>는 책 『The Cat in the Hat』을 직접 설명하는 최적 문서, <strong>doc3</strong>는 핵심 내용어 <code>cat</code>과 <code>hat</code>을 포함하지만 책과는 무관한 차선 문서다.</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="bm25">
+        <div class="sec-label">3.2 · Relevance Control</div>
+        <h2>BM25: 텍스트 랭킹의 강력한 기준선</h2>
+        <p>BM25는 TF-IDF를 중심에 두되, 단어의 추가 출현이 어느 시점부터 덜 중요해지는지와 문서 길이를 얼마나 보정할지를 명시적으로 제어한다. Lucene 기반 검색 엔진을 비롯한 많은 시스템에서 기본 키워드 유사도 알고리즘으로 사용된다.</p>
+        <div class="formula"><b>BM25(D, Q)</b> = Σ IDF(qᵢ) × [ f(qᵢ,D) × (k₁ + 1) ] / [ f(qᵢ,D) + k₁ × (1 − b + b × |D| / avgdl) ]<small>질의의 각 단어 점수를 계산해 합산한다. 구현별로 IDF 정의나 세부 최적화가 조금씩 다를 수 있다.</small></div>
+        <div class="formula"><b>OpenSearch 2.18 · LegacyBM25(D, Q)</b> = Σᵢ boostᵢ × IDF(qᵢ) × [ f(qᵢ,D) × (k₁ + 1) ] / [ f(qᵢ,D) + k₁ × (1 − b + b × dl / avgdl) ]<small>이 저장소가 사용하는 OpenSearch 2.18의 기본식이다. 분석된 질의의 각 용어 점수를 계산해 합산한다.</small></div>
+        <div class="formula"><b>OpenSearch 3.x · BM25(D, Q)</b> = Σᵢ boostᵢ × IDF(qᵢ) × f(qᵢ,D) / [ f(qᵢ,D) + k₁ × (1 − b + b × dl / avgdl) ]<small>OpenSearch 3.0부터 Lucene 네이티브 BM25를 기본으로 사용하면서 분자의 상수 <code>k₁ + 1</code>을 제거했다. 같은 similarity 설정에서는 절대 점수만 달라지고 상대 순위는 유지된다.</small></div>
+
+        <h3>공식을 네 단계로 나눠 읽기</h3>
+        <div class="bm25-anatomy">
+          <div class="bm25-part"><span class="symbol">① L(D)</span><strong>길이 보정값</strong><p><code>1 − b + b × dl/avgdl</code>. 평균보다 긴 필드에는 더 큰 패널티를 만든다.</p></div>
+          <div class="bm25-part"><span class="symbol">② TFsat</span><strong>반복 포화</strong><p><code>f / (f + k₁ × L(D))</code>. 출현 횟수는 점수를 올리지만 증가 폭은 점점 작아진다.</p></div>
+          <div class="bm25-part"><span class="symbol">③ IDF</span><strong>희소성 가중치</strong><p>많은 문서에 흔한 용어는 낮추고, 소수 문서에만 있는 용어는 높인다.</p></div>
+          <div class="bm25-part"><span class="symbol">④ Σ</span><strong>용어 점수 합산</strong><p>각 질의어의 <code>boost × IDF × TFsat</code>를 더해 문서 점수를 만든다.</p></div>
+        </div>
+
+        <div class="formula"><b>길이 보정</b> L(D) = 1 − b + b × dl / avgdl<small><code>dl = avgdl</code>이면 <code>L(D) = 1</code>이다. 더 긴 필드는 1보다 커져 TF 점수를 낮추고, 더 짧은 필드는 1보다 작아져 TF 점수를 높인다.</small></div>
+        <div class="formula"><b>OpenSearch BM25 IDF(qᵢ)</b> = ln(1 + (N − n(qᵢ) + 0.5) / (n(qᵢ) + 0.5))<small>질의어가 등장한 문서 수 <code>n(qᵢ)</code>가 작을수록 IDF가 커진다.</small></div>
+
+        <div class="compare-wrap">
+          <table class="compare">
+            <thead><tr><th>기호</th><th>의미</th><th>점수에 미치는 영향</th></tr></thead>
+            <tbody>
+              <tr><td><code>Q</code></td><td>분석기가 생성한 질의 용어와 질의 절</td><td>일반적인 단일 필드 질의에서는 각 용어 점수를 합산한다.</td></tr>
+              <tr><td><code>D</code></td><td>점수를 계산하는 문서의 특정 텍스트 필드</td><td>길이와 빈도는 JSON 문서 전체가 아니라 검색 대상 필드를 기준으로 계산한다.</td></tr>
+              <tr><td><code>qᵢ</code></td><td>분석된 i번째 질의어</td><td>각 질의어마다 TF와 IDF를 따로 계산한다.</td></tr>
+              <tr><td><code>f(qᵢ,D)</code> · <code>freq</code></td><td>필드 D에서 qᵢ가 출현한 횟수</td><td>커질수록 점수가 오르지만 BM25 포화로 추가 이득은 감소한다.</td></tr>
+              <tr><td><code>dl</code> · <code>|D|</code></td><td>분석 후 현재 필드의 토큰 수</td><td>평균보다 길수록 같은 빈도의 일치가 약하게 평가된다. 기본 <code>discount_overlaps = true</code>에서는 위치 증가값이 0인 중첩 토큰을 길이에서 제외한다.</td></tr>
+              <tr><td><code>avgdl</code></td><td>해당 필드를 가진 문서들의 평균 필드 길이</td><td><code>dl/avgdl</code>의 기준점이며, OpenSearch에서는 대략 <code>sumTotalTermFreq/docCount</code>로 계산한다.</td></tr>
+              <tr><td><code>N</code></td><td>해당 필드를 가진 전체 문서 수</td><td>IDF 계산의 전체 모집단이다.</td></tr>
+              <tr><td><code>n(qᵢ)</code></td><td>qᵢ가 해당 필드에 등장한 문서 수</td><td>작을수록 희귀한 용어이므로 IDF가 커진다.</td></tr>
+              <tr><td><code>k₁</code></td><td>TF 포화 조절값, OpenSearch 기본값 <code>1.2</code></td><td>작을수록 빨리 포화되고, 클수록 반복 출현의 영향이 더 오래 유지된다.</td></tr>
+              <tr><td><code>b</code></td><td>길이 정규화 강도, OpenSearch 기본값 <code>0.75</code></td><td><code>0</code>이면 길이를 무시하고, <code>1</code>이면 필드 길이를 완전히 반영한다.</td></tr>
+              <tr><td><code>boostᵢ</code></td><td>질의·필드·절에 지정한 가중치</td><td>해당 용어의 최종 기여도를 배율로 확대하거나 축소한다.</td></tr>
+              <tr><td><code>Σᵢ</code></td><td>질의어별 점수의 합</td><td><code>match</code>의 기본적인 덧셈 구조를 나타낸다. 다중 필드·구문·복합 질의는 결합 방식이 달라질 수 있다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="box">
+          <div class="box-title">BM25를 직관적으로 읽는 법</div>
+          <p><strong>여러 서로 다른 희귀 질의어가 일치할수록</strong> IDF 항이 여러 번 더해져 점수가 크게 오른다. 같은 단어의 반복도 도움이 되지만 TF 포화 때문에 이득이 점점 줄며, 평균보다 긴 필드에는 길이 패널티가 적용된다. 따라서 BM25는 “일부 단어의 무한 반복”보다 “구별력 있는 여러 질의어의 폭넓은 일치”를 선호하도록 설계되어 있다.</p>
+        </div>
+        <p>검색 엔진의 <code>explain</code> 기능을 켜면 최종 점수를 단어별 IDF, TF, 문서 길이(<code>dl</code>), 평균 문서 길이(<code>avgdl</code>)까지 분해해서 볼 수 있다. 관련도 튜닝에서는 이 설명이 추측보다 강한 디버깅 근거다.</p>
+        <pre><code>request = {
+  "query": "the cat in the hat",
+  "query_fields": ["description"],
+  "return_fields": ["id", "title", "score"],
+  "explain": True
+}
+
+response = collection.search(**request)</code></pre>
+        <div class="inset">
+          <div class="box-title">기준선으로서의 BM25</div>
+          <p>임베딩 모델이 항상 BM25보다 좋은 것은 아니다. 별도 미세조정이나 평가가 없는 상태라면 BM25는 빠르고 해석 가능한 강력한 기준선이다. 새로운 랭킹 모델은 적어도 이 기준과 비교해 개선을 증명해야 한다.</p>
+        </div>
+
+        <section id="functions">
+          <h3>Functions, functions, everywhere!</h3>
+          <p>텍스트 질의도 내부적으로는 각 단어의 BM25 점수를 반환하는 함수들의 합으로 볼 수 있다.</p>
+          <pre><code>query("the") + query("cat") + query("in")
+  + query("the") + query("hat")</code></pre>
+          <p>이 관점이 중요한 이유는 키워드 외의 숫자형 특징도 같은 점수 벡터에 넣을 수 있기 때문이다.</p>
+          <div class="inset">
+            <div class="box-title">p.67 · 함수 및 스코어링 기법 일부 목록</div>
+            <p>텍스트 점수만으로 표현하기 어려운 거리·시간·인기도를 함수로 결합하거나, 필드·카테고리·구문 구조와 의미적으로 관련된 개념을 추가 신호로 사용할 수 있다.</p>
+          </div>
+          <div class="card-grid">
+            <div class="card"><strong>Geospatial boosting · 위치</strong><p>현재 사용자와 가까운 문서·매장에 더 높은 점수를 준다.</p></div>
+            <div class="card"><strong>Date boosting · 날짜</strong><p>뉴스나 공고처럼 시간이 중요한 문서의 최신 항목을 올린다.</p></div>
+            <div class="card"><strong>Popularity boosting · 인기도</strong><p>조회·클릭·구매 등 도메인에 맞는 수요 신호를 반영한다.</p></div>
+            <div class="card"><strong>Field boosting · 필드</strong><p>제목처럼 중요한 필드에서 일치한 용어에 더 높은 가중치를 준다.</p></div>
+            <div class="card"><strong>Category boosting · 카테고리</strong><p>질의와 관련된 카테고리에 속한 문서의 점수를 높인다.</p></div>
+            <div class="card"><strong>Phrase boosting · 구문</strong><p>질의어가 흩어진 문서보다 정확한 다중 용어 구문이 있는 문서를 올린다.</p></div>
+            <div class="card"><strong>Semantic expansion · 의미 확장</strong><p>질의와 밀접한 관련이 있는 다른 단어·개념을 포함한 문서까지 평가한다.</p></div>
+          </div>
+
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead><tr><th>기법</th><th>개념적 점수 신호</th><th>무엇이 올라가는가?</th><th>주의할 점</th></tr></thead>
+              <tbody>
+                <tr><td>위치 부스팅</td><td><code>decay(distance(user, doc))</code></td><td>사용자와 가까운 매장·장소·이벤트</td><td>거리 단위와 감쇠 반경이 도메인의 실제 이동 범위와 맞아야 한다.</td></tr>
+                <tr><td>날짜 부스팅</td><td><code>decay(now − published_at)</code></td><td>최근 뉴스·공고·게시물</td><td>최신성이 덜 중요한 상시 콘텐츠를 지나치게 낮출 수 있다.</td></tr>
+                <tr><td>인기도 부스팅</td><td><code>scale(log(1 + popularity))</code></td><td>조회·클릭·구매가 많은 문서</td><td>원시 값을 그대로 쓰면 소수의 인기 문서가 점수를 독점할 수 있다.</td></tr>
+                <tr><td>필드 부스팅</td><td><code>field_score × field_weight</code></td><td>제목·상품명처럼 중요한 필드에서 일치한 문서</td><td>큰 가중치는 다른 필드의 강한 텍스트 일치를 압도한다.</td></tr>
+                <tr><td>카테고리 부스팅</td><td><code>category_match × boost</code></td><td>질의 의도와 관련된 카테고리의 문서</td><td>후보를 제외하는 필터와 단지 순위를 올리는 부스트를 구분해야 한다.</td></tr>
+                <tr><td>구문 부스팅</td><td><code>phrase_match × boost</code></td><td>단어 순서와 인접성이 질의 구문과 가까운 문서</td><td>정확한 표현만 과도하게 선호하면 자연스러운 변형 표현을 놓칠 수 있다.</td></tr>
+                <tr><td>의미 확장</td><td><code>query ∪ related_terms</code></td><td>동의어·관련어·관련 개념을 포함한 문서</td><td>관련성이 약한 개념까지 확장하면 쿼리 드리프트와 노이즈가 생긴다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="box">
+            <div class="box-title">모두 같은 종류의 “함수”는 아니다</div>
+            <p><strong>위치·날짜·인기도</strong>는 주로 숫자 신호를 점수로 변환한다. <strong>필드·카테고리·구문 부스팅</strong>은 특정 텍스트 일치 절의 기여도를 조절한다. <strong>의미 확장</strong>은 기존 후보의 순서만 바꾸는 데 그치지 않고 새로운 관련 용어와 문서를 후보에 포함할 수 있다.</p>
+          </div>
+          <div class="signal-stack" aria-label="네 개의 신호를 각각 25점 범위로 정규화한 복합 점수 예시">
+            <div class="signal-row"><span class="signal-name">BM25 키워드</span><span class="signal-bar"><span style="width:88%"></span></span><span class="signal-score">22/25</span></div>
+            <div class="signal-row"><span class="signal-name">지리적 근접성</span><span class="signal-bar"><span style="width:72%"></span></span><span class="signal-score">18/25</span></div>
+            <div class="signal-row"><span class="signal-name">최신성</span><span class="signal-bar"><span style="width:96%"></span></span><span class="signal-score">24/25</span></div>
+            <div class="signal-row"><span class="signal-name">인기도</span><span class="signal-bar"><span style="width:60%"></span></span><span class="signal-score">15/25</span></div>
+            <div class="signal-total">복합 관련도 점수 · 79 / 100</div>
+          </div>
+          <p>서로 단위와 범위가 다른 값을 바로 더하면 큰 숫자 범위를 가진 신호가 결과를 지배한다. 책의 예제는 각 특징을 0–25로 스케일링해 네 특징의 최대 기여도를 동일하게 맞춘다.</p>
+        </section>
+
+        <section id="boosting">
+          <h3>곱셈 방식 부스팅과 덧셈 방식 부스팅</h3>
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead><tr><th>방식</th><th>계산</th><th>장점</th><th>위험</th></tr></thead>
+              <tbody>
+                <tr><td>덧셈 방식</td><td><code>text + distance + freshness</code></td><td>각 신호의 최대 기여도와 최종 점수 범위를 통제하기 쉽다.</td><td>모든 특징의 범위를 미리 맞춰야 하며 특징이 늘수록 관리가 복잡하다.</td></tr>
+                <tr><td>곱셈 방식</td><td><code>text × popularity</code></td><td>기존 점수 전체를 독립적인 비율로 유연하게 확대·축소한다.</td><td>0이나 큰 이상치가 전체 점수를 무력화하거나 압도할 수 있다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <pre><code># 필드 부스팅: 제목 일치를 본문보다 강하게
+{"query": "the cat in the hat",
+ "query_fields": ["title^10", "description^2.5"]}
+
+# Solr edismax: 인기도로 최종 점수를 곱셈 방식으로 부스팅
+{"query": "the cat in the hat",
+ "params": {"defType": "edismax",
+            "boost": "mul(popularity,10)"}}</code></pre>
+          <div class="box">
+            <div class="box-title">구문 부스팅도 중요한 텍스트 특징이다</div>
+            <p>모든 단어가 흩어져 있는 문서보다 정확한 구문이 있는 문서를 올릴 수 있다. Solr의 <code>pf</code>, <code>pf2</code>, <code>pf3</code>는 각각 전체 구문, 2단어 구문, 3단어 구문 일치를 점수 특징으로 추가한다.</p>
+          </div>
+        </section>
+
+        <section id="matching">
+          <h3>매칭과 랭킹은 분리할수록 선명해진다 <span class="core-badge">★ 핵심</span></h3>
+          <div class="split-flow" aria-label="전체 문서에서 후보를 필터링한 후 관련도 점수로 정렬하는 검색 흐름">
+            <div class="flow-box"><b>전체 문서</b><span>색인된 코퍼스</span></div><div class="flow-arrow">→</div>
+            <div class="flow-box"><b>매칭 · 필터링</b><span>가능한 답의 집합</span></div><div class="flow-arrow">→</div>
+            <div class="flow-box"><b>랭킹 · 스코어링</b><span>관련도 순서 결정</span></div>
+          </div>
+          <p>필터링은 점수를 계산할 문서를 줄여 성능을 높이고, 패싯과 집계가 의미 있는 후보 집합을 대상으로 동작하게 한다. 랭킹은 그 후보 안에서 상대적인 품질을 계산한다. 밀집 임베딩 검색처럼 명시적 키워드 필터 없이 모든 문서 또는 근사 최근접 후보를 점수화하는 경우도 있다.</p>
+          <div class="compare-wrap">
+            <table class="compare">
+              <thead><tr><th>입력</th><th>역할</th><th>결과 집합을 줄이는가?</th><th>점수에 기여하는가?</th></tr></thead>
+              <tbody>
+                <tr><td><code>query</code></td><td>일반적인 검색 질의</td><td>예</td><td>예</td></tr>
+                <tr><td><code>filters</code></td><td>카테고리·권한·상태 등 논리 조건</td><td>예</td><td>아니오</td></tr>
+                <tr><td><code>bq</code></td><td>결과를 제거하지 않는 부스트 질의</td><td>아니오</td><td>예</td></tr>
+                <tr><td>함수 질의</td><td>거리·시간·필드값 등의 숫자 특징</td><td>보통 아니오</td><td>예</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3><code>min_match</code>로 논리적 후보를 조절한다</h3>
+          <div class="card-grid">
+            <div class="card"><strong><code>100%</code></strong><p><code>statue AND of AND liberty</code>. 모든 질의어가 있어야 후보가 된다.</p></div>
+            <div class="card"><strong><code>1</code></strong><p><code>statue OR of OR liberty</code>. 재현율은 높지만 약한 후보가 많아진다.</p></div>
+            <div class="card"><strong><code>2</code></strong><p>세 단어 중 최소 두 단어가 필요하다. 정밀도와 재현율의 중간 지점이다.</p></div>
+            <div class="card"><strong>단계식</strong><p>짧은 질의는 모두, 긴 질의는 일부 누락을 허용하는 길이별 규칙을 만들 수 있다.</p></div>
+          </div>
+          <div class="inset">
+            <div class="box-title">사용자 질의 필터의 캐시 주의</div>
+            <p>카테고리처럼 반복되는 필터는 캐시 가치가 크지만, 매번 다른 사용자 질의를 필터 캐시에 넣으면 캐시를 오염시키고 자원을 낭비할 수 있다. Solr 예제에서는 이런 필터에 <code>cache=false</code>를 사용한다.</p>
+          </div>
+        </section>
+      </section>
+
+      <section id="domain">
+        <div class="sec-label">3.3 · Domain Relevance</div>
+        <h2>도메인이 바뀌면 “좋은 결과”의 정의도 바뀐다</h2>
+        <p>BM25는 텍스트 기준선일 뿐이다. 실제 품질을 크게 좌우하는 특징은 업종과 사용자 상황에 따라 달라진다. 관련도 엔지니어링의 핵심은 이런 신호를 발견하고, 측정 가능한 숫자로 만들고, 과도한 신호가 없는지 평가하는 것이다.</p>
+        <div class="domain-grid">
+          <div class="domain-card"><strong>음식점</strong><p>거리 · 식이 제한 · 개인 취향 · 가격대</p></div>
+          <div class="domain-card"><strong>뉴스</strong><p>최신성 · 인기도 · 지역 · 출처 품질</p></div>
+          <div class="domain-card"><strong>전자상거래</strong><p>클릭 · 장바구니 · 구매 전환 · 재고</p></div>
+          <div class="domain-card"><strong>영화</strong><p>제목·배우 일치 · 인기도 · 개봉일 · 평점</p></div>
+          <div class="domain-card"><strong>채용</strong><p>직무명 · 직급 · 보상 · 거리 · 산업</p></div>
+          <div class="domain-card"><strong>웹 검색</strong><p>키워드 위치 · 페이지·사이트 인기도 · 품질 · 주제 일치</p></div>
+        </div>
+        <p>수작업으로 특징과 가중치를 관리하는 방식은 강력하지만 규모가 커지면 한계가 온다. 10장에서는 평가 데이터로 특징의 가중치를 자동 학습하는 <strong>Learning to Rank</strong>로 이어진다.</p>
+      </section>
+
+      <section id="labs">
+        <div class="sec-label">Practice Roadmap</div>
+        <h2>실습 로드맵</h2>
+        <p class="sec-sub">책의 Listing 3.1–3.12와 추가 쿼리 예제를 실행 가능한 단위로 재구성했다. 필수부터 진행하고, 검색 엔진 컨테이너가 준비되면 심화 실습으로 넘어간다.</p>
+
+        <div class="practice-head">
+          <div>
+            <strong>17개 실습</strong>
+            <p class="sec-sub">체크 상태는 이 브라우저에 저장된다.</p>
+          </div>
+          <div class="practice-progress">
+            <div class="progress-label"><span>완료율</span><output id="practiceCount" aria-live="polite">0 / 17</output></div>
+            <div class="progress-track" role="progressbar" aria-label="실습 완료율" aria-valuemin="0" aria-valuemax="17" aria-valuenow="0" id="practiceProgress"><div class="progress-fill" id="practiceFill"></div></div>
+          </div>
+        </div>
+
+        <div class="practice-tools" role="group" aria-label="실습 난이도 필터">
+          <button type="button" class="filter-btn" data-filter="all" aria-pressed="true">전체</button>
+          <button type="button" class="filter-btn" data-filter="core" aria-pressed="false">필수</button>
+          <button type="button" class="filter-btn" data-filter="advanced" aria-pressed="false">심화</button>
+          <button type="button" class="filter-btn" data-filter="synthesis" aria-pressed="false">종합</button>
+          <button type="button" class="reset-btn" id="resetPractice">체크 초기화</button>
+        </div>
+
+        <div class="practice-list" id="practiceList">
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-01" aria-label="실습 01 완료"></label>
+            <div class="practice-copy"><strong>01. 밀집 벡터 코사인 유사도</strong><p><code>apple juice</code> 질의와 두 문서를 같은 차원에 매핑하고 NumPy로 코사인 유사도를 계산한다.</p><span class="listing">Listing 3.1</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-02" aria-label="실습 02 완료"></label>
+            <div class="practice-copy"><strong>02. 희소 표현으로 단순화</strong><p>질의에 있는 차원만 남겨 계산하고, 표현이 달라도 문서의 상대 순위가 유지되는지 확인한다.</p><span class="listing">Listing 3.2</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-03" aria-label="실습 03 완료"></label>
+            <div class="practice-copy"><strong>03. TF에서 세 가지 벡터 비교 척도</strong><p>같은 TF 벡터에 내적, 코사인 유사도, Euclidean distance를 적용하고 크기·방향·좌표 거리 중 무엇을 선호하는지 해석한다.</p><span class="listing">Listing 3.3–3.4 + 추가 계산</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-04" aria-label="실습 04 완료"></label>
+            <div class="practice-copy"><strong>04. 단순 단어 개수의 실패 재현</strong><p><code>the cat in the hat</code> 예제로 관련 없는 doc1이 14점으로 1위가 되는 문제를 재현한다.</p><span class="listing">Listing 3.5</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-05" aria-label="실습 05 완료"></label>
+            <div class="practice-copy"><strong>05. 정규화 TF 구현</strong><p>제곱근 감쇠와 문서 길이 정규화를 적용해 반복 단어의 과도한 기여를 줄인다.</p><span class="listing">Listing 3.6</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-06" aria-label="실습 06 완료"></label>
+            <div class="practice-copy"><strong>06. IDF 계산과 시각화</strong><p>가상의 DF 통계로 <code>the</code>, <code>in</code>, <code>cat</code>, <code>hat</code>의 중요도를 계산하고 막대로 비교한다.</p><span class="listing">Listing 3.7</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="core">
+            <label class="practice-check"><input type="checkbox" id="lab-07" aria-label="실습 07 완료"></label>
+            <div class="practice-copy"><strong>07. TF-IDF로 순위 교정</strong><p>TF와 IDF를 결합해 doc2 → doc3 → doc1 순서가 만들어지는지 검증한다.</p><span class="listing">Listing 3.8</span></div><span class="level-badge level-core">필수</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-08" aria-label="실습 08 완료"></label>
+            <div class="practice-copy"><strong>08. 검색 컬렉션 생성</strong><p><code>cat_in_the_hat</code> 컬렉션을 만들고 세 테스트 문서를 색인한다.</p><span class="listing">Listing 3.9–3.10</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-09" aria-label="실습 09 완료"></label>
+            <div class="practice-copy"><strong>09. BM25 explain 분석</strong><p>문서별 점수를 TF, IDF, <code>k1</code>, <code>b</code>, <code>dl</code>, <code>avgdl</code> 수준까지 분해한다.</p><span class="listing">Listing 3.11</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-10" aria-label="실습 10 완료"></label>
+            <div class="practice-copy"><strong>10. 텍스트 질의를 함수로 재작성</strong><p>일반 질의와 단어별 <code>query()</code> 함수 합이 같은 BM25 점수를 내는지 비교한다.</p><span class="listing">Listing 3.12</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-11" aria-label="실습 11 완료"></label>
+            <div class="practice-copy"><strong>11. 필드 부스팅</strong><p><code>title^10</code>과 <code>description^2.5</code>를 적용하고 제목 일치가 순위를 얼마나 바꾸는지 기록한다.</p><span class="listing">Field boosting</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-12" aria-label="실습 12 완료"></label>
+            <div class="practice-copy"><strong>12. 전체·2단어·3단어 구문 부스팅</strong><p><code>pf</code>, <code>pf2</code>, <code>pf3</code>를 차례로 적용하고 정확한 구문이 있는 문서의 변화를 비교한다.</p><span class="listing">Phrase boosting</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-13" aria-label="실습 13 완료"></label>
+            <div class="practice-copy"><strong>13. 거리·시간·인기도 복합 점수</strong><p>BM25, 지리적 거리, 최신성, 인기도를 각각 0–25로 정규화해 100점 모델을 만든다.</p><span class="listing">Function query composition</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-14" aria-label="실습 14 완료"></label>
+            <div class="practice-copy"><strong>14. 덧셈 방식과 곱셈 방식 부스팅 비교</strong><p>같은 인기도 특징을 더하거나 곱하고, 0·일반값·이상치에서 랭킹이 어떻게 달라지는지 확인한다.</p><span class="listing">Additive vs. multiplicative</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-15" aria-label="실습 15 완료"></label>
+            <div class="practice-copy"><strong>15. 최소 일치 조건 비교</strong><p><code>statue of liberty</code>에 <code>100%</code>, <code>1</code>, <code>2</code>를 적용해 결과 수와 상위 문서를 비교한다.</p><span class="listing">min_match</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="advanced">
+            <label class="practice-check"><input type="checkbox" id="lab-16" aria-label="실습 16 완료"></label>
+            <div class="practice-copy"><strong>16. 필터링과 스코어링 분리</strong><p>같은 조건을 <code>query</code>, <code>filters</code>, <code>bq</code>로 나눠 결과 집합과 점수의 변화를 확인한다.</p><span class="listing">Separation of concerns</span></div><span class="level-badge level-advanced">심화</span>
+          </article>
+          <article class="practice-card" data-level="synthesis">
+            <label class="practice-check"><input type="checkbox" id="lab-17" aria-label="실습 17 완료"></label>
+            <div class="practice-copy"><strong>17. 도메인 랭킹 함수 설계</strong><p>음식점·뉴스·쇼핑·채용 중 하나를 골라 후보 필터, 신호 4–6개, 값의 방향과 범위, 결합 방식, 실패 사례를 설계한다.</p><span class="listing">Capstone · Learning to Rank 준비</span></div><span class="level-badge level-synthesis">종합</span>
+          </article>
+        </div>
+        <div class="empty-practice" id="emptyPractice">이 필터에 해당하는 실습이 없습니다.</div>
+        <div class="practice-complete" id="practiceComplete" role="status">모든 실습을 완료했습니다. 이제 10장의 Learning to Rank에서 이 특징들을 데이터로 학습할 준비가 됐습니다.</div>
+
+        <div class="inset">
+          <div class="box-title">실습 환경</div>
+          <p>책의 전체 코드는 사전 구성된 Docker 컨테이너의 Jupyter Notebook에서 실행하도록 제공된다. 먼저 부록 A의 환경 설정에 따라 <code>docker compose up</code>으로 노트북과 검색 엔진을 실행한다. PDF의 Listing은 일부 import와 보조 코드를 생략하므로, 실제 실행은 저장소의 Notebook 원본을 기준으로 한다.</p>
+        </div>
+      </section>
+
+      <section id="summary">
+        <div class="sec-label">Summary</div>
+        <h2>3장의 핵심을 다섯 문장으로</h2>
+        <div class="summary-box">
+          <div class="summary-item"><div class="num">01</div><p>질의와 문서를 같은 특징 공간의 벡터로 표현하면 유사도 또는 특징 점수의 합으로 관련도를 계산할 수 있다.</p></div>
+          <div class="summary-item"><div class="num">02</div><p>TF는 문서 안의 일치 강도를, IDF는 전체 코퍼스에서 질의어의 중요도를 측정한다.</p></div>
+          <div class="summary-item"><div class="num">03</div><p>BM25는 TF-IDF를 바탕으로 반복 출현의 포화와 문서 길이 정규화를 제어하는 강력한 키워드 검색 기준선이다.</p></div>
+          <div class="summary-item"><div class="num">04</div><p>텍스트 점수도 하나의 함수이므로 거리·최신성·인기도·필드·구문 같은 신호와 덧셈 방식 또는 곱셈 방식으로 결합할 수 있다.</p></div>
+          <div class="summary-item"><div class="num">05</div><p>후보를 정하는 필터링과 순서를 정하는 스코어링을 분리하고, 도메인과 사용자에게 실제로 중요한 특징을 랭킹 함수에 반영해야 한다.</p></div>
+        </div>
+        <div class="source-links">
+          <a class="source-link" href="https://livebook.manning.com/book/ai-powered-search" target="_blank" rel="noopener">Manning LiveBook에서 보기 ↗</a>
+          <a class="source-link" href="https://github.com/treygrainger/ai-powered-search#readme" target="_blank" rel="noopener">실습 저장소 README ↗</a>
+          <a class="source-link" href="ch02_summary.html">← 2장 복습</a>
+        </div>
+      </section>
+
+      <footer class="page-foot">출처: <em>AI-Powered Search</em>, Chapter 3 — Ranking and content-based relevance (Manning). 원문을 바탕으로 개념과 실습 흐름 중심으로 재구성·요약한 자료입니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var sections = links.map(function (link) { return document.querySelector(link.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress');
+      var suppressUntil = 0;
+
+      function setActive(link) {
+        links.forEach(function (item) { item.classList.remove('active'); });
+        if (link) link.classList.add('active');
+      }
+
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+        });
+      });
+
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          if (Date.now() < suppressUntil) return;
+          entries.forEach(function (entry) {
+            var index = sections.indexOf(entry.target);
+            if (index !== -1 && entry.isIntersecting) setActive(links[index]);
+          });
+        }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (section) { if (section) observer.observe(section); });
+      }
+
+      function updateReadingProgress() {
+        var root = document.documentElement;
+        var available = root.scrollHeight - root.clientHeight;
+        var ratio = available > 0 ? root.scrollTop / available : 0;
+        progress.style.width = Math.min(100, Math.max(0, ratio * 100)) + '%';
+      }
+      document.addEventListener('scroll', updateReadingProgress, { passive: true });
+      updateReadingProgress();
+
+      var models = {
+        count: {
+          values: { doc1: 14, doc2: 12, doc3: 4 },
+          digits: 1,
+          verdict: '<strong>실패:</strong> 일반 단어 <code>the</code>와 <code>in</code>이 많은 doc1이 1위다. 반복 횟수가 의미보다 강하게 작동한다.'
+        },
+        tf: {
+          values: { doc1: 1.2456, doc2: 1.3842, doc3: 0.6696 },
+          digits: 4,
+          verdict: '<strong>부분 개선:</strong> 감쇠와 길이 보정으로 doc2가 1위가 됐지만, 핵심 단어를 모두 가진 doc3보다 doc1이 여전히 높다.'
+        },
+        tfidf: {
+          values: { doc1: 1.4215, doc2: 18.9633, doc3: 14.2099 },
+          digits: 4,
+          verdict: '<strong>의미 있는 순서:</strong> 희귀한 <code>cat</code>과 <code>hat</code>의 중요도가 반영되어 doc2 → doc3 → doc1이 된다.'
+        },
+        bm25: {
+          values: { doc1: 0.3132525, doc2: 0.68231964, doc3: 0.62850046 },
+          digits: 4,
+          verdict: '<strong>검색 엔진 기준선:</strong> TF 포화와 길이 정규화까지 포함하면서 TF-IDF와 같은 바람직한 상대 순위를 만든다.'
+        }
+      };
+      var scoreButtons = Array.prototype.slice.call(document.querySelectorAll('[data-score-model]'));
+      var scoreRows = Array.prototype.slice.call(document.querySelectorAll('.score-row'));
+      var scoreVerdict = document.getElementById('scoreVerdict');
+
+      function renderScores(name) {
+        var model = models[name];
+        var max = Math.max.apply(null, Object.keys(model.values).map(function (key) { return model.values[key]; }));
+        scoreRows.forEach(function (row) {
+          var value = model.values[row.getAttribute('data-doc')];
+          row.querySelector('.score-fill').style.width = (value / max * 100) + '%';
+          row.querySelector('.score-value').textContent = value.toFixed(model.digits);
+        });
+        scoreVerdict.innerHTML = model.verdict;
+        scoreButtons.forEach(function (button) {
+          button.setAttribute('aria-pressed', String(button.getAttribute('data-score-model') === name));
+        });
+      }
+      scoreButtons.forEach(function (button) {
+        button.addEventListener('click', function () { renderScores(button.getAttribute('data-score-model')); });
+      });
+      renderScores('count');
+
+      var storageKey = 'ai-powered-search-ch03-practice';
+      var practiceCards = Array.prototype.slice.call(document.querySelectorAll('.practice-card'));
+      var checks = practiceCards.map(function (card) { return card.querySelector('input[type="checkbox"]'); });
+      var filterButtons = Array.prototype.slice.call(document.querySelectorAll('[data-filter]'));
+      var practiceCount = document.getElementById('practiceCount');
+      var practiceProgress = document.getElementById('practiceProgress');
+      var practiceFill = document.getElementById('practiceFill');
+      var practiceComplete = document.getElementById('practiceComplete');
+      var emptyPractice = document.getElementById('emptyPractice');
+
+      function readSaved() {
+        try { return JSON.parse(localStorage.getItem(storageKey) || '{}'); }
+        catch (error) { return {}; }
+      }
+      function writeSaved(state) {
+        try { localStorage.setItem(storageKey, JSON.stringify(state)); }
+        catch (error) { /* The checklist still works for this page view. */ }
+      }
+      function syncPractice() {
+        var state = {};
+        var completed = 0;
+        checks.forEach(function (check, index) {
+          state[check.id] = check.checked;
+          practiceCards[index].classList.toggle('is-done', check.checked);
+          if (check.checked) completed += 1;
+        });
+        var percent = completed / checks.length * 100;
+        practiceCount.textContent = completed + ' / ' + checks.length;
+        practiceProgress.setAttribute('aria-valuenow', String(completed));
+        practiceFill.style.width = percent + '%';
+        practiceComplete.classList.toggle('show', completed === checks.length);
+        writeSaved(state);
+      }
+      var saved = readSaved();
+      checks.forEach(function (check) {
+        check.checked = Boolean(saved[check.id]);
+        check.setAttribute('aria-label', check.closest('.practice-card').querySelector('.practice-copy strong').textContent + ' 완료');
+        check.addEventListener('change', syncPractice);
+      });
+      syncPractice();
+
+      function applyFilter(filter) {
+        var visible = 0;
+        practiceCards.forEach(function (card) {
+          var show = filter === 'all' || card.getAttribute('data-level') === filter;
+          card.setAttribute('data-hidden', String(!show));
+          if (show) visible += 1;
+        });
+        emptyPractice.style.display = visible ? 'none' : 'block';
+        filterButtons.forEach(function (button) {
+          button.setAttribute('aria-pressed', String(button.getAttribute('data-filter') === filter));
+        });
+      }
+      filterButtons.forEach(function (button) {
+        button.addEventListener('click', function () { applyFilter(button.getAttribute('data-filter')); });
+      });
+      document.getElementById('resetPractice').addEventListener('click', function () {
+        checks.forEach(function (check) { check.checked = false; });
+        syncPractice();
+      });
+    })();
+  </script>
+</body>
+</html>

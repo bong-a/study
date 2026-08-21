@@ -1,0 +1,2125 @@
+<title>1장. AI 기반 검색이란 무엇인가 — 개념 정리</title>
+
+<style>
+  :root {
+    --bg: #F4F5F7;
+    --surface: #FFFFFF;
+    --surface-alt: #EAEDF2;
+    --ink: #1B2130;
+    --ink-muted: #5B6475;
+    --ink-faint: #8A93A3;
+    --rule: #DBE0E8;
+    --accent: #3454D1;
+    --accent-soft: #E7ECFC;
+    --accent-2: #C97B1A;
+    --accent-2-soft: #F7EAD4;
+    --accent-fill: #3454D1;
+    --radius: 10px;
+    --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #12151C;
+    --surface: #1A1F29;
+    --surface-alt: #212838;
+    --ink: #E7E9EE;
+    --ink-muted: #9AA3B2;
+    --ink-faint: #6B7383;
+    --rule: #2A3140;
+    --accent: #7C93FF;
+    --accent-soft: #262E48;
+    --accent-2: #E3A857;
+    --accent-2-soft: #3A2E1C;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12151C;
+      --surface: #1A1F29;
+      --surface-alt: #212838;
+      --ink: #E7E9EE;
+      --ink-muted: #9AA3B2;
+      --ink-faint: #6B7383;
+      --rule: #2A3140;
+      --accent: #7C93FF;
+      --accent-soft: #262E48;
+      --accent-2: #E3A857;
+      --accent-2-soft: #3A2E1C;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    display: flex;
+    align-items: flex-start;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px;
+    gap: 48px;
+  }
+
+  /* ---- TOC ---- */
+  .toc {
+    position: sticky;
+    top: 24px;
+    flex: 0 0 208px;
+    padding-top: 8px;
+    font-size: 13.5px;
+  }
+  .toc-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+  .toc a {
+    display: block;
+    color: var(--ink-muted);
+    text-decoration: none;
+    padding: 6px 10px 6px 12px;
+    margin: 1px 0;
+    border-left: 2px solid var(--rule);
+    border-radius: 0 6px 6px 0;
+    transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+  }
+  .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+  .toc a:active { transform: scale(0.98); }
+  .toc a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 700;
+  }
+  .toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toc a:not(.sub) { margin-top: 12px; }
+  .toc-eyebrow + a { margin-top: 0; }
+  .toc a.sub {
+    font-size: 12px;
+    padding-left: 24px;
+    color: var(--ink-faint);
+  }
+  .toc a.sub + a.sub { margin-top: 0; }
+  .toc a.sub.active {
+    color: var(--accent-2);
+    border-left-color: var(--accent-2);
+    background: var(--accent-2-soft);
+    font-weight: 700;
+  }
+  .toc a.sub2 {
+    padding-left: 34px;
+    font-size: 11.5px;
+    border-left-color: transparent;
+  }
+  .toc a.sub2.active { border-left-color: var(--accent-2); }
+
+  @media (max-width: 900px) {
+    .toc { display: none; }
+    .page { padding: 0 20px; }
+  }
+
+  /* ---- Main content ---- */
+  .content { flex: 1 1 auto; min-width: 0; max-width: 700px; padding: 56px 0 96px; }
+
+  .back-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-2);
+    background: var(--accent-2-soft);
+    border-radius: 999px;
+    padding: 6px 14px;
+    text-decoration: none;
+    margin-bottom: 28px;
+    transition: background-color .15s, color .15s;
+  }
+  .back-nav:hover { background: var(--accent-2); color: #fff; }
+  .back-nav:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; }
+
+  .hit {
+    color: var(--accent-2);
+    background: var(--accent-2-soft);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-weight: 600;
+  }
+
+  .hero {
+    margin-bottom: 56px;
+  }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(30px, 4vw, 40px);
+    line-height: 1.28;
+    margin: 0 0 16px;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .hero .lede {
+    font-size: 16.5px;
+    color: var(--ink-muted);
+    max-width: 60ch;
+    margin: 0 0 28px;
+  }
+  .cover-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .cover-tags span {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  section > .sec-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  section > h2 {
+    font-family: var(--serif);
+    font-size: 26px;
+    line-height: 1.35;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  section > .sec-sub {
+    color: var(--ink-muted);
+    font-size: 15px;
+    margin: 0 0 28px;
+  }
+
+  h3 {
+    font-family: var(--serif);
+    font-size: 19px;
+    margin: 36px 0 12px;
+    line-height: 1.4;
+    scroll-margin-top: 24px;
+  }
+  h3:first-child { margin-top: 0; }
+  h3 .sub-num {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-2);
+    background: var(--accent-2-soft);
+    border-radius: 5px;
+    padding: 2px 7px;
+    margin-right: 10px;
+    vertical-align: middle;
+    letter-spacing: 0.02em;
+  }
+
+  p { margin: 0 0 16px; font-size: 15.5px; color: var(--ink); }
+  p.muted { color: var(--ink-muted); }
+
+  ul.plain, ol.plain { margin: 0 0 16px; padding-left: 22px; }
+  ul.plain li, ol.plain li { margin-bottom: 8px; font-size: 15.5px; }
+
+  strong { font-weight: 600; }
+  em.term { font-style: normal; font-weight: 600; color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  hr.rule {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 40px 0;
+  }
+
+  .mini-head {
+    font-size: 14.5px;
+    margin: 28px 0 10px;
+    color: var(--ink-muted);
+    font-weight: 700;
+  }
+
+  /* ---- Callout / definition box ---- */
+  .box {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin: 20px 0;
+  }
+  .box.accent { background: var(--accent-soft); border-color: transparent; }
+  .box.amber { background: var(--accent-2-soft); border-color: transparent; }
+  .box-title {
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .box.amber .box-title { color: var(--accent-2); }
+  .box p:last-child { margin-bottom: 0; }
+
+  /* ---- Card grid (6 expectations) ---- */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 20px 0 28px;
+  }
+  @media (max-width: 560px) { .card-grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+  }
+  .card .card-h {
+    font-weight: 700;
+    font-size: 14.5px;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+  .card .card-h::before {
+    content: "";
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .card p { font-size: 13.8px; color: var(--ink-muted); margin: 0; }
+
+  /* ---- Diagram: AI/ML/DL/Search venn ---- */
+  .figure { margin: 24px 0 32px; }
+  .figure-cap {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-top: 10px;
+    text-align: center;
+  }
+  .figure-cap b { color: var(--ink-muted); font-weight: 600; }
+
+  .venn-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+  }
+  .venn {
+    position: relative;
+    width: 300px;
+    height: 260px;
+    flex: 0 0 auto;
+  }
+  .venn .ring {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    mix-blend-mode: normal;
+  }
+  .venn .r1 { width: 300px; height: 260px; top: 0; left: 0; background: var(--accent-soft); border: 1px solid var(--rule); }
+  .venn .r2 { width: 210px; height: 190px; top: 34px; left: 45px; background: var(--surface-alt); border: 1px solid var(--rule); }
+  .venn .r3 { width: 120px; height: 108px; top: 66px; left: 90px; background: var(--accent-2-soft); border: 1px solid var(--rule); }
+  .venn .lbl-ds {
+    position: absolute; top: 8px; right: 4px;
+    font-size: 11.5px; color: var(--ink-muted); font-weight: 500;
+  }
+
+  /* ---- Three-column technique table ---- */
+  .tech-cols {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 20px 0;
+  }
+  @media (max-width: 640px) { .tech-cols { grid-template-columns: 1fr; } }
+  .tech-col {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 16px 16px 6px;
+  }
+  .tech-col.mid { border-top-color: var(--accent-2); }
+  .tech-col.deep { border-top-color: #6E8C6B; }
+  .tech-col h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 10px;
+  }
+  .tech-col ul { margin: 0; padding-left: 18px; }
+  .tech-col li { font-size: 13.5px; margin-bottom: 8px; color: var(--ink-muted); }
+
+  /* ---- Spectrum diagram ---- */
+  .spectrum-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 28px 24px 20px;
+  }
+  .spectrum-bar {
+    height: 10px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-soft) 50%, var(--accent-2) 100%);
+    margin-bottom: 14px;
+  }
+  .spectrum-labels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px 12px;
+  }
+  @media (max-width: 640px) { .spectrum-labels { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 380px) { .spectrum-labels { grid-template-columns: 1fr; } }
+  .spectrum-labels div { text-align: center; }
+  @media (max-width: 640px) { .spectrum-labels div { text-align: left; } }
+  .spectrum-labels .name { font-size: 12.5px; font-weight: 700; }
+  .spectrum-labels .desc { font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+
+  /* ---- Triple venn: user intent ---- */
+  .intent-venn {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    height: 300px;
+    margin: 0 auto;
+  }
+  .intent-venn .circle {
+    position: absolute;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 20px;
+    mix-blend-mode: multiply;
+  }
+  :root[data-theme="dark"] .intent-venn .circle { mix-blend-mode: screen; }
+  .intent-venn .c1 { background: color-mix(in srgb, var(--accent) 28%, transparent); top: 0; left: 10px; }
+  .intent-venn .c2 { background: color-mix(in srgb, var(--accent-2) 32%, transparent); top: 0; right: 10px; }
+  .intent-venn .c3 { background: color-mix(in srgb, #4E9B7A 32%, transparent); bottom: 0; left: 50%; transform: translateX(-50%); }
+  .intent-venn .lbl { position: absolute; font-size: 11px; font-weight: 700; color: var(--ink-muted); }
+  .intent-venn .lbl.content { top: 14px; left: 30px; color: var(--accent); }
+  .intent-venn .lbl.user { top: 14px; right: 30px; color: var(--accent-2); }
+  .intent-venn .lbl.domain { bottom: 8px; left: 50%; transform: translateX(-50%); color: #4E9B7A; }
+  .intent-venn .lbl.center {
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 12px; color: var(--ink); background: var(--surface);
+    padding: 4px 10px; border-radius: 999px; border: 1px solid var(--rule);
+  }
+
+  /* ---- Progression staircase ---- */
+  .stair {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 20px 16px 16px;
+    overflow-x: auto;
+  }
+  .stair-step {
+    flex: 1 1 0;
+    min-width: 110px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .stair-step .bar {
+    background: var(--accent-soft);
+    border: 1px solid var(--rule);
+    border-radius: 6px 6px 0 0;
+    padding: 10px 10px;
+  }
+  .stair-step:nth-child(1) .bar { height: 60px; }
+  .stair-step:nth-child(2) .bar { height: 90px; }
+  .stair-step:nth-child(3) .bar { height: 120px; }
+  .stair-step:nth-child(4) .bar { height: 150px; background: var(--accent-2-soft); }
+  .stair-step .step-title { font-size: 12.5px; font-weight: 700; margin-bottom: 4px; }
+  .stair-step .step-desc { font-size: 11px; color: var(--ink-muted); line-height: 1.5; }
+  .stair-step .step-num { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-bottom: 30px; display:block; }
+
+  /* ---- Feedback loop ---- */
+  .loop-wrap {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+  }
+  .loop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .loop-node {
+    flex: 1 1 0;
+    min-width: 120px;
+    text-align: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 10px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .loop-arrow {
+    color: var(--ink-faint);
+    font-size: 18px;
+    flex: 0 0 auto;
+  }
+  .loop-back {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  /* ---- Signal type list ---- */
+  .signal-types { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+  .signal-type {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    align-items: start;
+  }
+  @media (max-width: 560px) { .signal-type { grid-template-columns: 1fr; } }
+  .signal-type .st-name { font-weight: 700; font-size: 13.5px; color: var(--accent); }
+  .signal-type p { margin: 0; font-size: 13.8px; color: var(--ink-muted); }
+
+  /* ---- Generative search flow ---- */
+  .gen-flow {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+  }
+  @media (max-width: 700px) { .gen-flow { grid-template-columns: repeat(2, 1fr); } }
+  .gen-step {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px 14px;
+    position: relative;
+  }
+  .gen-step .gs-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .gen-step .gs-desc { font-size: 12px; color: var(--ink-muted); line-height: 1.5; }
+  .gen-step.emphasis { border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---- Extractive vs abstractive QA example ---- */
+  .qa-docs {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .qa-docs .qa-q {
+    font-size: 13.5px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .qa-docs ul { margin: 0; padding-left: 18px; }
+  .qa-docs li { font-size: 13.5px; color: var(--ink-muted); margin-bottom: 6px; }
+  .qa-docs li b { color: var(--ink); font-weight: 700; }
+
+  .qa-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 0 0 20px;
+  }
+  @media (max-width: 600px) { .qa-compare { grid-template-columns: 1fr; } }
+  .qa-card {
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .qa-card.extractive { border-top: 3px solid var(--ink-faint); }
+  .qa-card.abstractive { border-top: 3px solid var(--accent); background: var(--accent-soft); border-color: transparent; }
+  .qa-card .qa-label {
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .qa-card.abstractive .qa-label { color: var(--accent); }
+  .qa-card .qa-answer {
+    font-size: 13.8px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .qa-card .qa-note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  /* ---- Architecture two-col ---- */
+  .arch-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+  }
+  @media (max-width: 640px) { .arch-cols { grid-template-columns: 1fr; } }
+  .arch-col {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .arch-col h4 { margin: 0 0 10px; font-size: 14.5px; }
+  .arch-col ul { margin: 0; padding-left: 18px; }
+  .arch-col li { font-size: 13.3px; color: var(--ink-muted); margin-bottom: 7px; }
+
+  /* ---- Summary checklist ---- */
+  .summary-box {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 8px 4px;
+  }
+  .summary-item {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .summary-item:last-child { border-bottom: none; }
+  .summary-item .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    flex: 0 0 22px;
+    padding-top: 2px;
+  }
+  .summary-item p { margin: 0; font-size: 14.5px; }
+
+  footer.page-foot {
+    margin-top: 56px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+
+  a { color: var(--accent); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+
+  /* ---- Glossary ---- */
+  .glossary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 20px 0 8px;
+  }
+  @media (max-width: 560px) { .glossary-grid { grid-template-columns: 1fr; } }
+  .term-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .term-card .term-name {
+    font-weight: 700;
+    font-size: 13.8px;
+    color: var(--accent);
+    margin-bottom: 5px;
+  }
+  .term-card .term-name .term-en {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin-left: 6px;
+  }
+  .term-card p { margin: 0; font-size: 12.8px; color: var(--ink-muted); line-height: 1.55; }
+
+  /* ---- Data table ---- */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+  }
+  table.data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.data-table th, table.data-table td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  table.data-table th {
+    background: var(--surface-alt);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  table.data-table tr:last-child td { border-bottom: none; }
+  table.data-table td.center, table.data-table th.center { text-align: center; }
+
+  /* ---- Vertical flow (facet narrowing) ---- */
+  .flow-vert {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 18px;
+  }
+  .flow-vert .flow-node {
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: center;
+    font-family: var(--mono);
+  }
+  .flow-vert .flow-node.result {
+    background: var(--accent-soft);
+    border-color: transparent;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .flow-vert .flow-down { color: var(--ink-faint); font-size: 14px; line-height: 1; padding: 2px 0; }
+
+  /* ---- Chips ---- */
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+  .chip-row span {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 12px;
+  }
+
+  /* ---- Facet demo mockup ---- */
+  .facet-demo {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 18px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+  @media (max-width: 640px) { .facet-demo { grid-template-columns: 1fr; } }
+  .facet-panel h5 {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-faint);
+    margin: 16px 0 8px;
+    font-weight: 700;
+  }
+  .facet-panel h5:first-child { margin-top: 0; }
+  .facet-panel .opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--ink-muted);
+  }
+  .facet-panel .opt .box-mark {
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--rule);
+    border-radius: 3px;
+    flex: 0 0 auto;
+  }
+  .facet-panel .opt.checked { color: var(--ink); font-weight: 700; }
+  .facet-panel .opt.checked .box-mark { background: var(--accent); border-color: var(--accent); }
+  .facet-result { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px; }
+  .facet-result .fr-count {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .facet-result .fr-label { font-size: 12px; color: var(--ink-faint); }
+
+  /* ---- Formula box ---- */
+  .formula {
+    font-family: var(--mono);
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-size: 13.5px;
+    line-height: 2;
+    text-align: center;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .formula .op { color: var(--accent-2); font-weight: 700; }
+
+  /* ---- Score compare ---- */
+  .score-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+  @media (max-width: 560px) { .score-compare { grid-template-columns: 1fr; } }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+  }
+  .score-card .sc-title { font-weight: 700; font-size: 13.5px; margin-bottom: 10px; }
+  .score-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--ink-muted);
+    padding: 3px 0;
+    font-family: var(--mono);
+  }
+  .score-row.total {
+    border-top: 1px solid var(--rule);
+    margin-top: 6px;
+    padding-top: 8px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .score-card.winner { border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---- Supplementary inset ---- */
+  .plus-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-2);
+    background: var(--accent-2-soft);
+    border-radius: 5px;
+    padding: 2px 8px;
+    margin-right: 8px;
+    letter-spacing: .03em;
+    vertical-align: middle;
+  }
+  .core-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--accent-fill);
+    border-radius: 5px;
+    padding: 2px 8px;
+    margin-right: 8px;
+    letter-spacing: .02em;
+    vertical-align: middle;
+  }
+  .box.core { border: 1.5px solid var(--accent); }
+  .inset {
+    border-left: 3px solid var(--accent-2);
+    background: var(--surface-alt);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 20px 22px;
+    margin: 22px 0;
+  }
+  .inset h4 { margin: 0 0 14px; font-size: 15.5px; font-family: var(--serif); }
+  .inset h5 {
+    font-size: 12.5px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: var(--ink-faint);
+    margin: 18px 0 8px;
+  }
+  .inset h5:first-of-type { margin-top: 0; }
+  .example-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 14px 0;
+  }
+  @media (max-width: 600px) { .example-grid { grid-template-columns: 1fr; } }
+  .example-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .example-card .ex-title { font-weight: 700; font-size: 13.3px; margin-bottom: 6px; }
+  .example-card p { margin: 0; font-size: 12.8px; color: var(--ink-muted); line-height: 1.55; }
+  .example-card .ex-flow { margin-top: 8px; font-size: 12px; color: var(--ink-faint); font-family: var(--mono); }
+
+  /* ---- AI briefing UI mockup (real-world example) ---- */
+  .briefing-demo {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin: 18px 0;
+  }
+  .briefing-demo .bd-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .briefing-demo .bd-badge {
+    background: linear-gradient(135deg, var(--accent-fill), var(--accent-2));
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+  }
+  .briefing-demo .bd-title { font-weight: 700; font-size: 13.5px; }
+  .briefing-demo .bd-caveat { font-size: 11px; color: var(--ink-faint); margin-left: auto; }
+  .briefing-demo .bd-thumbs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .briefing-demo .bd-thumb {
+    flex: 1;
+    height: 52px;
+    border-radius: 8px;
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-align: center;
+    padding: 4px;
+  }
+  .briefing-demo .bd-text {
+    font-size: 13px;
+    color: var(--ink-muted);
+    line-height: 1.65;
+    margin-bottom: 14px;
+  }
+  .briefing-demo .bd-cite {
+    display: inline-block;
+    font-size: 10.5px;
+    background: var(--surface-alt);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin-left: 4px;
+    color: var(--ink-faint);
+    vertical-align: middle;
+  }
+  .briefing-demo .bd-sub { font-weight: 700; font-size: 13px; margin: 0 0 8px; }
+  .briefing-demo ul.bd-bullets { margin: 0 0 14px; padding-left: 18px; }
+  .briefing-demo ul.bd-bullets li { font-size: 12.5px; color: var(--ink-muted); margin-bottom: 5px; }
+  .briefing-demo .bd-input {
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 9px 16px;
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    background: var(--surface-alt);
+  }
+  .briefing-map { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 0; }
+  .briefing-map .bm-row {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 4px 12px;
+    font-size: 12.8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--rule);
+  }
+  .briefing-map .bm-row:first-child { border-top: none; }
+  .briefing-map .bm-ui { font-weight: 700; color: var(--ink); }
+  .briefing-map .bm-concept { color: var(--ink-muted); }
+  @media (max-width: 520px) {
+    .briefing-map .bm-row { grid-template-columns: 1fr; gap: 2px; }
+  }
+  .briefing-map .bm-concept strong { color: var(--accent); }
+
+  /* ---- Thesis / core philosophy callout ---- */
+  .thesis {
+    margin: 0 0 56px;
+    padding: 34px 36px 30px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent-2-soft));
+    border: 1px solid var(--rule);
+  }
+  .thesis .thesis-eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .thesis .thesis-mark {
+    font-family: var(--serif);
+    font-size: 44px;
+    line-height: 0.6;
+    color: var(--accent);
+    opacity: 0.55;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .thesis blockquote {
+    margin: 0 0 16px;
+    font-family: var(--serif);
+    font-size: 19.5px;
+    line-height: 1.62;
+    color: var(--ink);
+    text-wrap: balance;
+    max-width: 58ch;
+  }
+  .thesis .thesis-cite {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+  }
+  .thesis .thesis-cite b { color: var(--accent); font-weight: 700; }
+</style>
+
+<div class="page">
+  <nav class="toc" aria-label="목차">
+    <div class="toc-eyebrow">목차</div>
+    <a href="#glossary" data-toc>용어 정리</a>
+    <a href="#intro" data-toc>들어가며</a>
+    <a href="#sec1" data-toc>1.1 AI 기반 검색이란</a>
+    <a href="#sec2" data-toc>1.2 사용자 의도 이해</a>
+    <a href="#s121" class="sub" data-toc>1.2.1 검색 엔진</a>
+    <a href="#facet" class="sub sub2" data-toc>패싯 검색</a>
+    <a href="#s122" class="sub" data-toc>1.2.2 추천 엔진</a>
+    <a href="#s123" class="sub" data-toc>1.2.3 개인화 스펙트럼</a>
+    <a href="#s124" class="sub" data-toc>1.2.4 시맨틱 검색</a>
+    <a href="#s125" class="sub" data-toc>1.2.5 사용자 의도의 차원</a>
+    <a href="#sec3" data-toc>1.3 동작 원리</a>
+    <a href="#s131" class="sub" data-toc>1.3.1 핵심 검색 기반</a>
+    <a href="#s132" class="sub" data-toc>1.3.2 피드백 루프</a>
+    <a href="#s133" class="sub" data-toc>1.3.3 신호 기반 학습</a>
+    <a href="#s134" class="sub" data-toc>1.3.4 콘텐츠·도메인 인텔리전스</a>
+    <a href="#s135" class="sub" data-toc>1.3.5 생성형 AI와 RAG</a>
+    <a href="#s136" class="sub" data-toc>1.3.6 큐레이션 vs 블랙박스</a>
+    <a href="#s137" class="sub" data-toc>1.3.7 아키텍처</a>
+    <a href="#summary" data-toc>핵심 요약</a>
+  </nav>
+
+  <main class="content">
+
+    <a class="back-nav" href="../index.html">← 스터디 인덱스</a>
+
+    <header class="hero">
+      <div class="kicker">AI-Powered Search · Chapter 1</div>
+      <h1>AI 기반 검색이란 무엇인가</h1>
+      <p class="lede">
+        검색창은 이제 모든 앱의 기본 인터페이스가 되었다. 이 장에서는 "AI 기반 검색"이 전통적인
+        검색과 무엇이 다른지, 사용자 의도를 어떻게 이해하는지, 그리고 실제로 어떤 구성 요소들이
+        모여 스스로 학습하는 검색 시스템을 만드는지를 개념 중심으로 정리한다.
+      </p>
+      <div class="cover-tags">
+        <span>AI 기반 검색의 정의</span>
+        <span>사용자 의도 이해</span>
+        <span>동작 원리</span>
+        <span>콘텐츠 · 행동 인텔리전스</span>
+        <span>아키텍처</span>
+      </div>
+    </header>
+
+    <div class="thesis">
+      <div class="thesis-eyebrow">이 책 전체를 관통하는 한 문장</div>
+      <span class="thesis-mark">&ldquo;</span>
+      <blockquote>
+        검색은 "관련성 튜닝"을 사람이 수작업으로 하던 일에서, <strong>콘텐츠와 사용자 신호를
+        스스로 학습해 계속 좋아지는 시스템</strong>으로 진화하고 있다 — 단, 그 자동화 안에는
+        항상 <span class="hit">사람이 검증·개입할 수 있는 여지</span>를 남겨둔다.
+      </blockquote>
+      <p class="thesis-cite">
+        <b>자동화</b>(1.3.1 핵심 검색 기반 — 관련성 엔지니어의 일을 알고리즘이 대신하게 만드는
+        피드백 루프)와 <b>사람의 통제권</b>(1.3.6 큐레이션 가능한 AI vs. 블랙박스 AI — "AI가
+        보조하는 사람의 큐레이션")이 서로 다른 절에서 반복해서 등장하는 것도 이 책이 결국
+        하나의 목표를 향하고 있기 때문이다.
+      </p>
+    </div>
+
+    <!-- ================= GLOSSARY ================= -->
+    <section id="glossary">
+      <div class="sec-label">Glossary</div>
+      <h2>핵심 용어 정리</h2>
+      <p class="sec-sub">본문에서 반복해서 등장하는 용어를 먼저 훑어보면 이후 내용이 훨씬 쉽게
+      읽힌다.</p>
+
+      <div class="glossary-grid">
+        <div class="term-card">
+          <div class="term-name">AI 기반 검색<span class="term-en">AI-powered search</span></div>
+          <p>도메인·사용자·콘텐츠를 자동으로 학습해 관련성을 계속 스스로 개선하는 검색 시스템.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">RAG<span class="term-en">Retrieval Augmented Generation</span></div>
+          <p>검색 엔진을 지식 소스로 써서 LLM에 정확하고 최신인 맥락을 제공해 환각을 줄이는 기법.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">LLM · 파운데이션 모델<span class="term-en">Foundation model</span></div>
+          <p>방대한 텍스트로 학습한 대형 신경망. 이해·생성·요약·분류에 두루 쓰이는 범용 모델.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">임베딩<span class="term-en">Embedding</span></div>
+          <p>텍스트·이미지 등 콘텐츠의 의미를 담은 숫자 벡터. 의미 기반 유사도 검색에 사용된다.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">신호<span class="term-en">Signal</span></div>
+          <p>클릭, 좋아요, 구매, 체류 시간 등 사용자와 검색 결과의 모든 상호작용 데이터.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">부스트<span class="term-en">Boost</span></div>
+          <p>특정 신호나 필드에 곱하는 가중치. 최종 랭킹 점수에서 그 신호의 중요도를 결정한다.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">Learning to Rank<span class="term-en">LTR</span></div>
+          <p>사람이 부스트 값을 직접 정하는 대신, 머신러닝이 최적 가중치를 자동으로 학습하는 랭킹 기법.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">반영된 지능<span class="term-en">Reflected intelligence</span></div>
+          <p>사용자 행동 → 신호 수집 → 모델 개선 → 결과 반영으로 이어지는 지속적 피드백 루프.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">개인화 스펙트럼<span class="term-en">Personalization spectrum</span></div>
+          <p>전통적 키워드 검색부터 전통적 추천까지, 프로필 반영 정도에 따라 이어지는 연속선.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">시맨틱 검색<span class="term-en">Semantic search</span></div>
+          <p>문자열이 아니라 엔터티·개념 등 "의미"를 기준으로 문서를 찾는 검색 방식.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">지식 그래프<span class="term-en">Knowledge graph</span></div>
+          <p>엔터티와 그 관계를 표현한 그래프. 도메인 이해와 시맨틱 검색의 기반이 된다.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">시맨틱 지식 그래프<span class="term-en">SKG</span></div>
+          <p>이 세상의 사물(엔터티)들이 서로 어떻게 연결되어 있는지를 컴퓨터가 사람 대신 자동으로
+          학습해서 만든 그래프.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">구문 탐지<span class="term-en">Phrase detection</span></div>
+          <p>두 단어가 우연보다 훨씬 자주 붙어 나타나는지 통계로 판단해, 하나의 의미 단위(구)인지
+          확인하는 기법.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">패싯 검색<span class="term-en">Faceted search</span></div>
+          <p>검색 결과를 브랜드·가격 등 속성(Facet)별로 나눠, 사용자가 조건을 좁혀가게 하는 필터 검색.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">콘웨이의 법칙<span class="term-en">Conway's Law</span></div>
+          <p>시스템 구조는 그 시스템을 설계한 조직의 소통 구조를 그대로 닮는다는 법칙.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">추출적 vs 추상적 질의응답<span class="term-en">Extractive / Abstractive QA</span></div>
+          <p>추출적은 문서 속 문장을 그대로 반환, 추상적은 여러 문서를 종합해 새 문장을 생성한다.</p>
+        </div>
+        <div class="term-card">
+          <div class="term-name">관련성 엔지니어링<span class="term-en">Relevance engineering</span></div>
+          <p>필드 가중치, 부스트, 텍스트 분석 등을 조정해 검색 관련성을 수작업으로 튜닝하는 전문 분야.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= INTRO ================= -->
+    <section id="intro">
+      <div class="sec-label">Why now</div>
+      <h2>왜 지금 "AI 기반 검색"인가</h2>
+      <p>
+        검색은 더 이상 구글 같은 웹 검색만을 뜻하지 않는다. 쇼핑, 동영상 추천, 이메일 정렬, 뉴스
+        피드까지 — 우리가 매일 만나는 대부분의 디지털 경험은 결국 <em class="term">검색되고 순위가
+        매겨진 콘텐츠</em>를 보여주는 것이다. 그리고 ChatGPT, Claude, Gemini 같은 대형 언어 모델
+        (LLM)의 등장으로, 이 검색 기술에 대한 사용자의 기대치는 과거 어느 때보다 높아졌다.
+      </p>
+      <p>
+        과거의 검색이 "파란 링크 10개"를 나열하는 것이었다면, 오늘날 사용자는 검색 엔진이 다음과
+        같기를 기대한다.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-h">도메인 인식적 (Domain-aware)</div>
+          <p>일반적인 문자열 통계가 아니라, 해당 분야의 엔터티·용어·카테고리를 이해한다.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">맥락적 · 개인화 (Contextual)</div>
+          <p>사용자 맥락, 이전 검색, 프로필과 도메인 맥락(재고, 비즈니스 규칙)을 함께 고려한다.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">대화형 (Conversational)</div>
+          <p>자연어로 대화하며 다단계 탐색 과정을 안내하고, 그 과정에서 새로운 정보를 학습한다.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">멀티모달 (Multi-modal)</div>
+          <p>텍스트, 음성, 이미지, 영상 등 여러 형태의 질의를 이해하고 상호 검색한다.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">지능적 (Intelligent)</div>
+          <p>철자 교정, 구문·속성 감지, 의도 분류 등으로 사용자가 "의미하는 바"를 이해한다.</p>
+        </div>
+        <div class="card">
+          <div class="card-h">어시스티브 (Assistive)</div>
+          <p>단순 링크가 아니라 답변, 요약, 설명, 실행 가능한 액션까지 제공한다.</p>
+        </div>
+      </div>
+
+      <div class="box amber">
+        <div class="box-title">왜 중요한가</div>
+        <p>
+          오늘날 최고의 LLM조차 정보 소스에 근거하지 않으면 환각(hallucination)을 일으킨다.
+          그래서 검색 엔진이나 벡터 데이터베이스를 지식 소스로 활용해 LLM에 정확하고 최신인 맥락을
+          제공하는 기법인 <em class="term">검색 증강 생성(RAG)</em>이, 생성형 AI의 정확도를 높이는
+          가장 신뢰할 수 있는 방법 중 하나로 떠올랐다.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= SECTION 1 ================= -->
+    <section id="sec1">
+      <div class="sec-label">1.1</div>
+      <h2>AI 기반 검색이란 무엇인가</h2>
+      <p class="sec-sub">AI · 머신러닝 · 딥러닝 · 검색은 어떻게 겹치는가</p>
+
+      <p>
+        소프트웨어 개발 맥락에서 <em class="term">인공지능(AI)</em>은 "과거에는 사람의 지능이
+        필요했던 작업을 수행하는 프로그램"을 뜻한다. 규칙 기반 시스템도 AI로 간주되지만, 이 책은
+        주로 데이터를 학습해 스스로 성능을 개선하는 <em class="term">머신러닝</em> 기반 AI를 다룬다.
+      </p>
+      <p>
+        <em class="term">검색(search)</em>은 질의에 맞는 문서를 찾는 <strong>매칭(matching)</strong>과
+        관련도 순으로 정렬하는 <strong>랭킹(ranking)</strong>이라는 두 핵심 단계로 이루어진다. 여기에
+        질의를 이해하는 전처리, 답을 추출·요약하는 후처리가 더해진다.
+      </p>
+
+      <h3>네 영역의 관계</h3>
+      <p>AI, 데이터 과학, 머신러닝, 딥러닝, 검색은 서로 포함 관계이거나 교집합 관계를 이룬다.</p>
+
+      <figure class="figure">
+        <div class="venn-wrap">
+          <div class="venn">
+            <span class="lbl-ds">데이터 과학</span>
+            <div class="ring r1">인공지능 (AI)</div>
+            <div class="ring r2">머신러닝 (ML)</div>
+            <div class="ring r3">딥러닝 (DL)</div>
+          </div>
+        </div>
+        <p class="figure-cap"><b>그림 1.1 재구성 ·</b> 딥러닝은 머신러닝의 부분집합이고, 머신러닝은
+        AI의 부분집합이다. 검색은 이 모든 영역과 교차하며, 데이터 과학은 이들과 넓게 겹치지만
+        완전한 상위·하위집합은 아니다.</p>
+      </figure>
+
+      <p>
+        이 책의 초점은 <strong>검색(정보 검색)과 AI의 교집합</strong>, 특히 머신러닝·딥러닝 기법으로
+        검색 결과의 관련성을 높이고, 관련성 튜닝 과정을 자동화하는 데 있다.
+      </p>
+
+      <h3>AI 기반 검색 기법의 세 층위</h3>
+      <p>이 책이 다루는 기법들은 아래처럼 AI 전용 / 머신러닝 / 딥러닝 층위로 나눌 수 있다.</p>
+
+      <div class="tech-cols">
+        <div class="tech-col">
+          <h4>AI 전용 기법</h4>
+          <ul>
+            <li>질의응답 시스템</li>
+            <li>가상 비서 / 챗봇</li>
+            <li>규칙 기반 관련도 튜닝</li>
+          </ul>
+        </div>
+        <div class="tech-col mid">
+          <h4>머신러닝 (ML)</h4>
+          <ul>
+            <li>신호 부스팅 모델</li>
+            <li>Learning to Rank</li>
+            <li>협업 필터링 · 개인화</li>
+            <li>콘텐츠 클러스터링</li>
+            <li>NLP / 엔티티 해석</li>
+            <li>시맨틱 지식 그래프</li>
+          </ul>
+        </div>
+        <div class="tech-col deep">
+          <h4>딥러닝 (DL)</h4>
+          <ul>
+            <li>파운데이션 모델 / LLM</li>
+            <li>신경망 검색 · 벡터 검색</li>
+            <li>워드 임베딩</li>
+            <li>멀티모달 검색(이미지·영상)</li>
+            <li>생성형 검색 · 요약</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-title">핵심 포인트</div>
+        <p>
+          규칙 기반 챗봇처럼 머신러닝 없이도 AI로 부를 수 있는 기법이 있는 반면, 신호 부스팅·랭킹
+          학습·지식 그래프 학습처럼 <strong>사용자 행동 신호(클릭, 좋아요, 구매 등)로 데이터를 학습</strong>하는
+          순간 머신러닝 영역에 들어선다. 그리고 신경망으로 텍스트·이미지의 <em class="term">의미</em>를
+          학습해 임베딩을 생성하고, 답을 생성·요약하는 단계가 딥러닝 영역이다.
+        </p>
+      </div>
+
+      <p>
+        파운데이션 모델(LLM)은 방대한 인간 지식을 압축해 담고 있지만, 이는 <strong>손실 압축</strong>이라
+        원본 사실이 그대로 저장되지 않아 환각이 발생하기 쉽다. 그래서 검색 엔진이 사실 기반 지식
+        소스 역할을 하는 RAG가 중요해진다.
+      </p>
+    </section>
+
+    <!-- ================= SECTION 2 ================= -->
+    <section id="sec2">
+      <div class="sec-label">1.2</div>
+      <h2>사용자 의도 이해하기</h2>
+      <p class="sec-sub">검색엔진과 추천엔진은 사실 같은 문제의 양 극단이다</p>
+
+      <h3 id="s121"><span class="sub-num">1.2.1</span>검색 엔진이란?</h3>
+      <p>
+        검색 엔진은 보통 텍스트박스에 질의를 <strong>명시적으로 입력</strong>하고 응답을 받는
+        기술로 여겨진다. 결과는 리스트로 반환되고, 추가 필터링 옵션이 함께 제공된다. 한 검색
+        세션이 끝나면 사용자는 대개 이전 검색 맥락 없이 새 질의로 다시 시작한다.
+      </p>
+      <p>
+        검색 엔진은 소프트웨어 공학에서 가장 크로스펑셔널한 시스템 중 하나다. 수백만~수조 개
+        문서에 대해 수백 밀리초 안에 응답해야 하는 대규모 확장성, 역색인이나 ANN 기반 벡터
+        저장소 같은 검색 전용 자료구조, 선형대수·벡터 유사도 채점, 텍스트 분석과 자연어 처리
+        지식이 두루 필요하다. 검색 엔진이 제공하는 대표적인 기능으로는 철자 교정, 자동완성,
+        <strong>패싯(faceting)</strong>, 텍스트 하이라이팅, 임베딩 등이 있다.
+      </p>
+
+      <div class="inset" id="facet">
+        <h4><span class="plus-badge">실무 개념</span>패싯 검색(Faceted Search)이란?</h4>
+
+        <div class="box accent" style="margin:0 0 16px;">
+          <p style="margin:0;">
+            패싯 검색은 <strong>검색 결과를 여러 속성(Facet)으로 분류해, 사용자가 원하는 조건으로
+            점점 좁혀가게 하는 검색 방식</strong>이다. 쉽게 말하면 <em class="term">필터 검색</em>이다.
+          </p>
+        </div>
+
+        <h5>쇼핑몰 예시</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 14px;">
+          "운동화"를 검색하면 브랜드·색상·가격 같은 필터가 함께 제공된다.
+        </p>
+
+        <div class="facet-demo">
+          <div class="facet-panel">
+            <h5>브랜드</h5>
+            <div class="opt checked"><span class="box-mark"></span>Nike</div>
+            <div class="opt"><span class="box-mark"></span>Adidas</div>
+            <div class="opt"><span class="box-mark"></span>New Balance</div>
+            <h5>색상</h5>
+            <div class="opt checked"><span class="box-mark"></span>Black</div>
+            <div class="opt"><span class="box-mark"></span>White</div>
+            <h5>가격</h5>
+            <div class="opt"><span class="box-mark"></span>5만원 이하</div>
+            <div class="opt checked"><span class="box-mark"></span>10만원 이하</div>
+          </div>
+          <div class="facet-result">
+            <div class="fr-count">43개</div>
+            <div class="fr-label">Nike · Black · 10만원 이하로 좁힌 결과</div>
+          </div>
+        </div>
+
+        <p style="font-size:13px;color:var(--ink-faint);margin:12px 0 0;">
+          Nike → Black → 10만원 이하를 차례로 선택할 때마다 결과 수가 계속 좁혀진다.
+        </p>
+
+        <div class="flow-vert" style="margin-top:14px;">
+          <div class="flow-node">운동화 검색 · 12,345개</div>
+          <div class="flow-down">↓ Nike 선택</div>
+          <div class="flow-node">1,204개</div>
+          <div class="flow-down">↓ Black 선택</div>
+          <div class="flow-node">312개</div>
+          <div class="flow-down">↓ 10만원 이하 선택</div>
+          <div class="flow-node result">43개</div>
+        </div>
+
+        <h5>Facet(패싯)이란?</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 6px;">
+          문서를 설명하는 속성(attribute)을 뜻한다. 예를 들면 다음과 같다.
+        </p>
+        <div class="chip-row">
+          <span>브랜드</span><span>가격</span><span>색상</span><span>사이즈</span>
+          <span>작성자</span><span>국가</span><span>생성일</span><span>좋아요 수</span>
+        </div>
+
+        <h5>Elasticsearch에서는?</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 14px;">
+          현재는 Facet API 대신 <code>Aggregation</code>을 사용한다. 검색 결과에 대해 집계를
+          실행하면, 각 속성값별 문서 수를 함께 받아 필터 UI를 구성할 수 있다.
+        </p>
+        <div class="loop-wrap" style="padding:18px 16px;">
+          <div class="loop">
+            <div class="loop-node">검색 결과</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Aggregation</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Brand<br><span style="font-weight:400;font-size:11px;color:var(--ink-faint)">Nike(120) · Adidas(80)</span></div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Color<br><span style="font-weight:400;font-size:11px;color:var(--ink-faint)">Black(200) · White(150)</span></div>
+          </div>
+        </div>
+
+        <div class="box amber" style="margin-top:16px;">
+          <p style="margin:0;">
+            <strong>핵심 —</strong> 패싯 검색은 검색 이후 사용자가 원하는 방향으로 결과를
+            탐색(exploration)하는 검색 방식이다.
+          </p>
+        </div>
+      </div>
+
+      <h3 id="s122"><span class="sub-num">1.2.2</span>추천 엔진이 제공하는 것</h3>
+      <p>
+        추천 엔진은 직접적인 사용자 입력 없이, 시스템이 사용자에 대해 학습한 것을 바탕으로
+        콘텐츠를 전달한다. 관심사는 사용자 선호, 행동, 조회 이력 등을 통해 <strong>추론</strong>된다.
+        아마존의 "이 상품에 관심 있으셨다면…" 섹션이 대표적 예이며, 이런 추천은 기업 매출에
+        직접 기여하는 동시에 사용자가 명시적으로 찾던 것을 보완하는 관련 콘텐츠를 발견하게 돕는다.
+      </p>
+      <ul class="plain">
+        <li><strong>콘텐츠 기반 추천</strong> — 아이템·사용자의 속성을 기준으로 매칭한다.</li>
+        <li><strong>행동 기반 추천</strong> — 비슷한 사용자·아이템 간 상호작용의 중첩을 기준으로
+        매칭한다.</li>
+        <li><strong>멀티모달 추천</strong> — 콘텐츠 속성과 행동 중첩을 함께 사용하는 하이브리드
+        방식이다.</li>
+      </ul>
+
+      <div class="arch-cols">
+        <div class="arch-col">
+          <h4>검색 엔진 (Search)</h4>
+          <ul>
+            <li>사용자가 명시적으로 질의를 입력</li>
+            <li>결과 목록 + 필터링 옵션 제공</li>
+            <li>이전 검색 맥락 없이 매 세션 새로 시작</li>
+            <li>역색인, ANN 벡터 저장소 등 대규모 인프라 필요</li>
+          </ul>
+        </div>
+        <div class="arch-col">
+          <h4>추천 엔진 (Recommendation)</h4>
+          <ul>
+            <li>직접적인 질의 입력 없이 동작</li>
+            <li>선호·행동·조회 이력으로부터 추론</li>
+            <li>콘텐츠 기반 / 행동 기반 / 멀티모달 방식으로 구분</li>
+            <li>전자상거래 매출에 직접 기여</li>
+          </ul>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:-8px;">한눈에 비교 — 두 기술은 겹치는
+      목표를 서로 다른 입력 방식으로 푸는 것뿐이다.</p>
+
+      <p>
+        많은 조직이 검색팀과 추천팀을 완전히 별개 조직으로 운영한다(각각 엔지니어링, 데이터 사이언스
+        배경). 이는 <em class="term">콘웨이의 법칙</em>에 따라 두 기술이 만나야 할 중간 지점, 즉
+        "개인화"에서 오히려 취약점을 만든다.
+      </p>
+
+      <div class="inset">
+        <h4><span class="plus-badge">더 알아보기</span>콘웨이의 법칙(Conway's Law)이란?</h4>
+        <div class="box accent" style="margin:0 0 16px;">
+          <p style="margin:0;">"시스템을 설계하는 조직은 그 조직의 소통 구조를 그대로 닮은
+          시스템을 만든다." 쉽게 말해 <strong>조직 구조 = 시스템 구조</strong>다.</p>
+        </div>
+
+        <h5>예시</h5>
+        <div class="example-grid">
+          <div class="example-card">
+            <div class="ex-title">검색팀 · 추천팀 · 결제팀이 따로 소통</div>
+            <p>팀이 서로 분리되어 있으면, 시스템도 검색 서비스 · 추천 서비스 · 결제 서비스로
+            나뉘어진다.</p>
+          </div>
+          <div class="example-card">
+            <div class="ex-title">검색 플랫폼팀 하나가 검색엔진·API·DB를 모두 담당</div>
+            <p>같은 팀이 소통하며 만들면, 검색엔진 → 검색 API → 검색 DB가 하나의 응집된
+            서비스가 된다.</p>
+          </div>
+        </div>
+
+        <h5>왜 그럴까</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 14px;">
+          개발자는 자주 이야기하는 사람들과 같이 코드를 만든다. 그래서 조직의 소통 구조가 곧
+          서비스의 경계가 된다.
+        </p>
+
+        <h5>실제 검색 시스템 예시</h5>
+        <div class="loop-wrap" style="padding:18px 16px;">
+          <div class="loop">
+            <div class="loop-node">Client</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Search Proxy</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Search API</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Core API</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">Feed API</div>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--ink-faint);margin:10px 0 0;">
+          이렇게 나뉜 이유는 기술적 필요 때문일 수도 있지만, 대부분은 검색팀·Core팀·Feed팀처럼
+          조직이 이미 그렇게 나뉘어 있기 때문이다.
+        </p>
+
+        <div class="box amber" style="margin-top:16px;">
+          <p style="margin:0;"><strong>핵심 —</strong> 좋은 시스템을 만들고 싶다면 조직 구조도
+          함께 설계해야 한다.</p>
+        </div>
+      </div>
+
+      <h3 id="s123"><span class="sub-num">1.2.3</span>개인화 스펙트럼</h3>
+      <p>
+        검색과 추천은 별개의 시스템이 아니라, "사용자 프로필을 얼마나, 어떤 방식으로 반영하는가"에
+        따른 하나의 연속된 스펙트럼으로 볼 수 있다.
+      </p>
+
+      <figure class="figure">
+        <div class="spectrum-wrap">
+          <div class="spectrum-bar"></div>
+          <div class="spectrum-labels">
+            <div>
+              <div class="name">전통적 키워드 검색</div>
+              <div class="desc">프로필 무시, 명시적 입력만 사용</div>
+            </div>
+            <div>
+              <div class="name">개인화 검색</div>
+              <div class="desc">명시적 입력 + 프로필 암묵적 반영</div>
+            </div>
+            <div>
+              <div class="name">사용자 주도 추천</div>
+              <div class="desc">프로필 중심, 사용자가 일부 조정 가능</div>
+            </div>
+            <div>
+              <div class="name">전통적 추천</div>
+              <div class="desc">프로필만으로 결정, 조정 불가</div>
+            </div>
+          </div>
+        </div>
+        <p class="figure-cap"><b>그림 1.5 재구성 ·</b> 검색과 추천은 하나의 개인화 스펙트럼 위 두
+        극단일 뿐이다.</p>
+      </figure>
+
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>방식</th><th class="center">프로필 사용</th><th class="center">사용자가 수정 가능</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Traditional Keyword Search</td><td class="center">❌</td><td class="center">–</td></tr>
+            <tr><td>Personalized Search</td><td class="center">암묵적</td><td class="center">❌</td></tr>
+            <tr><td>User-guided Recommendation</td><td class="center">명시적</td><td class="center">✅</td></tr>
+            <tr><td>Traditional Recommendation</td><td class="center">명시적</td><td class="center">❌</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="example-grid">
+        <div class="example-card">
+          <div class="ex-title">Traditional Keyword Search</div>
+          <p>프로필을 전혀 쓰지 않고 검색어만 사용한다. 누가 검색하든 결과가 거의 같다.</p>
+          <div class="ex-flow">검색어 "맥북" → 맥북 관련 결과 (모두 동일)</div>
+        </div>
+        <div class="example-card">
+          <div class="ex-title">Personalized Search</div>
+          <p>검색어를 쓰되 프로필도 몰래 함께 반영한다. 같은 검색어라도 사람마다 결과가 달라진다.</p>
+          <div class="ex-flow">"apple" · 개발자 → Apple Inc.<br>"apple" · 과일 애호가 → 사과</div>
+        </div>
+        <div class="example-card">
+          <div class="ex-title">Traditional Recommendation</div>
+          <p>시스템이 알아서 추천하고, 사용자는 추천 기준 자체를 수정할 수 없다.</p>
+          <div class="ex-flow">유튜브: 시청기록 → 자동 추천<br>넷플릭스: 오징어게임 시청 → 기묘한 이야기 추천</div>
+        </div>
+        <div class="example-card">
+          <div class="ex-title">User-guided Recommendation</div>
+          <p>사용자가 추천 기준 자체를 직접 선택하고, 선택 즉시 추천이 바뀐다.</p>
+          <div class="ex-flow">넷플릭스 가입 시 "액션 · SF" 선택 → SF 위주 추천<br>쇼핑몰: "러닝 · 캠핑" 관심사 선택 → 관련 추천</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-title">헷갈리기 쉬운 지점 — 유튜브 "이 영상 추천 안 함"</div>
+        <p>
+          엄밀히 말하면 이는 <strong>User-guided Recommendation이 아니라 Traditional
+          Recommendation + 사용자 피드백</strong>이다. 사용자는 "이 영상/채널 추천 안 함"만
+          선택할 수 있을 뿐, 추천 프로필 자체를 직접 편집하는 것은 아니기 때문이다. 즉 "관심
+          없음" 표시 → 시스템이 내부 프로필을 대신 수정 → 추천이 바뀌는 구조다.
+        </p>
+      </div>
+
+      <p class="muted" style="font-size:13.5px;">
+        정리하면 <strong>User-guided</strong>는 "내가 추천 기준을 직접 설정"하는 것(예: 좋아하는
+        장르·관심사 선택)이고, <strong>Traditional Recommendation</strong>은 "시스템이 알아서
+        추천하고 필요하면 피드백만 받는" 것(유튜브, 인스타그램, 틱톡 등 대부분의 피드형 서비스)이다.
+      </p>
+
+      <div class="box core">
+        <div class="box-title"><span class="core-badge">★ 핵심</span>검색과 추천은 별개가 아니다</div>
+        <p>
+          검색과 추천은 서로 다른 기술이 아니라, "프로필을 얼마나 반영하는가"에 따른 <strong>하나의
+          연속된 스펙트럼</strong>일 뿐이다. 이걸 별개 조직·기술로 나누면 그 사이(개인화)를 아무도
+          잘 다루지 못하는 조직적 함정에 빠지기 쉽다.
+        </p>
+      </div>
+
+      <h3 id="s124"><span class="sub-num">1.2.4</span>시맨틱 검색과 지식 그래프</h3>
+      <p>
+        진짜 좋은 AI 기반 검색을 만들려면 "문자열(strings)"이 아니라 "사물(things)"을 검색해야
+        한다. 즉 질의 속 단어를 <em class="term">엔터티</em>로 해석해야 한다. 예를 들어
+        <code>senior software engineer at google</code>은 단순 키워드가 아니라
+        <strong>직급 · 직함 · 회사</strong>라는 의미 단위로 파싱될 수 있다. 이를 위해 도메인 고유의
+        구문·동의어·엔터티를 학습하고, 이들 사이의 관계를 지식 그래프로 구성해야 한다.
+      </p>
+      <p class="muted" style="font-size:13px;">
+        이 구문·용어는 사용자 검색어 로그, 통계적 <em class="term">구문 탐지(phrase detection)</em>,
+        또는 카탈로그의 구조화된 속성값에서 얻는다.
+      </p>
+
+      <h3 id="s125"><span class="sub-num">1.2.5</span>사용자 의도의 차원 이해하기</h3>
+      <p>
+        결국 완전한 사용자 의도 이해는 <strong>콘텐츠 이해</strong>, <strong>사용자 이해</strong>,
+        <strong>도메인 이해</strong>라는 세 축이 만나는 지점에서 이루어진다.
+      </p>
+
+      <figure class="figure">
+        <div class="venn-wrap">
+          <div class="intent-venn">
+            <span class="lbl content">콘텐츠 이해</span>
+            <span class="lbl user">사용자 이해</span>
+            <span class="lbl domain">도메인 이해</span>
+            <div class="circle c1"></div>
+            <div class="circle c2"></div>
+            <div class="circle c3"></div>
+            <span class="lbl center">사용자 의도</span>
+          </div>
+        </div>
+        <p class="figure-cap"><b>그림 1.7 재구성 ·</b> 콘텐츠 이해 + 사용자 이해가 겹치면
+        <strong>개인화 검색</strong>, 콘텐츠 이해 + 도메인 이해가 겹치면 <strong>시맨틱 검색</strong>,
+        사용자 이해 + 도메인 이해가 겹치면 <strong>도메인 인식 추천</strong>이 된다. 세 원이 모두
+        겹치는 중심이 진짜 사용자 의도다.</p>
+      </figure>
+
+      <div class="box accent core">
+        <div class="box-title"><span class="core-badge">★ 핵심</span>최종 목표</div>
+        <p>
+          도메인에 대한 전문적 이해, 사용자와 그 취향에 대한 전문적 이해, 그리고 임의의 질의를
+          매칭·랭킹할 수 있는 능력 — 이 세 가지가 균형 있게 결합될 때 비로소 사용자 의도를 정확히
+          이해하는 검색이 완성된다.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= SECTION 3 ================= -->
+    <section id="sec3">
+      <div class="sec-label">1.3</div>
+      <h2>AI 기반 검색은 어떻게 동작하는가</h2>
+      <p class="sec-sub">기본 키워드 검색에서 스스로 학습하는 플랫폼으로</p>
+
+      <p>
+        조직의 검색 역량은 대체로 정해진 경로를 따라 성숙해간다. 처음에는 기본 키워드 검색을 구축한
+        뒤, 관련성 향상을 위해 필드 가중치·부스트를 수작업으로 튜닝한다. 이후 도메인 이해(엔터티,
+        동의어, 규칙)에 투자하고, 질의 의도 해석에 투자하며, 마지막에는 이 모든 과정을 자동화한
+        <em class="term">자기 학습(self-learning)</em> 단계로 나아간다.
+      </p>
+
+      <figure class="figure">
+        <div class="stair">
+          <div class="stair-step">
+            <span class="step-num">1단계</span>
+            <div class="bar">
+              <div class="step-title">기본 키워드 검색</div>
+              <div class="step-desc">역색인, TF-IDF, BM25, 다국어 텍스트 분석</div>
+            </div>
+          </div>
+          <div class="stair-step">
+            <span class="step-num">2단계</span>
+            <div class="bar">
+              <div class="step-title">분류 체계 · 엔터티 추출</div>
+              <div class="step-desc">엔터티 인식, 택소노미, 온톨로지, 동의어, 비즈니스 규칙</div>
+            </div>
+          </div>
+          <div class="stair-step">
+            <span class="step-num">3단계</span>
+            <div class="bar">
+              <div class="step-title">질의 의도 해석</div>
+              <div class="step-desc">질의 분류, 시맨틱 파싱, LLM, 지식 그래프, 개인화</div>
+            </div>
+          </div>
+          <div class="stair-step">
+            <span class="step-num">4단계</span>
+            <div class="bar">
+              <div class="step-title">자동화된 관련성 튜닝 → 자기 학습</div>
+              <div class="step-desc">신호 부스팅, 협업 필터링, 능동 학습, A/B 테스트, 랭킹 학습</div>
+            </div>
+          </div>
+        </div>
+        <p class="figure-cap"><b>그림 1.8 재구성 ·</b> 전형적인 검색 지능 성숙 경로.</p>
+      </figure>
+
+      <h3 id="s131"><span class="sub-num">1.3.1</span>핵심 검색 기반</h3>
+      <p>
+        검색 플랫폼을 구축하는 첫걸음은 거의 언제나 전통적인 키워드 검색을 돌아가게 만드는
+        것이다(그림 1.7의 "콘텐츠 이해" 부분). 많은 팀이 이 단계를 튜닝하는 데만 수년을 쓰며,
+        콘텐츠를 이해·개선하고 부스트와 질의 파라미터를 조정해 관련성을 극대화하는
+        <em class="term">관련성 엔지니어링(relevance engineering)</em>이라는 전문 분야도 여기서
+        생겨났다.
+      </p>
+      <p>
+        관련성 엔지니어의 역할은 점차 사용자 이해·추천, 도메인 이해·시맨틱 검색 영역으로
+        확장된다. 이 책의 목표는 관련성을 학습하고 최적화하는 과정 자체를 지속적인 피드백
+        루프로 자동화하는 것 — 즉 관련성 엔지니어의 업무 상당 부분을 알고리즘이 대신하게 하는
+        것이다.
+      </p>
+      <div class="box">
+        <div class="box-title">잘 튜닝된 검색과 AI 기반 검색의 차이</div>
+        <p>
+          잘 튜닝된 검색 엔진은 AI 기반 검색이 세워지는 토대다. 그러나 AI 기반 검색은 여기서
+          한 걸음 더 나아가, <em class="term">반영된 지능(reflected intelligence)</em> —
+          지속적인 피드백 루프를 통해 끊임없이 배우고 개선하는 능력 — 을 갖춘다는 점에서
+          근본적으로 다르다.
+        </p>
+      </div>
+
+      <h3 id="s132"><span class="sub-num">1.3.2</span>반영된 지능: 피드백 루프</h3>
+      <p>
+        교사도, 시험도, 동료도 없이 교과서만 읽었다면 자신이 무엇을
+        잘못 이해했는지 결코 알 수 없듯, 피드백 루프가 없는 검색 엔진은 같은 실수를 영원히
+        반복한다.
+      </p>
+
+      <figure class="figure">
+        <div class="loop-wrap">
+          <div class="loop">
+            <div class="loop-node">① 사용자가 검색한다</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">② 사용자가 결과를 본다</div>
+            <span class="loop-arrow">→</span>
+            <div class="loop-node">③ 사용자가 행동한다<br><span style="font-weight:400;font-size:11px;color:var(--ink-faint)">클릭·구매·좋아요</span></div>
+          </div>
+          <div class="loop-back">③의 행동 데이터 → 랭킹 모델 개선 → 다음 사용자의 ① 검색 결과 향상 (반복)</div>
+        </div>
+        <p class="figure-cap"><b>그림 1.9 재구성 ·</b> 피드백 루프를 통한 반영된 지능.</p>
+      </figure>
+
+      <h3 id="s133"><span class="sub-num">1.3.3</span>신호(signals)로부터 배우는 세 가지 방식</h3>
+      <p>
+        검색·클릭·좋아요·장바구니·구매 등 사용자와의 모든 상호작용을 <em class="term">신호</em>라고
+        부른다. 신호는 콘텐츠와 함께 AI 기반 검색을 움직이는 두 축 중 하나이며, 다음 세 방식으로
+        관련성을 학습하는 데 쓰인다.
+      </p>
+
+      <div class="signal-types">
+        <div class="signal-type">
+          <div class="st-name">대중적 관련성<br><span style="font-weight:400;color:var(--ink-faint);font-size:12px">신호 부스팅</span></div>
+          <p>집계된 신호를 이용해 인기 질의에 대해 가장 중요한 문서의 순위를 끌어올린다.</p>
+        </div>
+        <div class="signal-type">
+          <div class="st-name">개인화된 관련성<br><span style="font-weight:400;color:var(--ink-faint);font-size:12px">협업 필터링</span></div>
+          <p>행렬 분해 등으로 사용자별 추천과 개인화된 검색 결과를 생성한다.</p>
+        </div>
+        <div class="signal-type">
+          <div class="st-name">일반화된 관련성<br><span style="font-weight:400;color:var(--ink-faint);font-size:12px">Learning to Rank</span></div>
+          <p>클릭 모델 기반 관련성 판단으로 랭킹 분류기를 학습해, 처음 보는 질의에도 일반적으로
+          적용 가능한 랭킹 함수를 만든다.</p>
+        </div>
+      </div>
+
+      <div class="inset">
+        <h4><span class="plus-badge">더 알아보기</span>Signal과 Boost, 실제로 어떻게 계산될까</h4>
+
+        <p style="font-size:13.5px;margin:0 0 4px;">
+          <strong>신호(Signal)</strong>는 콘텐츠가 좋은지 판단하는 근거이고, <strong>부스트(Boost)</strong>는
+          그 신호에 얼마만큼의 중요도를 줄지 정하는 가중치다.
+        </p>
+        <div class="chip-row">
+          <span>클릭수</span><span>조회수</span><span>CTR</span><span>구매수</span>
+          <span>최신성</span><span>검색어 일치도</span><span>개인화</span><span>평점</span>
+        </div>
+
+        <h5>가중치를 바꾸면 순위가 뒤집힌다</h5>
+        <div class="score-compare">
+          <div class="score-card">
+            <div class="sc-title">BM25 + 인기 (가중치 1:1)</div>
+            <div class="score-row"><span>상품 A</span><span>90 + 20 = 110</span></div>
+            <div class="score-row"><span>상품 B</span><span>60 + 40 = 100</span></div>
+            <div class="score-row total"><span>결과</span><span>A가 상위</span></div>
+          </div>
+          <div class="score-card winner">
+            <div class="sc-title">BM25 + 인기 × 3</div>
+            <div class="score-row"><span>상품 A</span><span>90 + 60 = 150</span></div>
+            <div class="score-row"><span>상품 B</span><span>60 + 120 = 180</span></div>
+            <div class="score-row total"><span>결과</span><span>B가 역전</span></div>
+          </div>
+        </div>
+
+        <h5>실무에서 쓰는 공식 예시</h5>
+        <div class="formula">
+          최종점수 <span class="op">=</span> BM25 × 5 <span class="op">+</span> CTR × 3
+          <span class="op">+</span> Like × 2 <span class="op">+</span> 최신성 × 1
+          <span class="op">+</span> 개인화 × 4
+        </div>
+        <p style="font-size:12.8px;color:var(--ink-muted);margin:0 0 14px;">
+          예를 들어 "black dress"를 검색했을 때, <strong>검색어 일치도·CTR은 높지만 좋아요는
+          적은 아이템</strong>과 <strong>일치도·CTR은 보통이지만 좋아요가 많은 아이템</strong>이
+          있다면, 위 공식에서 어떤 항목의 Boost를 더 크게 주느냐에 따라 최종 순위가 달라진다.
+        </p>
+
+        <h5>왜 서비스마다 다른 가중치를 쓸까</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 14px;">
+          검색에서는 <strong>검색어 일치도 &gt; 조회수</strong>가 중요하지만, 추천에서는
+          <strong>개인 취향 &gt; 검색어</strong>가 더 중요하다. 그래서 서비스 목적에 맞게 신호마다
+          다른 Boost를 적용한다.
+        </p>
+
+        <h5>Learning to Rank로 가는 이유</h5>
+        <p style="font-size:13.5px;color:var(--ink-muted);margin:0;">
+          초기에는 사람이 "BM25 × 5, CTR × 3" 처럼 가중치를 직접 정한다. 서비스가 커지면 어떤
+          조합이 최적인지 사람이 감으로 찾기 어려워지고, 이때 머신러닝이 "CTR은 2.8배, 최신성은
+          0.6배"처럼 최적 가중치를 데이터로부터 자동 학습한다 — 이것이 <strong>Learning to
+          Rank(LTR)</strong>다.
+        </p>
+      </div>
+
+      <h3 id="s134"><span class="sub-num">1.3.4</span>콘텐츠와 도메인 인텔리전스, 그리고 LLM</h3>
+      <p>
+        신호가 "행동" 데이터라면, 문서 내용 자체도 도메인을 이해하는 풍부한 정보원이다. 문서 속
+        엔터티, 도메인 용어, 문장들은 시맨틱 지식 그래프(SKG)의 재료가 된다. SKG란
+        <em class="term">이 세상의 사물(엔터티)들이 서로 어떻게 연결되어 있는지를 컴퓨터가 사람
+        대신 자동으로 학습해서 만든 그래프</em>다.
+      </p>
+      <p>
+        오늘날 대부분의 LLM은 2017년 구글이 제안한 <em class="term">트랜스포머(Transformer)</em>
+        구조("Attention Is All You Need")를 기반으로 한다. 트랜스포머는 텍스트를 <em class="term">임베딩</em>
+        (의미를 담은 숫자 벡터)으로 인코딩하고, 디코더로 다시 텍스트를 생성할 수 있어 유사도 검색,
+        질의응답, 분류, 요약, 콘텐츠 생성까지 폭넓게 활용된다. 같은 질문이라도 문맥에 따라 다른
+        답을 내는 <strong>맥락 민감성</strong>이 특징이며, 도메인 데이터로 <em class="term">파인튜닝</em>하면
+        특정 과업에서 훨씬 좋은 성능을 낸다.
+      </p>
+
+      <h3 id="s135"><span class="sub-num">1.3.5</span>생성형 AI와 RAG</h3>
+      <p>
+        LLM은 세상에 대한 폭넓은 추론 능력을 갖췄지만 사실을 안정적으로 회상하지는 못한다. 그래서
+        검색 엔진이 <em class="term">검색 증강 생성(RAG)</em> 파이프라인의 지식 소스 역할을 맡아,
+        정확하고 최신인 맥락을 LLM에 제공한다. 전통적인 "링크 10개" 검색에서 생성형 검색으로의
+        전환은 아래 네 단계로 나타난다.
+      </p>
+
+      <div class="gen-flow">
+        <div class="gen-step">
+          <div class="gs-title">① 검색 결과</div>
+          <div class="gs-desc">"파란 링크 10개" — 출처만 보여준다</div>
+        </div>
+        <div class="gen-step">
+          <div class="gs-title">② 추출형 질의응답</div>
+          <div class="gs-desc">실시간으로 출처에서 답을 그대로 추출</div>
+        </div>
+        <div class="gen-step">
+          <div class="gs-title">③ 결과 요약</div>
+          <div class="gs-desc">검색 결과를 읽기 쉽게 재구성·요약</div>
+        </div>
+        <div class="gen-step emphasis">
+          <div class="gs-title">④ 생성형 질의응답</div>
+          <div class="gs-desc">모델·검색 결과를 종합해 새 답변을 합성</div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:-8px;">
+        그림 1.11 재구성 · <strong>추출(extractive)</strong>은 문서 속 표현을 그대로 가져오는 것,
+        <strong>생성(abstractive)</strong>은 여러 결과를 해석해 새로운 문장으로 답을 합성하는 것이다.
+      </p>
+
+      <h4 class="mini-head">예시로 비교해보면</h4>
+      <div class="qa-docs">
+        <div class="qa-q">질문: "김치찌개는 어떻게 만들어?"</div>
+        <ul>
+          <li><b>문서 A</b> — 김치찌개는 신 김치를 볶다가 물을 붓고 끓이는 요리다.</li>
+          <li><b>문서 B</b> — 돼지고기나 참치를 넣으면 감칠맛이 좋아진다.</li>
+          <li><b>문서 C</b> — 된장이나 고춧가루를 약간 추가하면 깊은 맛이 난다.</li>
+        </ul>
+      </div>
+
+      <div class="qa-compare">
+        <div class="qa-card extractive">
+          <div class="qa-label">추출적 질의응답</div>
+          <p class="qa-answer">"김치찌개는 신 김치를 볶다가 물을 붓고 끓이는 요리다."</p>
+          <div class="qa-note">문서 A의 문장을 그대로 가져와 반환 — 새로운 문장 없음</div>
+        </div>
+        <div class="qa-card abstractive">
+          <div class="qa-label">추상적 질의응답</div>
+          <p class="qa-answer">"김치찌개는 신 김치를 볶은 뒤 물을 붓고 끓이다가, 돼지고기나
+          참치를 넣어 감칠맛을 더하고, 된장이나 고춧가루로 깊은 맛을 내는 요리입니다."</p>
+          <div class="qa-note">문서 A·B·C를 종합해 만든 새 문장 — 어느 문서에도 그대로 없음</div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px;margin-top:-8px;">
+        RAG(검색 증강 생성)는 바로 이 방식을 쓴다 — 검색으로 관련 문서를 찾아 LLM에 맥락으로
+        주면, LLM이 이를 바탕으로 위와 같은 새 문장을 합성한다.
+      </p>
+
+      <h4 class="mini-head">실제 서비스 예시 — 네이버 "AI 브리핑"</h4>
+      <p style="font-size:13.5px;color:var(--ink-muted);margin:0 0 12px;">
+        "리커버리 슬리퍼 효능"을 검색하면 나오는 네이버의 AI 브리핑을 재구성한 화면이다.
+      </p>
+
+      <div class="briefing-demo">
+        <div class="bd-header">
+          <span class="bd-badge">AI</span>
+          <span class="bd-title">AI 브리핑</span>
+          <span class="bd-caveat">실험 단계로 정확하지 않을 수 있어요</span>
+        </div>
+        <div class="bd-thumbs">
+          <div class="bd-thumb">블로그 썸네일 1</div>
+          <div class="bd-thumb">블로그 썸네일 2</div>
+          <div class="bd-thumb">블로그 썸네일 3</div>
+        </div>
+        <p class="bd-text">
+          리커버리 슬리퍼의 '효과'는 주로 운동·보행 후 발에 가해지는 충격을 줄이고, 아치
+          지지·쿠셔닝으로 피로감을 완화하는 방향으로 설명됩니다.<span class="bd-cite">다누앤 +3</span>
+        </p>
+        <div class="bd-sub">리커버리 슬리퍼 효과</div>
+        <ul class="bd-bullets">
+          <li>충격 흡수: 두툼한 쿠션/EVA 소재로 보행 시 충격을 완화한다.</li>
+          <li>피로 완화: 아치 지지, 중족골·뒤꿈치 서포트로 체중 분산을 돕는다.</li>
+        </ul>
+        <div class="bd-input">무엇이든 물어보세요</div>
+      </div>
+
+      <div class="briefing-map">
+        <div class="bm-row">
+          <div class="bm-ui">종합된 본문 텍스트</div>
+          <div class="bm-concept"><strong>결과 요약</strong> — 블로그 여러 개를 하나의 문단으로
+          재작성</div>
+        </div>
+        <div class="bm-row">
+          <div class="bm-ui">"다누앤 +3" 인용 표시</div>
+          <div class="bm-concept"><strong>RAG</strong> — 실제 검색된 문서를 근거로 답을 생성했다는
+          출처 표시</div>
+        </div>
+        <div class="bm-row">
+          <div class="bm-ui">소제목 + 불릿 정리</div>
+          <div class="bm-concept"><strong>추상적 질의응답</strong> — 원문에 없는 구조로 새로 합성한
+          문장</div>
+        </div>
+        <div class="bm-row">
+          <div class="bm-ui">"실험 단계로 정확하지 않을 수 있어요"</div>
+          <div class="bm-concept"><strong>LLM 환각 경고</strong> — 1.1에서 다룬 "정보 소스 없이는
+          환각을 일으킨다"는 한계의 사용자 고지</div>
+        </div>
+        <div class="bm-row">
+          <div class="bm-ui">"무엇이든 물어보세요" 입력창</div>
+          <div class="bm-concept"><strong>대화형 검색</strong> — 들어가며에서 다룬 검색의
+          대화형(conversational) 진화</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-title">정리하면</div>
+        <p>
+          생성형 AI는 "AI 기반 검색"의 핵심 부품(답변 생성, 결과 요약)이고, AI 기반 검색은
+          "검색으로 강화된 AI"인 RAG의 핵심 부품이다. 둘 다 LLM과 파운데이션 모델을 적극 활용하며
+          서로를 필요로 한다.
+        </p>
+      </div>
+
+      <h3 id="s136"><span class="sub-num">1.3.6</span>큐레이션 가능한 AI vs. 블랙박스 AI</h3>
+      <p>
+        딥러닝 모델은 왜 그런 예측을 했는지 사람이 이해하기 어려운 <em class="term">블랙박스</em>가
+        되기 쉽다.
+      </p>
+
+      <div class="box core">
+        <div class="box-title"><span class="core-badge">★ 핵심</span>이 책의 철학</div>
+        <p>
+          이 책은 딥러닝 기법을 다루되, <strong>사람이 이해할 수 있는 형태로 지능을 표현하고,
+          사람이 다시 수정·보강할 수 있게 하는 것</strong>을 핵심 철학으로 삼는다. 즉 "AI가 보조하는
+          사람의 큐레이션" — 자동화하되 통제권은 사람이 쥐는 접근이다.
+        </p>
+      </div>
+
+      <h3 id="s137"><span class="sub-num">1.3.7</span>AI 기반 검색 엔진의 아키텍처</h3>
+      <p>
+        핵심 검색 엔진(Solr, OpenSearch 등)을 중심으로, 색인 시점과 질의 시점 각각에 지능이
+        더해진다.
+      </p>
+
+      <div class="arch-cols">
+        <div class="arch-col">
+          <h4>색인 시점 변환</h4>
+          <ul>
+            <li>LLM으로 문서 의미를 임베딩으로 변환</li>
+            <li>문서 분류 및 필드 추가</li>
+            <li>필드 값 정규화</li>
+            <li>텍스트에서 엔터티 추출</li>
+            <li>콘텐츠 클러스터링</li>
+            <li>구문 탐지 · 품사(POS) 분석</li>
+            <li>지식 그래프 · 외부 API 데이터 결합</li>
+            <li>사실(RDF 트리플) 추출</li>
+          </ul>
+        </div>
+        <div class="arch-col">
+          <h4>질의 파이프라인</h4>
+          <ul>
+            <li>개념·구문·엔터티 식별</li>
+            <li>철자 교정</li>
+            <li>동의어·개념·임베딩으로 질의 확장</li>
+            <li>엔진이 이해할 수 있게 질의 재작성</li>
+            <li>결과 요약 또는 답변 추출</li>
+          </ul>
+        </div>
+      </div>
+
+      <p>
+        이 모든 지능은 결국 배치 작업(이 책은 Apache Spark 사용)으로 콘텐츠와 신호를 분석해 도메인
+        특화 패턴을 학습하고, 이를 밀리초~초 단위 질의 응답에 활용할 수 있도록 미리 계산해두는
+        구조로 완성된다.
+      </p>
+
+      <div class="box amber">
+        <div class="box-title">이 장의 핵심 문장</div>
+        <p>
+          AI 기반 검색은 최신 LLM 하나를 가져다 붙이는 일이 아니다. 문서 변경과 사용자 신호의
+          끊임없는 흐름을 지속적으로 처리해 모델을 개선하고, 그 결과로 검색 결과를 계속 조정하며
+          효과를 측정하는 <strong>지속적 학습(end-to-end continuous learning) 시스템을 설계하는
+          일</strong>이다.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= SUMMARY ================= -->
+    <section id="summary">
+      <div class="sec-label">Summary</div>
+      <h2>핵심 요약</h2>
+      <div class="summary-box">
+        <div class="summary-item">
+          <div class="num">01</div>
+          <p>LLM의 부상으로 검색에 대한 기대치가 도메인 인식적·맥락적·대화형·멀티모달·지능적·
+          어시스티브 수준으로 높아졌다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">02</div>
+          <p>검색과 추천은 별개의 기술이 아니라, 하나의 <strong>개인화 스펙트럼</strong> 위 두
+          극단이다. 그 사이 지점을 최적화하는 것이 중요하다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">03</div>
+          <p>사용자 의도를 정확히 해석하려면 <strong>콘텐츠, 사용자, 도메인</strong>을 동시에
+          이해해야 한다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">04</div>
+          <p>최적의 관련성은 <strong>개인화 검색</strong>(키워드 검색+협업 추천),
+          <strong>시맨틱 검색</strong>(키워드 검색+지식 그래프), <strong>도메인 인식 추천</strong>
+          (협업 추천+지식 그래프)이 만나는 교집합에 있다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">05</div>
+          <p>AI 기반 검색은 <strong>콘텐츠</strong>와 <strong>사용자 신호</strong>라는 두 데이터
+          원천으로부터 학습해서 동작한다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">06</div>
+          <p>검색과 생성형 AI는 뗄 수 없는 관계다. RAG는 환각을 막기 위한 생성형 AI의 핵심 부품이고,
+          결과 요약 등 생성형 AI 기능은 더 나은 답을 주는 검색의 핵심 부품이다.</p>
+        </div>
+        <div class="summary-item">
+          <div class="num">07</div>
+          <p><strong>반영된 지능(reflected intelligence)</strong> — 신호를 모으고, 결과를
+          튜닝하고, 개선을 측정하는 피드백 루프 — 가 AI 기반 검색이 계속 똑똑해지게 만드는
+          엔진이다.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-foot">
+      출처: <em>AI-Powered Search</em>, Chapter 1 — Introducing AI-powered search (Manning). 원문을 바탕으로
+      개념 중심으로 재구성·요약한 자료입니다.
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+    var sections = links.map(function (a) {
+      return document.querySelector(a.getAttribute('href'));
+    });
+
+    function setActive(link) {
+      links.forEach(function (l) { l.classList.remove('active'); });
+      if (link) link.classList.add('active');
+    }
+
+    var suppressUntil = 0;
+
+    links.forEach(function (link) {
+      link.addEventListener('click', function () {
+        setActive(link);
+        suppressUntil = Date.now() + 900;
+      });
+    });
+
+    if (!('IntersectionObserver' in window)) return;
+
+    var observer = new IntersectionObserver(function (entries) {
+      if (Date.now() < suppressUntil) return;
+      entries.forEach(function (entry) {
+        var idx = sections.indexOf(entry.target);
+        if (idx === -1) return;
+        if (entry.isIntersecting) {
+          setActive(links[idx]);
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+    sections.forEach(function (s) { if (s) observer.observe(s); });
+  })();
+</script>

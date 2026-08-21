@@ -1,0 +1,1119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="AI-Powered Search 4.2.3 협업 필터링을 사용자·아이템 행렬, 이웃 기반 추천, 행렬 분해, 검색 적용 예시로 쉽게 설명한 학습 노트">
+  <title>4.2.3 협업 필터링 — 비슷한 선택에서 다음 선호를 예측하기</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-alt: #eaedf2;
+      --ink: #1b2130;
+      --ink-muted: #5b6475;
+      --ink-faint: #7d8798;
+      --rule: #dbe0e8;
+      --accent: #3454d1;
+      --accent-soft: #e7ecfc;
+      --accent-2: #b96012;
+      --accent-2-soft: #f8e9d4;
+      --good: #14745c;
+      --good-soft: #dff2eb;
+      --purple: #6a50b7;
+      --purple-soft: #eee9fb;
+      --danger: #a54149;
+      --danger-soft: #f8e2e4;
+      --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151c;
+        --surface: #1a1f29;
+        --surface-alt: #222938;
+        --ink: #e7e9ee;
+        --ink-muted: #a6aebc;
+        --ink-faint: #7d8798;
+        --rule: #2a3140;
+        --accent: #8ea1ff;
+        --accent-soft: #262e48;
+        --accent-2: #e3a857;
+        --accent-2-soft: #3a2e1c;
+        --good: #67d4b5;
+        --good-soft: #17372f;
+        --purple: #b5a1f5;
+        --purple-soft: #302b45;
+        --danger: #f08d94;
+        --danger-soft: #402428;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      max-width: 100%;
+      overflow-x: clip;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    strong { font-weight: 780; }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--surface-alt);
+      color: var(--accent-2);
+      font: .88em var(--mono);
+    }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: var(--accent-2);
+    }
+    .page {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      min-width: 0;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 48px;
+    }
+    .toc {
+      position: sticky;
+      top: 24px;
+      flex: 0 0 232px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      padding: 8px 0 20px;
+      font-size: 13px;
+    }
+    .toc-eyebrow {
+      margin-bottom: 12px;
+      color: var(--ink-faint);
+      font: 11px var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .toc a {
+      display: block;
+      margin: 2px 0;
+      padding: 7px 10px 7px 12px;
+      border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0;
+      color: var(--ink-muted);
+      text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s;
+    }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a.active {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 750;
+    }
+    .content {
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      max-width: 800px;
+      padding: 56px 0 96px;
+    }
+    .back-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .back-nav, .source-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font: 12px var(--mono);
+      text-decoration: none;
+    }
+    .back-nav { background: var(--accent-2-soft); color: var(--accent-2); }
+    .back-nav.secondary { background: var(--surface-alt); color: var(--ink-muted); }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .back-nav.secondary:hover { background: var(--ink); color: var(--bg); }
+    .back-nav:focus-visible,
+    .toc a:focus-visible,
+    .mobile-toc a:focus-visible,
+    .source-link:focus-visible,
+    summary:focus-visible,
+    .table-scroll:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 56px; }
+    .kicker, .sec-label {
+      color: var(--accent);
+      font: 700 12px var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      margin: 12px 0 16px;
+      font: 700 clamp(34px, 5vw, 48px)/1.2 var(--serif);
+      letter-spacing: -.03em;
+    }
+    h2 { margin: 8px 0 14px; font: 700 29px/1.35 var(--serif); }
+    h3 { margin: 30px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 7px; }
+    .lede { max-width: 68ch; color: var(--ink-muted); font-size: 17px; }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+    .hero-meta span {
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      font-size: 12px;
+    }
+    .thesis {
+      margin-top: 28px;
+      padding: 24px 26px;
+      border-left: 4px solid var(--accent-2);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      background: var(--surface);
+    }
+    .thesis-label {
+      color: var(--accent-2);
+      font: 700 11px var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .thesis p { margin: 8px 0 0; font: 700 20px/1.55 var(--serif); }
+    section {
+      padding: 54px 0;
+      border-top: 1px solid var(--rule);
+      scroll-margin-top: 24px;
+    }
+    .section-intro { max-width: 67ch; color: var(--ink-muted); }
+
+    .plain-box, .note, .warning, .example {
+      margin: 22px 0;
+      padding: 20px 22px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .example { border-color: color-mix(in srgb, var(--accent) 35%, var(--rule)); background: var(--accent-soft); }
+    .note { border-color: color-mix(in srgb, var(--good) 34%, var(--rule)); background: var(--good-soft); }
+    .warning { border-color: color-mix(in srgb, var(--danger) 35%, var(--rule)); background: var(--danger-soft); }
+    .box-title {
+      margin-bottom: 7px;
+      color: var(--accent);
+      font: 750 12px var(--mono);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .note .box-title { color: var(--good); }
+    .warning .box-title { color: var(--danger); }
+    .plain-box p:last-child, .note p:last-child, .warning p:last-child, .example p:last-child { margin-bottom: 0; }
+
+    .concept-grid, .method-grid, .risk-grid, .signal-grid {
+      display: grid;
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .concept-grid { grid-template-columns: repeat(3, 1fr); }
+    .method-grid { grid-template-columns: repeat(3, 1fr); }
+    .risk-grid { grid-template-columns: repeat(2, 1fr); }
+    .signal-grid { grid-template-columns: repeat(2, 1fr); }
+    .concept-card, .method-card, .risk-card, .signal-card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .concept-card .tag, .method-card .tag, .signal-card .tag {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--accent);
+      font: 700 11px var(--mono);
+      letter-spacing: .05em;
+    }
+    .concept-card strong, .method-card strong, .risk-card strong, .signal-card strong { display: block; }
+    .concept-card p, .method-card p, .risk-card p, .signal-card p {
+      margin: 7px 0 0;
+      color: var(--ink-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .concept-card.primary { border-top: 3px solid var(--accent); }
+    .concept-card.popular { border-top: 3px solid var(--accent-2); }
+    .concept-card.content-based { border-top: 3px solid var(--good); }
+    .risk-card { border-left: 3px solid var(--danger); }
+    .risk-card .risk-no { color: var(--danger); font: 700 11px var(--mono); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+      align-items: stretch;
+      gap: 9px;
+      margin: 28px 0;
+    }
+    .flow-step {
+      min-width: 0;
+      padding: 15px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 9px;
+      background: var(--surface);
+      text-align: center;
+    }
+    .flow-step b { display: block; color: var(--accent); font-size: 13px; }
+    .flow-step span { display: block; margin-top: 5px; color: var(--ink-muted); font-size: 12px; line-height: 1.45; }
+    .flow-arrow { align-self: center; color: var(--accent-2); font: 700 18px var(--mono); }
+
+    .table-scroll {
+      max-width: 100%;
+      margin: 22px 0;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 14px; }
+    caption {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink-muted);
+      font-size: 13px;
+      text-align: left;
+    }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+    th { background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; }
+    tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.focus-row { background: var(--accent-soft); }
+    .matrix-table th:not(:first-child), .matrix-table td:not(:first-child) { text-align: center; }
+    .score {
+      display: inline-grid;
+      width: 32px;
+      height: 32px;
+      place-items: center;
+      border-radius: 7px;
+      font: 750 13px var(--mono);
+    }
+    .score.high { background: var(--good-soft); color: var(--good); }
+    .score.mid { background: var(--accent-2-soft); color: var(--accent-2); }
+    .score.low { background: var(--surface-alt); color: var(--ink-muted); }
+    .score.unknown { border: 1px dashed var(--accent); background: transparent; color: var(--accent); }
+    .swipe-hint { display: none; margin: -12px 0 16px; color: var(--ink-faint); font-size: 12px; }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: -8px 0 22px;
+      color: var(--ink-muted);
+      font-size: 12px;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+    .prediction {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 18px;
+      margin: 26px 0;
+      padding: 22px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .neighbor-stack { display: grid; gap: 9px; }
+    .neighbor {
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      align-items: center;
+      gap: 9px;
+      padding: 10px;
+      border-radius: 8px;
+      background: var(--surface-alt);
+      font-size: 13px;
+    }
+    .avatar {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 750 12px var(--mono);
+    }
+    .neighbor small { display: block; color: var(--ink-muted); }
+    .prediction-arrow { color: var(--accent-2); font: 700 24px var(--mono); }
+    .recommendation {
+      padding: 18px;
+      border: 2px solid var(--accent);
+      border-radius: 10px;
+      background: var(--accent-soft);
+      text-align: center;
+    }
+    .recommendation .predicted-score { display: block; margin: 5px 0; color: var(--accent); font: 800 30px/1 var(--mono); }
+    .recommendation small { color: var(--ink-muted); }
+    .equation {
+      margin: 18px 0;
+      padding: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+      color: var(--ink);
+      font: 700 14px/1.7 var(--mono);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .calculation-notes {
+      counter-reset: calc-step;
+      display: grid;
+      gap: 10px;
+      padding: 0;
+      list-style: none;
+    }
+    .calculation-notes li {
+      counter-increment: calc-step;
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .calculation-notes li::before {
+      content: counter(calc-step);
+      display: grid;
+      width: 27px;
+      height: 27px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font: 700 12px var(--mono);
+    }
+
+    .factor-diagram {
+      display: grid;
+      grid-template-columns: 1.25fr auto .8fr auto 1.05fr;
+      align-items: center;
+      gap: 12px;
+      margin: 28px 0 14px;
+    }
+    .matrix-block {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+    }
+    .matrix-block strong { display: block; margin-bottom: 4px; font-size: 13px; }
+    .matrix-block small { display: block; color: var(--ink-muted); line-height: 1.45; }
+    .matrix-cells {
+      display: grid;
+      gap: 4px;
+      width: max-content;
+      margin: 12px auto 0;
+      padding: 6px;
+      border-right: 2px solid var(--ink-faint);
+      border-left: 2px solid var(--ink-faint);
+    }
+    .matrix-cells.five { grid-template-columns: repeat(5, 15px); }
+    .matrix-cells.two { grid-template-columns: repeat(2, 18px); }
+    .matrix-cell { width: 100%; height: 14px; border-radius: 2px; background: var(--surface-alt); }
+    .matrix-cell.known { background: var(--accent); }
+    .matrix-cell.latent { background: var(--purple); }
+    .matrix-op { color: var(--accent-2); font: 800 22px var(--mono); text-align: center; }
+    .factor-caption { margin-bottom: 28px; color: var(--ink-muted); font-size: 13px; text-align: center; }
+    .latent-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 14px;
+      align-items: center;
+      margin: 10px 0;
+    }
+    .latent-label { font-size: 13px; font-weight: 700; }
+    .latent-bars { display: grid; gap: 5px; }
+    .bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .bar-fill { height: 100%; border-radius: inherit; background: var(--purple); }
+    .bar-fill.alt { background: var(--accent-2); }
+
+    .search-pipeline {
+      display: grid;
+      gap: 0;
+      margin: 28px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .pipeline-step {
+      display: grid;
+      grid-template-columns: 70px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .pipeline-step:last-child { border-bottom: 0; }
+    .pipeline-no { color: var(--accent); font: 700 11px var(--mono); letter-spacing: .06em; }
+    .pipeline-step p { margin: 3px 0 0; color: var(--ink-muted); font-size: 13px; }
+    .pipeline-output {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 700 11px var(--mono);
+      white-space: nowrap;
+    }
+    .score-stack {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 22px 0;
+    }
+    .score-box {
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: 9px;
+      background: var(--surface);
+      text-align: center;
+    }
+    .score-box b { display: block; color: var(--accent); }
+    .score-box small { color: var(--ink-muted); }
+    .score-plus { color: var(--accent-2); font: 800 18px var(--mono); }
+
+    .takeaways {
+      display: grid;
+      gap: 10px;
+      margin: 24px 0;
+    }
+    .takeaway {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 16px 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .takeaway-no { color: var(--accent-2); font: 750 18px var(--mono); }
+    .takeaway p { margin: 0; }
+    .quick-check {
+      margin-top: 28px;
+      padding: 22px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+    }
+    .quick-check h3 { margin-top: 0; }
+    details {
+      border-top: 1px solid var(--rule);
+    }
+    details:last-child { border-bottom: 1px solid var(--rule); }
+    details summary {
+      padding: 14px 4px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    details p { padding: 0 4px 14px; color: var(--ink-muted); }
+    .source-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+    .source-link { border: 1px solid var(--rule); background: var(--surface); color: var(--ink-muted); }
+    .source-link:hover { border-color: var(--accent); color: var(--accent); }
+    .page-foot {
+      margin-top: 54px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-faint);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .page { display: block; max-width: 800px; padding: 0 22px; }
+      .toc { display: none; }
+      .content { max-width: none; padding-top: 30px; }
+      .mobile-toc {
+        display: block;
+        margin-bottom: 34px;
+        border: 1px solid var(--rule);
+        border-radius: var(--radius);
+        background: var(--surface);
+      }
+      .mobile-toc summary { padding: 13px 16px; cursor: pointer; font-weight: 700; }
+      .mobile-toc nav { display: grid; padding: 0 10px 12px; }
+      .mobile-toc a { padding: 8px; border-radius: 6px; color: var(--ink-muted); text-decoration: none; }
+      .mobile-toc a.active { background: var(--accent-soft); color: var(--accent); }
+      .concept-grid, .method-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .page { padding: 0 16px; }
+      .content { padding-bottom: 64px; }
+      h1, h2, h3 { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      section { padding: 44px 0; }
+      .thesis { padding: 20px; }
+      .thesis p { font-size: 18px; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); justify-self: center; }
+      .signal-grid, .risk-grid { grid-template-columns: 1fr; }
+      .prediction { grid-template-columns: 1fr; }
+      .prediction-arrow { transform: rotate(90deg); justify-self: center; }
+      .factor-diagram { grid-template-columns: 1fr; }
+      .matrix-op { transform: none; }
+      .score-stack { grid-template-columns: 1fr; }
+      .score-plus { justify-self: center; }
+      .pipeline-step { grid-template-columns: 58px 1fr; }
+      .pipeline-output { grid-column: 2; justify-self: start; }
+      .latent-row { grid-template-columns: 1fr; gap: 5px; }
+      .swipe-hint { display: block; }
+      .takeaway { grid-template-columns: 34px 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+
+    @media print {
+      .reading-progress, .toc, .mobile-toc, .back-row { display: none; }
+      body { background: #fff; color: #111; }
+      .page { display: block; max-width: 800px; padding: 0; }
+      .content { max-width: none; padding: 0; }
+      section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+
+  <div class="page">
+    <nav class="toc" aria-label="협업 필터링 학습 목차">
+      <div class="toc-eyebrow">4.2.3 Study map</div>
+      <a href="#mental-model" data-toc>1. 한 문장으로 이해하기</a>
+      <a href="#signals" data-toc>2. 무엇을 데이터로 쓰나</a>
+      <a href="#matrix" data-toc>3. 사용자–아이템 행렬</a>
+      <a href="#neighbors" data-toc>4. 이웃으로 선호 예측하기</a>
+      <a href="#factorization" data-toc>5. 행렬 분해와 잠재 요인</a>
+      <a href="#search" data-toc>6. 검색에 적용하기</a>
+      <a href="#limits" data-toc>7. 한계와 대응</a>
+      <a href="#recap" data-toc>8. 핵심 정리</a>
+    </nav>
+
+    <main class="content">
+      <div class="back-row">
+        <a class="back-nav" href="ch04_summary.html#collaborative">← 4장 요약의 4.2.3</a>
+        <a class="back-nav secondary" href="../index.html">전체 목차</a>
+      </div>
+
+      <details class="mobile-toc">
+        <summary>이 페이지의 학습 순서</summary>
+        <nav aria-label="모바일용 협업 필터링 학습 목차">
+          <a href="#mental-model">1. 한 문장으로 이해하기</a>
+          <a href="#signals">2. 무엇을 데이터로 쓰나</a>
+          <a href="#matrix">3. 사용자–아이템 행렬</a>
+          <a href="#neighbors">4. 이웃으로 선호 예측하기</a>
+          <a href="#factorization">5. 행렬 분해와 잠재 요인</a>
+          <a href="#search">6. 검색에 적용하기</a>
+          <a href="#limits">7. 한계와 대응</a>
+          <a href="#recap">8. 핵심 정리</a>
+        </nav>
+      </details>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 4.2.3</div>
+        <h1>협업 필터링</h1>
+        <p class="lede">상품의 내용을 전부 이해하지 않아도, 여러 사용자가 남긴 <strong>선택의 겹침</strong>을 보면 한 사람의 다음 선호를 예측할 수 있다. 이 페이지는 그 과정을 작은 데이터로 직접 따라간다.</p>
+        <div class="hero-meta" aria-label="문서 특징">
+          <span>읽는 시간 약 10분</span>
+          <span>설명용 예시 데이터</span>
+          <span>수식 최소화</span>
+          <span>모바일 지원</span>
+        </div>
+        <div class="thesis">
+          <div class="thesis-label">한 줄 핵심</div>
+          <p>“나와 비슷한 선택을 한 사람들은, 내가 아직 보지 않은 무엇을 좋아했을까?”</p>
+        </div>
+      </header>
+
+      <section id="mental-model">
+        <div class="sec-label">01 · Mental model</div>
+        <h2>콘텐츠보다 ‘함께 선택된 패턴’을 본다</h2>
+        <p class="section-intro">협업 필터링(collaborative filtering)은 사용자들이 아이템과 상호작용한 기록을 모아, 아직 관찰되지 않은 선호를 예측하는 방법이다. 여기서 ‘협업’은 사람들이 직접 회의한다는 뜻이 아니라 <strong>여러 사람의 행동 데이터가 서로의 추천을 돕는다</strong>는 뜻이다.</p>
+
+        <div class="concept-grid" aria-label="인기순, 콘텐츠 기반, 협업 필터링 비교">
+          <article class="concept-card popular">
+            <span class="tag">POPULARITY</span>
+            <strong>인기순</strong>
+            <p>“전체 사용자가 많이 고른 것은?” 모두에게 거의 같은 결과를 준다.</p>
+          </article>
+          <article class="concept-card content-based">
+            <span class="tag">CONTENT-BASED</span>
+            <strong>콘텐츠 기반</strong>
+            <p>“내가 좋아한 것과 속성이 비슷한 것은?” 아이템의 내용을 비교한다.</p>
+          </article>
+          <article class="concept-card primary">
+            <span class="tag">COLLABORATIVE</span>
+            <strong>협업 필터링</strong>
+            <p>“나와 선택이 비슷한 사람이 함께 고른 것은?” 행동의 겹침을 비교한다.</p>
+          </article>
+        </div>
+
+        <div class="flow" aria-label="협업 필터링의 기본 흐름">
+          <div class="flow-step"><b>행동 수집</b><span>클릭·찜·구매</span></div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>패턴 비교</b><span>비슷한 사용자·아이템</span></div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>빈칸 예측</b><span>아직 보지 않은 선호</span></div>
+          <div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>개인화</b><span>추천·재랭킹</span></div>
+        </div>
+
+        <div class="example">
+          <div class="box-title">4장의 Alonzo 예시</div>
+          <p>Alonzo가 <code>doc22: iPad Pro</code>에 강하게 반응했고, 같은 문서에 반응한 사용자들이 <code>doc12: Kindle Fire</code>도 좋아했다면 Alonzo에게 <code>doc12</code>를 추천할 수 있다.</p>
+        </div>
+      </section>
+
+      <section id="signals">
+        <div class="sec-label">02 · Input signals</div>
+        <h2>선호는 점수일 수도, 행동일 수도 있다</h2>
+        <p class="section-intro">모델이 보는 값은 크게 명시적 피드백과 암묵적 피드백으로 나뉜다. 검색에서는 별점보다 클릭·체류·장바구니·구매 같은 암묵적 행동이 훨씬 많이 쌓인다.</p>
+
+        <div class="signal-grid">
+          <article class="signal-card">
+            <span class="tag">EXPLICIT</span>
+            <strong>명시적 피드백</strong>
+            <p>별점, 좋아요/싫어요처럼 사용자가 선호를 직접 표현한다. 의미는 분명하지만 수집량이 적다.</p>
+          </article>
+          <article class="signal-card">
+            <span class="tag">IMPLICIT</span>
+            <strong>암묵적 피드백</strong>
+            <p>클릭, 저장, 구매처럼 행동에서 선호를 추정한다. 많고 자연스럽지만 오해와 편향이 섞인다.</p>
+          </article>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="행동 신호를 강도로 바꾸는 예시 표">
+          <table>
+            <caption>행동을 상호작용 강도로 바꾸는 설명용 예시</caption>
+            <thead>
+              <tr><th scope="col">행동</th><th scope="col">예시 강도</th><th scope="col">해석할 때 주의할 점</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>검색 결과 노출</td><td><span class="score low">0</span></td><td>보였다는 사실만으로 선호라고 할 수 없다.</td></tr>
+              <tr><td>클릭</td><td><span class="score low">1</span></td><td>호기심이나 잘못된 클릭일 수도 있다.</td></tr>
+              <tr><td>찜·저장</td><td><span class="score mid">3</span></td><td>구매 의도는 있으나 실제 선택은 아닐 수 있다.</td></tr>
+              <tr><td>구매·긴 반복 사용</td><td><span class="score high">5</span></td><td>강한 신호지만 가격·재고·노출의 영향도 받는다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">← 표를 좌우로 밀어 전체 내용을 볼 수 있습니다 →</p>
+
+        <div class="note">
+          <div class="box-title">중요한 해석</div>
+          <p>클릭은 정답(ground truth)이 아니라 <strong>불완전한 관찰</strong>이다. 실제 시스템의 강도와 가중치는 서비스 목표, 로그 품질, 시간 감쇠를 함께 고려해 정해야 한다.</p>
+        </div>
+      </section>
+
+      <section id="matrix">
+        <div class="sec-label">03 · User–item matrix</div>
+        <h2>흩어진 행동을 하나의 표로 모은다</h2>
+        <p class="section-intro">행은 사용자, 열은 아이템, 셀은 상호작용 강도다. 물음표는 싫다는 뜻이 아니라 <strong>아직 관찰하지 못했다</strong>는 뜻이다. 협업 필터링의 일은 이 빈칸 중 유망한 값을 예측하는 것이다.</p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="설명용 사용자 아이템 상호작용 행렬">
+          <table class="matrix-table">
+            <caption>설명용 데이터 · 0(약함)–5(강함), ?(아직 관찰되지 않음)</caption>
+            <thead>
+              <tr>
+                <th scope="col">사용자</th>
+                <th scope="col">iPad Pro<br><code>doc22</code></th>
+                <th scope="col">Kindle Fire<br><code>doc12</code></th>
+                <th scope="col">Galaxy Tab<br><code>doc31</code></th>
+                <th scope="col">기계식 키보드<br><code>doc44</code></th>
+                <th scope="col">헤드폰<br><code>doc57</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="focus-row">
+                <th scope="row">Alonzo</th>
+                <td><span class="score high" aria-label="강도 5">5</span></td>
+                <td><span class="score unknown" aria-label="예측할 빈칸">?</span></td>
+                <td><span class="score unknown" aria-label="관찰되지 않음">?</span></td>
+                <td><span class="score low" aria-label="강도 1">1</span></td>
+                <td><span class="score unknown" aria-label="관찰되지 않음">?</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Ming</th>
+                <td><span class="score high">4</span></td>
+                <td><span class="score high">5</span></td>
+                <td><span class="score low">1</span></td>
+                <td><span class="score unknown">?</span></td>
+                <td><span class="score unknown">?</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Sora</th>
+                <td><span class="score high">5</span></td>
+                <td><span class="score high">4</span></td>
+                <td><span class="score low">1</span></td>
+                <td><span class="score unknown">?</span></td>
+                <td><span class="score low">2</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Jun</th>
+                <td><span class="score low">1</span></td>
+                <td><span class="score low">1</span></td>
+                <td><span class="score high">5</span></td>
+                <td><span class="score high">4</span></td>
+                <td><span class="score unknown">?</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">← 표를 좌우로 밀어 전체 내용을 볼 수 있습니다 →</p>
+        <div class="legend" aria-label="행렬 셀 범례">
+          <span><i class="score high" aria-hidden="true">5</i> 강한 상호작용</span>
+          <span><i class="score low" aria-hidden="true">1</i> 약한 상호작용</span>
+          <span><i class="score unknown" aria-hidden="true">?</i> 예측 후보</span>
+        </div>
+
+        <div class="plain-box">
+          <div class="box-title">표에서 바로 보이는 패턴</div>
+          <p>Ming과 Sora는 모두 iPad Pro와 Kindle Fire에 강하게 반응했다. Alonzo도 iPad Pro를 강하게 선택했으므로, 그의 Kindle Fire 빈칸은 높은 값일 가능성이 있다. 반면 Jun은 iPad·Kindle보다 Galaxy Tab과 키보드 쪽 패턴이 강해 Alonzo의 가까운 이웃으로 보기 어렵다.</p>
+        </div>
+      </section>
+
+      <section id="neighbors">
+        <div class="sec-label">04 · Neighborhood approach</div>
+        <h2>비슷한 이웃의 의견을 더해 빈칸을 예측한다</h2>
+        <p class="section-intro">가장 직관적인 방법은 Alonzo와 과거 선택이 비슷한 사용자를 찾고, 그들이 Kindle Fire를 얼마나 좋아했는지 가중 평균하는 것이다. 더 비슷한 사람의 의견을 더 크게 반영한다.</p>
+
+        <div class="prediction" aria-label="Alonzo의 Kindle Fire 선호 예측 과정">
+          <div class="neighbor-stack">
+            <div class="neighbor">
+              <span class="avatar" aria-hidden="true">M</span>
+              <span><strong>Ming</strong><small>유사도 0.85</small></span>
+              <span class="score high" aria-label="Kindle Fire 선호 5">5</span>
+            </div>
+            <div class="neighbor">
+              <span class="avatar" aria-hidden="true">S</span>
+              <span><strong>Sora</strong><small>유사도 0.75</small></span>
+              <span class="score high" aria-label="Kindle Fire 선호 4">4</span>
+            </div>
+          </div>
+          <div class="prediction-arrow" aria-hidden="true">→</div>
+          <div class="recommendation">
+            <strong>Alonzo × Kindle Fire</strong>
+            <span class="predicted-score">4.53</span>
+            <small>예상 선호 · 높음</small>
+          </div>
+        </div>
+
+        <div class="equation" aria-label="가중 평균 예측식">(0.85 × 5 + 0.75 × 4) ÷ (0.85 + 0.75) = 4.53</div>
+
+        <ol class="calculation-notes">
+          <li><span>Alonzo와 공통으로 평가한 아이템을 기준으로 사용자 유사도를 구한다.</span></li>
+          <li><span>가까운 이웃인 Ming과 Sora가 Kindle Fire에 준 강도를 가져온다.</span></li>
+          <li><span>유사도를 가중치로 사용해 평균하면 약 <strong>4.53</strong>이 된다.</span></li>
+          <li><span>이미 본 아이템은 제외하고, 이 예측 점수가 높은 아이템을 추천 후보로 올린다.</span></li>
+        </ol>
+
+        <div class="method-grid">
+          <article class="method-card">
+            <span class="tag">USER-BASED</span>
+            <strong>사용자 기반</strong>
+            <p>나와 행동이 비슷한 사용자를 찾는다. “비슷한 사람들이 좋아한 것”을 추천한다.</p>
+          </article>
+          <article class="method-card">
+            <span class="tag">ITEM-BASED</span>
+            <strong>아이템 기반</strong>
+            <p>같은 사용자에게 함께 선택된 아이템을 찾는다. “이 상품과 함께 선택된 것”을 추천한다.</p>
+          </article>
+          <article class="method-card">
+            <span class="tag">LATENT FACTORS</span>
+            <strong>행렬 분해</strong>
+            <p>사용자와 아이템을 작은 취향 좌표로 압축한다. 큰 희소 행렬에서 숨은 패턴을 찾는다.</p>
+          </article>
+        </div>
+
+        <div class="note">
+          <div class="box-title">예시의 범위</div>
+          <p>위 계산은 원리를 보여 주기 위한 단순 가중 평균이다. 실제 사용자 기반 협업 필터링은 평균 선호 차이를 보정하거나, 음의 유사도를 제외하고, 이웃 수와 시간 가중치를 조정할 수 있다.</p>
+        </div>
+      </section>
+
+      <section id="factorization">
+        <div class="sec-label">05 · Matrix factorization</div>
+        <h2>행렬이 너무 비어 있으면 ‘잠재 취향’으로 압축한다</h2>
+        <p class="section-intro">실제 서비스에서는 사용자도 아이템도 매우 많고, 한 사용자가 만나는 아이템은 극히 일부다. 그래서 사용자–아이템 행렬은 대부분 빈칸인 <strong>희소 행렬</strong>이 된다. 행렬 분해는 이 큰 표를 두 개의 작은 표로 나눠 공통 패턴을 학습한다.</p>
+
+        <div class="factor-diagram" aria-label="사용자 아이템 행렬을 사용자 잠재 요인 행렬과 잠재 요인 아이템 행렬로 분해하는 개념도">
+          <div class="matrix-block">
+            <strong>사용자 × 아이템</strong>
+            <small>크고 대부분 비어 있음</small>
+            <div class="matrix-cells five" aria-hidden="true">
+              <span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span>
+              <span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell"></span>
+              <span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span>
+              <span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span>
+            </div>
+          </div>
+          <div class="matrix-op" aria-hidden="true">≈</div>
+          <div class="matrix-block">
+            <strong>사용자 × 요인</strong>
+            <small>사용자의 취향 좌표</small>
+            <div class="matrix-cells two" aria-hidden="true">
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+            </div>
+          </div>
+          <div class="matrix-op" aria-hidden="true">×</div>
+          <div class="matrix-block">
+            <strong>요인 × 아이템</strong>
+            <small>아이템의 성향 좌표</small>
+            <div class="matrix-cells five" aria-hidden="true">
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+            </div>
+          </div>
+        </div>
+        <p class="factor-caption">빈칸을 그대로 외우는 대신, 여러 선택에 반복해서 나타나는 작은 수의 공통 요인으로 압축한다.</p>
+
+        <div class="equation">R<sub>사용자×아이템</sub> ≈ P<sub>사용자×잠재요인</sub> × Q<sup>T</sup><sub>잠재요인×아이템</sub></div>
+
+        <h3>잠재 요인은 누가 이름을 붙여 주지 않는다</h3>
+        <p>모델은 “태블릿 선호”, “휴대성 중시” 같은 라벨을 직접 받지 않는다. 사용자 행동에서 함께 나타나는 방향을 수치 좌표로 학습할 뿐이다. 사람이 결과를 보고 그렇게 해석할 수는 있지만, 잠재 요인이 반드시 하나의 깔끔한 의미와 일치하는 것은 아니다.</p>
+
+        <div class="plain-box" aria-label="잠재 요인 좌표의 설명용 해석 예시">
+          <div class="box-title">설명용 해석 예시</div>
+          <div class="latent-row">
+            <span class="latent-label">Alonzo</span>
+            <div class="latent-bars" aria-label="휴대 기기 성향 높음, 데스크톱 주변기기 성향 낮음">
+              <div class="bar-track"><div class="bar-fill" style="width: 88%"></div></div>
+              <div class="bar-track"><div class="bar-fill alt" style="width: 22%"></div></div>
+            </div>
+          </div>
+          <div class="latent-row">
+            <span class="latent-label">Kindle Fire</span>
+            <div class="latent-bars" aria-label="휴대 기기 성향 높음, 데스크톱 주변기기 성향 매우 낮음">
+              <div class="bar-track"><div class="bar-fill" style="width: 82%"></div></div>
+              <div class="bar-track"><div class="bar-fill alt" style="width: 14%"></div></div>
+            </div>
+          </div>
+          <p>두 좌표의 방향이 비슷하면 내적(dot product)이 커지고, 예상 선호도도 높아진다. 막대의 이름과 수치는 이해를 돕기 위한 예시다.</p>
+        </div>
+      </section>
+
+      <section id="search">
+        <div class="sec-label">06 · Search application</div>
+        <h2>검색에서는 ‘후보 찾기’와 ‘개인화’를 함께 쓴다</h2>
+        <p class="section-intro">협업 필터링만으로 검색 결과 전체를 만들면 질의와 전혀 관련 없는 상품이 추천될 수 있다. 보통 텍스트 검색이 질의에 맞는 후보를 먼저 찾고, 협업 필터링 점수를 개인화 신호로 더해 순서를 조정한다.</p>
+
+        <div class="search-pipeline" aria-label="협업 필터링을 검색에 적용하는 네 단계">
+          <div class="pipeline-step">
+            <span class="pipeline-no">STEP 01</span>
+            <div><strong>질의 입력</strong><p>사용자가 “tablet”을 검색한다.</p></div>
+            <span class="pipeline-output">query</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="pipeline-no">STEP 02</span>
+            <div><strong>관련 후보 검색</strong><p>BM25 같은 텍스트 관련도로 태블릿 후보를 좁힌다.</p></div>
+            <span class="pipeline-output">top-N</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="pipeline-no">STEP 03</span>
+            <div><strong>개인 선호 점수 계산</strong><p>Alonzo의 잠재 취향과 각 후보의 좌표를 비교한다.</p></div>
+            <span class="pipeline-output">CF score</span>
+          </div>
+          <div class="pipeline-step">
+            <span class="pipeline-no">STEP 04</span>
+            <div><strong>재랭킹</strong><p>관련도와 개인화 점수를 결합해 최종 순서를 정한다.</p></div>
+            <span class="pipeline-output">final rank</span>
+          </div>
+        </div>
+
+        <div class="score-stack" aria-label="검색 최종 점수의 개념적 구성">
+          <div class="score-box"><b>텍스트 관련도</b><small>질의와 맞는가?</small></div>
+          <div class="score-plus" aria-hidden="true">+</div>
+          <div class="score-box"><b>개인 선호</b><small>이 사용자가 좋아할까?</small></div>
+          <div class="score-plus" aria-hidden="true">+</div>
+          <div class="score-box"><b>운영 신호</b><small>재고·최신성·품질</small></div>
+        </div>
+
+        <div class="equation">최종 점수 = α × 텍스트 관련도 + β × 협업 필터링 점수 + γ × 운영 신호</div>
+
+        <div class="warning">
+          <div class="box-title">점수 결합 전 확인</div>
+          <p>서로 범위가 다른 점수를 그대로 더하면 한 신호가 결과를 지배한다. 각 점수를 정규화하고, 오프라인 평가와 온라인 실험으로 <code>α</code>, <code>β</code>, <code>γ</code>를 조정해야 한다.</p>
+        </div>
+      </section>
+
+      <section id="limits">
+        <div class="sec-label">07 · Limits &amp; safeguards</div>
+        <h2>잘 맞는 추천 뒤에는 구조적인 편향이 남는다</h2>
+        <p class="section-intro">협업 필터링은 행동 패턴을 잘 활용하지만, 관찰된 행동 자체가 노출 위치와 기존 인기의 영향을 받는다. 그래서 예측 정확도뿐 아니라 신호가 만들어진 과정도 함께 관리해야 한다.</p>
+
+        <div class="risk-grid">
+          <article class="risk-card">
+            <span class="risk-no">RISK 01</span>
+            <strong>콜드 스타트</strong>
+            <p>새 사용자와 새 아이템은 행동 기록이 없다. 온보딩 선호, 콘텐츠 특징, 탐색 노출을 함께 사용한다.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-no">RISK 02</span>
+            <strong>희소성</strong>
+            <p>대부분의 사용자는 극소수 아이템만 본다. 행렬 분해, 암묵적 피드백, 적절한 정규화가 필요하다.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-no">RISK 03</span>
+            <strong>프레젠테이션 편향</strong>
+            <p>위에 노출된 아이템이 더 클릭되고, 그 클릭이 다시 순위를 높인다. 탐색과 편향 보정이 필요하다.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-no">RISK 04</span>
+            <strong>인기 쏠림·필터 버블</strong>
+            <p>익숙한 것만 반복 추천하면 다양성과 발견성이 줄어든다. 다양성·신선도 제약을 둔다.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-no">RISK 05</span>
+            <strong>취향 변화</strong>
+            <p>오래된 행동이 현재 선호를 왜곡한다. 최근 행동에 더 큰 가중치를 주거나 주기적으로 재학습한다.</p>
+          </article>
+          <article class="risk-card">
+            <span class="risk-no">RISK 06</span>
+            <strong>개인정보와 조작</strong>
+            <p>행동 로그는 민감할 수 있고 가짜 클릭에 취약하다. 최소 수집, 접근 통제, 이상 탐지가 필요하다.</p>
+          </article>
+        </div>
+
+        <div class="plain-box">
+          <div class="box-title">4장과 연결해서 기억하기</div>
+          <p><strong>신호 부스팅</strong>은 “이 질의에서 모두가 무엇을 골랐나?”에 가깝고, <strong>협업 필터링</strong>은 “이 사용자와 비슷한 사람이 무엇을 골랐나?”에 가깝다. 둘 다 과거 신호의 영향을 받으므로 콜드 스타트와 노출 편향을 피할 수 없다.</p>
+        </div>
+      </section>
+
+      <section id="recap">
+        <div class="sec-label">08 · Recap</div>
+        <h2>이 네 문장만 남겨도 된다</h2>
+
+        <div class="takeaways">
+          <div class="takeaway"><span class="takeaway-no">01</span><p>협업 필터링은 <strong>여러 사용자의 선택이 겹치는 패턴</strong>으로 관찰되지 않은 개인 선호를 예측한다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">02</span><p>사용자–아이템 행렬의 물음표는 ‘싫음’이 아니라 <strong>아직 모름</strong>이며, 모델은 유망한 빈칸을 찾는다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">03</span><p>작은 데이터는 이웃 기반으로 이해하기 쉽고, 큰 희소 데이터는 <strong>행렬 분해와 잠재 요인</strong>으로 압축할 수 있다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">04</span><p>검색에서는 텍스트 관련도를 지키면서 개인화 신호를 더하고, 콜드 스타트·노출 편향·다양성을 함께 관리해야 한다.</p></div>
+        </div>
+
+        <div class="quick-check">
+          <h3>30초 이해 확인</h3>
+          <details>
+            <summary>Q1. 인기순과 협업 필터링의 가장 큰 차이는?</summary>
+            <p>인기순은 전체 집계에 가깝지만, 협업 필터링은 사용자마다 비슷한 이웃이나 잠재 취향이 달라 개인별 결과를 만든다.</p>
+          </details>
+          <details>
+            <summary>Q2. 행렬의 빈칸은 0점과 같은가?</summary>
+            <p>아니다. 빈칸은 아직 상호작용을 관찰하지 못했다는 뜻이고, 0점은 관찰 결과가 매우 약하거나 부정적이라는 별도의 의미를 가질 수 있다.</p>
+          </details>
+          <details>
+            <summary>Q3. 잠재 요인은 사람이 정한 카테고리인가?</summary>
+            <p>반드시 그렇지는 않다. 모델이 행동의 공통 패턴에서 학습한 수치 방향이며, 사람이 사후에 의미를 추정할 수 있을 뿐이다.</p>
+          </details>
+        </div>
+
+        <div class="source-row">
+          <a class="source-link" href="ch04_summary.html#collaborative">4장 전체 요약으로 돌아가기</a>
+          <a class="source-link" href="https://livebook.manning.com/book/ai-powered-search" target="_blank" rel="noopener">Manning LiveBook에서 보기 ↗</a>
+        </div>
+      </section>
+
+      <footer class="page-foot">출처: <em>AI-Powered Search</em>, Chapter 4.2.3 — Collaborative filtering. Alonzo, <code>doc22</code>, <code>doc12</code>의 핵심 맥락을 바탕으로 재구성했으며, 행렬·유사도·예측 수치는 개념 설명을 위한 별도 예시입니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var desktopLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var links = desktopLinks.concat(mobileLinks);
+      var sections = desktopLinks.map(function (link) {
+        return document.querySelector(link.getAttribute('href'));
+      });
+      var progress = document.getElementById('readingProgress');
+      var mobileToc = document.querySelector('.mobile-toc');
+
+      function setActive(href) {
+        links.forEach(function (link) {
+          link.classList.toggle('active', link.getAttribute('href') === href);
+        });
+      }
+
+      function updateProgress() {
+        var root = document.documentElement;
+        var max = root.scrollHeight - root.clientHeight;
+        var ratio = max > 0 ? root.scrollTop / max : 0;
+        progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%';
+      }
+
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link.getAttribute('href'));
+          if (mobileToc && mobileToc.contains(link)) mobileToc.removeAttribute('open');
+        });
+      });
+
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) setActive('#' + entry.target.id);
+          });
+        }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 });
+        sections.forEach(function (section) { if (section) observer.observe(section); });
+      }
+
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+      setActive('#mental-model');
+    })();
+  </script>
+</body>
+</html>

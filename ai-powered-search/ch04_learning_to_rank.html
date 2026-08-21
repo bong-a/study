@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Learning to Rank를 판단 데이터, RankNet·LambdaMART 수식, NDCG 평가, OpenSearch LTR 플러그인의 온라인 재랭킹과 1,000만 문서 성능 진단까지 설명한 한국어 학습 노트">
+  <title>Learning to Rank — 판단 데이터에서 랭킹 함수를 학습하기</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #fff;
+      --surface-alt: #eaedf2;
+      --ink: #1b2130;
+      --ink-muted: #5b6475;
+      --ink-faint: #7d8798;
+      --rule: #dbe0e8;
+      --accent: #3454d1;
+      --accent-soft: #e7ecfc;
+      --accent-2: #b96012;
+      --accent-2-soft: #f8e9d4;
+      --good: #14745c;
+      --good-soft: #dff2eb;
+      --purple: #6a50b7;
+      --purple-soft: #eee9fb;
+      --danger: #a54149;
+      --danger-soft: #f8e2e4;
+      --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #12151c;
+        --surface: #1a1f29;
+        --surface-alt: #222938;
+        --ink: #e7e9ee;
+        --ink-muted: #a6aebc;
+        --ink-faint: #7d8798;
+        --rule: #2a3140;
+        --accent: #8ea1ff;
+        --accent-soft: #262e48;
+        --accent-2: #e3a857;
+        --accent-2-soft: #3a2e1c;
+        --good: #67d4b5;
+        --good-soft: #17372f;
+        --purple: #b5a1f5;
+        --purple-soft: #302b45;
+        --danger: #f08d94;
+        --danger-soft: #402428;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      max-width: 100%;
+      overflow-x: clip;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    strong { font-weight: 780; }
+    code { padding: 2px 5px; border-radius: 4px; background: var(--surface-alt); color: var(--accent-2); font: .88em var(--mono); }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .reading-progress { position: fixed; z-index: 30; top: 0; left: 0; width: 0; height: 3px; background: var(--accent-2); }
+    .page { display: flex; align-items: flex-start; width: 100%; min-width: 0; max-width: 1240px; margin: 0 auto; padding: 0 24px; gap: 48px; }
+    .toc { position: sticky; top: 24px; flex: 0 0 232px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 8px 0 20px; font-size: 13px; }
+    .toc-eyebrow { margin-bottom: 12px; color: var(--ink-faint); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .toc a { display: block; margin: 2px 0; padding: 7px 10px 7px 12px; border-left: 2px solid var(--rule); border-radius: 0 6px 6px 0; color: var(--ink-muted); text-decoration: none; transition: color .12s, border-color .12s, background-color .12s; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a.active { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    .content { flex: 1 1 auto; width: 100%; min-width: 0; max-width: 800px; padding: 56px 0 96px; }
+    .back-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .back-nav, .source-link { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 14px; border-radius: 999px; font: 12px var(--mono); text-decoration: none; }
+    .back-nav { background: var(--accent-2-soft); color: var(--accent-2); }
+    .back-nav.secondary { background: var(--surface-alt); color: var(--ink-muted); }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .back-nav.secondary:hover { background: var(--ink); color: var(--bg); }
+    .back-nav:focus-visible, .toc a:focus-visible, .mobile-toc a:focus-visible, .source-link:focus-visible, summary:focus-visible, .table-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 56px; }
+    .kicker, .sec-label { color: var(--accent); font: 700 12px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 { margin: 12px 0 16px; font: 700 clamp(34px, 5vw, 48px)/1.2 var(--serif); letter-spacing: -.03em; }
+    h2 { margin: 8px 0 14px; font: 700 29px/1.35 var(--serif); }
+    h3 { margin: 30px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 7px; }
+    .lede, .section-intro { max-width: 68ch; color: var(--ink-muted); }
+    .lede { font-size: 17px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+    .hero-meta span { padding: 5px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-muted); font-size: 12px; }
+    .thesis { margin-top: 28px; padding: 24px 26px; border-left: 4px solid var(--accent-2); border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); }
+    .thesis-label { color: var(--accent-2); font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .thesis p { margin: 8px 0 0; font: 700 20px/1.55 var(--serif); }
+    section { padding: 54px 0; border-top: 1px solid var(--rule); scroll-margin-top: 24px; }
+    .plain-box, .note, .warning, .example { margin: 22px 0; padding: 20px 22px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .example { border-color: color-mix(in srgb, var(--accent) 35%, var(--rule)); background: var(--accent-soft); }
+    .note { border-color: color-mix(in srgb, var(--good) 34%, var(--rule)); background: var(--good-soft); }
+    .warning { border-color: color-mix(in srgb, var(--danger) 35%, var(--rule)); background: var(--danger-soft); }
+    .box-title { margin-bottom: 7px; color: var(--accent); font: 750 12px var(--mono); letter-spacing: .04em; text-transform: uppercase; }
+    .note .box-title { color: var(--good); }
+    .warning .box-title { color: var(--danger); }
+    .plain-box p:last-child, .note p:last-child, .warning p:last-child, .example p:last-child { margin-bottom: 0; }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; align-items: stretch; gap: 9px; margin: 28px 0; }
+    .flow-step { min-width: 0; padding: 15px 12px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); text-align: center; }
+    .flow-step b { display: block; color: var(--accent); font-size: 13px; }
+    .flow-step span { display: block; margin-top: 5px; color: var(--ink-muted); font-size: 12px; line-height: 1.45; }
+    .flow-arrow { align-self: center; color: var(--accent-2); font: 700 18px var(--mono); }
+    .compare-grid, .feature-grid, .risk-grid, .metric-grid { display: grid; gap: 12px; margin: 24px 0; }
+    .compare-grid { grid-template-columns: repeat(3, 1fr); }
+    .feature-grid, .risk-grid, .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .compare-card, .feature-card, .risk-card, .metric-card { min-width: 0; padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .compare-card { border-top: 3px solid var(--accent); }
+    .compare-card.pair { border-top-color: var(--accent-2); }
+    .compare-card.list { border-top-color: var(--purple); }
+    .tag { display: inline-block; margin-bottom: 8px; color: var(--accent); font: 700 11px var(--mono); letter-spacing: .05em; }
+    .compare-card strong, .feature-card strong, .risk-card strong, .metric-card strong { display: block; }
+    .compare-card p, .feature-card p, .risk-card p, .metric-card p { margin: 7px 0 0; color: var(--ink-muted); font-size: 14px; line-height: 1.6; }
+    .risk-card { border-left: 3px solid var(--danger); }
+    .risk-no { color: var(--danger); font: 700 11px var(--mono); }
+    .table-scroll { max-width: 100%; margin: 22px 0; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 14px; }
+    caption { padding: 14px 16px; border-bottom: 1px solid var(--rule); color: var(--ink-muted); font-size: 13px; text-align: left; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: middle; }
+    th { background: var(--surface-alt); color: var(--ink-muted); font-size: 12px; }
+    tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+    tbody tr.focus { background: var(--accent-soft); }
+    .swipe-hint { display: none; margin: -12px 0 16px; color: var(--ink-faint); font-size: 12px; }
+    .formula { margin: 18px 0; padding: 19px; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface-alt); color: var(--ink); font: 700 15px/1.8 var(--mono); text-align: center; white-space: nowrap; }
+    .formula .muted { color: var(--ink-muted); font-weight: 500; }
+    .pair-demo { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; margin: 24px 0; }
+    .doc-score { padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .doc-score.good { border-color: var(--good); }
+    .doc-score .score { display: block; margin-top: 8px; color: var(--accent); font: 800 28px var(--mono); }
+    .pair-op { color: var(--accent-2); font: 800 21px var(--mono); text-align: center; }
+    .loss-rail { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin: 10px 0; font-size: 13px; }
+    .bar-track { height: 10px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .bar-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+    .bar-fill.good { background: var(--good); }
+    .method-stack { display: grid; gap: 12px; margin: 24px 0; }
+    .method-row { display: grid; grid-template-columns: 110px 1fr; gap: 16px; padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .method-name { color: var(--accent); font: 750 12px var(--mono); }
+    .method-row p { margin: 0; color: var(--ink-muted); }
+    .rank-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0; }
+    .rank-panel { padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .rank-panel h3 { margin: 0 0 12px; font-size: 16px; }
+    .rank-list { display: grid; gap: 7px; padding: 0; list-style: none; }
+    .rank-item { display: grid; grid-template-columns: 28px 1fr 48px; gap: 9px; align-items: center; padding: 9px; border-radius: 8px; background: var(--surface-alt); }
+    .rank-no { color: var(--ink-faint); font: 700 11px var(--mono); }
+    .rel { display: grid; width: 34px; height: 28px; place-items: center; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font: 750 12px var(--mono); }
+    .metric-value { margin-top: 14px; color: var(--accent); font: 800 22px var(--mono); }
+    .pipeline { display: grid; gap: 0; margin: 28px 0; overflow: hidden; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .pipeline-step { display: grid; grid-template-columns: 70px 1fr auto; gap: 14px; align-items: center; padding: 17px 18px; border-bottom: 1px solid var(--rule); }
+    .pipeline-step:last-child { border-bottom: 0; }
+    .pipeline-no { color: var(--accent); font: 700 11px var(--mono); letter-spacing: .06em; }
+    .pipeline-step p { margin: 3px 0 0; color: var(--ink-muted); font-size: 13px; }
+    .pipeline-output { padding: 5px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 700 11px var(--mono); white-space: nowrap; }
+    .split-diagram { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 22px 0; }
+    .split-box { padding: 16px; border: 1px solid var(--rule); border-radius: 9px; background: var(--surface); }
+    .split-box b { display: block; color: var(--accent); }
+    .split-box span { color: var(--ink-muted); font-size: 13px; }
+    .paper-list { display: grid; gap: 10px; margin: 24px 0; }
+    .paper { display: grid; grid-template-columns: 58px 1fr auto; gap: 14px; align-items: start; padding: 17px 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .paper-year { color: var(--accent-2); font: 750 13px var(--mono); }
+    .paper strong { display: block; }
+    .paper small { display: block; margin-top: 4px; color: var(--ink-muted); line-height: 1.5; }
+    .paper a { color: var(--accent); font: 700 12px var(--mono); text-decoration: none; white-space: nowrap; }
+    .paper a:hover { text-decoration: underline; }
+    .ops-code { margin: 20px 0; padding: 18px 20px; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface-alt); color: var(--ink); font: 13px/1.75 var(--mono); white-space: pre; }
+    .takeaways { display: grid; gap: 10px; margin: 24px 0; }
+    .takeaway { display: grid; grid-template-columns: 42px 1fr; gap: 14px; align-items: start; padding: 16px 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .takeaway-no { color: var(--accent-2); font: 750 18px var(--mono); }
+    .takeaway p { margin: 0; }
+    .source-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+    .source-link { border: 1px solid var(--rule); background: var(--surface); color: var(--ink-muted); }
+    .source-link:hover { border-color: var(--accent); color: var(--accent); }
+    .page-foot { margin-top: 54px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+    @media (max-width: 900px) {
+      .page { display: block; max-width: 800px; padding: 0 22px; }
+      .toc { display: none; }
+      .content { max-width: none; padding-top: 30px; }
+      .mobile-toc { display: block; margin-bottom: 34px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+      .mobile-toc summary { padding: 13px 16px; cursor: pointer; font-weight: 700; }
+      .mobile-toc nav { display: grid; padding: 0 10px 12px; }
+      .mobile-toc a { padding: 8px; border-radius: 6px; color: var(--ink-muted); text-decoration: none; }
+      .mobile-toc a.active { background: var(--accent-soft); color: var(--accent); }
+      .compare-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 0 16px; }
+      .content { padding-bottom: 64px; }
+      h1, h2, h3 { word-break: keep-all; overflow-wrap: break-word; text-wrap: pretty; }
+      h1 { font-size: 34px; }
+      h2 { font-size: 25px; }
+      section { padding: 44px 0; }
+      .thesis { padding: 20px; }
+      .thesis p { font-size: 18px; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); justify-self: center; }
+      .feature-grid, .risk-grid, .metric-grid, .rank-compare { grid-template-columns: 1fr; }
+      .pair-demo { grid-template-columns: 1fr; }
+      .pair-op { transform: none; }
+      .method-row { grid-template-columns: 1fr; gap: 6px; }
+      .pipeline-step { grid-template-columns: 58px 1fr; }
+      .pipeline-output { grid-column: 2; justify-self: start; }
+      .split-diagram { grid-template-columns: 1fr; }
+      .paper { grid-template-columns: 48px 1fr; }
+      .paper a { grid-column: 2; }
+      .swipe-hint { display: block; }
+      .takeaway { grid-template-columns: 34px 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+    @media print {
+      .reading-progress, .toc, .mobile-toc, .back-row { display: none; }
+      body { background: #fff; color: #111; }
+      .page { display: block; max-width: 800px; padding: 0; }
+      .content { max-width: none; padding: 0; }
+      section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <nav class="toc" aria-label="Learning to Rank 학습 목차">
+      <div class="toc-eyebrow">LTR Study map</div>
+      <a href="#mental-model" data-toc>1. 한 문장으로 이해하기</a>
+      <a href="#data" data-toc>2. 판단·특징 데이터</a>
+      <a href="#approaches" data-toc>3. 세 가지 학습 접근</a>
+      <a href="#objectives" data-toc>4. RankNet과 LambdaMART</a>
+      <a href="#metrics" data-toc>5. NDCG와 평가 지표</a>
+      <a href="#pipeline" data-toc>6. 학습·서빙 파이프라인</a>
+      <a href="#opensearch" data-toc>7. OpenSearch 운영 성능</a>
+      <a href="#pitfalls" data-toc>8. 실패하기 쉬운 지점</a>
+      <a href="#papers" data-toc>9. 대표 논문</a>
+      <a href="#recap" data-toc>10. 핵심 정리</a>
+    </nav>
+
+    <main class="content">
+      <div class="back-row">
+        <a class="back-nav" href="ch04_summary.html#ltr">← 4장 요약의 4.2.4</a>
+        <a class="back-nav secondary" href="ch04_pagerank.html">PageRank 정리</a>
+        <a class="back-nav secondary" href="../index.html">전체 목차</a>
+      </div>
+
+      <details class="mobile-toc">
+        <summary>이 페이지의 학습 순서</summary>
+        <nav aria-label="모바일용 Learning to Rank 학습 목차">
+          <a href="#mental-model">1. 한 문장으로 이해하기</a><a href="#data">2. 판단·특징 데이터</a>
+          <a href="#approaches">3. 세 가지 학습 접근</a><a href="#objectives">4. RankNet과 LambdaMART</a>
+          <a href="#metrics">5. NDCG와 평가 지표</a><a href="#pipeline">6. 학습·서빙 파이프라인</a>
+          <a href="#opensearch">7. OpenSearch 운영 성능</a><a href="#pitfalls">8. 실패하기 쉬운 지점</a>
+          <a href="#papers">9. 대표 논문</a><a href="#recap">10. 핵심 정리</a>
+        </nav>
+      </details>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 4.2.4 / Chapter 10</div>
+        <h1>Learning to Rank</h1>
+        <p class="lede">사람이 관련 있다고 판단한 순서와 검색 특징을 함께 보여 주고, <strong>좋은 문서를 위에 놓는 점수 함수</strong>를 데이터로 학습한다. 분류 정확도가 아니라 결과 목록의 순서가 목표다.</p>
+        <div class="hero-meta" aria-label="문서 특징"><span>읽는 시간 약 20분</span><span>실제 목적함수</span><span>NDCG 손계산</span><span>OpenSearch 성능</span><span>원 논문 연결</span></div>
+        <div class="thesis"><div class="thesis-label">한 줄 핵심</div><p>“좋은 랭킹의 규칙을 사람이 일일이 조정하지 말고, 판단 목록에서 학습하자.”</p></div>
+      </header>
+
+      <section id="mental-model">
+        <div class="sec-label">01 · Mental model</div>
+        <h2>점수를 예측하지만, 목적은 ‘순서’다</h2>
+        <p class="section-intro">LTR은 질의 <code>q</code>와 문서 <code>d</code>의 특징 벡터 <code>x(q,d)</code>를 받아 실수 점수 <code>s</code>를 출력한다. 검색 시에는 같은 질의의 후보들을 이 점수로 정렬한다.</p>
+        <div class="formula" aria-label="Learning to Rank 점수 함수">s(q,d) = f<sub>θ</sub>(x(q,d)) <span class="muted">→ 같은 q 안에서 s가 큰 문서를 먼저 정렬</span></div>
+        <div class="flow" aria-label="Learning to Rank 검색 흐름">
+          <div class="flow-step"><b>질의</b><span>“social network”</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>1차 검색</b><span>BM25 top-N</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>LTR 점수</b><span>특징을 모델에 입력</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>재랭킹</b><span>학습된 순서</span></div>
+        </div>
+        <div class="plain-box"><div class="box-title">PageRank와 가장 큰 차이</div><p><strong>PageRank</strong>는 링크 그래프에서 페이지의 전역 권위도를 계산하는 질의 독립 신호다. <strong>LTR</strong>은 판단 라벨과 여러 특징으로 질의별 점수 함수를 학습한다. PageRank 값은 LTR의 입력 특징 하나가 될 수 있지만 두 방법은 같은 알고리즘이 아니다.</p></div>
+      </section>
+
+      <section id="data">
+        <div class="sec-label">02 · Judgments &amp; features</div>
+        <h2>한 행은 ‘질의–문서–판단–특징’이다</h2>
+        <p class="section-intro">학습 데이터는 질의 ID로 묶인다. 라벨은 보통 0(무관)부터 4(매우 관련) 같은 등급이고, 특징은 텍스트 일치도·신선도·인기도·품질·개인화 신호 등이다.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Learning to Rank 학습 데이터 예시">
+          <table>
+            <caption>책의 10장 흐름을 단순화한 설명용 학습 데이터</caption>
+            <thead><tr><th scope="col">qid</th><th scope="col">문서</th><th scope="col">관련성 y</th><th scope="col">title BM25</th><th scope="col">overview BM25</th><th scope="col">신선도</th></tr></thead>
+            <tbody>
+              <tr class="focus"><td>17</td><td>The Social Network</td><td><strong>3</strong></td><td>8.24</td><td>3.81</td><td>0.42</td></tr>
+              <tr><td>17</td><td>Social Animals</td><td>1</td><td>3.43</td><td>3.11</td><td>0.18</td></tr>
+              <tr><td>17</td><td>Network</td><td>0</td><td>0.00</td><td>4.35</td><td>0.21</td></tr>
+              <tr><td>24</td><td>Star Wars</td><td>3</td><td>6.80</td><td>0.00</td><td>0.12</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">← 표를 좌우로 밀어 전체 내용을 볼 수 있습니다 →</p>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="tag">QUERY × DOCUMENT</span><strong>질의 의존 특징</strong><p>제목 BM25, 본문 BM25, 구문 일치, 임베딩 유사도처럼 질의가 바뀌면 값도 바뀐다.</p></article>
+          <article class="feature-card"><span class="tag">DOCUMENT</span><strong>문서 특징</strong><p>신선도, 품질, PageRank, 인기도처럼 질의와 무관하게 미리 계산할 수 있다.</p></article>
+          <article class="feature-card"><span class="tag">QUERY</span><strong>질의 특징</strong><p>질의 길이, 의도, 지역·시간 민감도처럼 어떤 랭킹 전략이 필요한지 알려 준다.</p></article>
+          <article class="feature-card"><span class="tag">USER × CONTEXT</span><strong>맥락 특징</strong><p>사용자 선호, 언어, 기기, 위치처럼 개인화에 쓰지만 개인정보·편향 관리가 필요하다.</p></article>
+        </div>
+        <div class="warning"><div class="box-title">질의 경계는 절대 섞지 않는다</div><p>문서 A가 문서 B보다 좋다는 비교는 <strong>같은 질의 안에서만</strong> 의미가 있다. 학습·검증 분할도 문서 행이 아니라 <code>qid</code> 단위로 해야 같은 질의가 양쪽에 들어가는 누수를 막을 수 있다.</p></div>
+      </section>
+
+      <section id="approaches">
+        <div class="sec-label">03 · Three approaches</div>
+        <h2>한 점, 한 쌍, 한 목록 중 무엇을 학습 단위로 볼까</h2>
+        <div class="compare-grid">
+          <article class="compare-card"><span class="tag">POINTWISE</span><strong>문서 하나씩</strong><p>각 문서의 관련성 등급을 회귀·분류한다. 구현은 쉽지만 순서 자체를 직접 보지 않는다.</p></article>
+          <article class="compare-card pair"><span class="tag">PAIRWISE</span><strong>문서 두 개씩</strong><p>“A가 B보다 위여야 한다”를 학습한다. RankSVM과 RankNet이 대표적이다.</p></article>
+          <article class="compare-card list"><span class="tag">LISTWISE</span><strong>결과 목록 전체</strong><p>예측 목록과 정답 목록의 차이를 손실로 본다. ListNet·ListMLE 계열이 대표적이다.</p></article>
+        </div>
+        <div class="method-stack" aria-label="세 접근의 학습 단위 예시">
+          <div class="method-row"><span class="method-name">POINTWISE</span><p><code>(doc A, y=3)</code>, <code>(doc B, y=1)</code> 각각의 등급 오차를 줄인다.</p></div>
+          <div class="method-row"><span class="method-name">PAIRWISE</span><p><code>A ≻ B</code>, <code>A ≻ C</code>, <code>B ≻ C</code> 쌍의 방향을 맞힌다.</p></div>
+          <div class="method-row"><span class="method-name">LISTWISE</span><p><code>[A,B,C]</code>라는 전체 순열 또는 점수 분포가 정답 목록과 가까워지게 한다.</p></div>
+        </div>
+        <div class="note"><div class="box-title">분류는 도구일 뿐</div><p>pointwise·pairwise는 기존 회귀·분류 도구를 활용하기 위한 문제 변환이다. 최종 사용자가 보는 것은 각 행의 라벨이 아니라 <strong>정렬된 목록</strong>이므로 목록 지표로 다시 평가해야 한다.</p></div>
+      </section>
+
+      <section id="objectives">
+        <div class="sec-label">04 · Objectives</div>
+        <h2>RankNet은 ‘A가 B보다 위일 확률’을 학습한다</h2>
+        <p class="section-intro">같은 질의의 두 문서 <code>i</code>, <code>j</code>에 모델 점수 <code>sᵢ</code>, <code>sⱼ</code>가 있을 때, RankNet은 점수 차이를 시그모이드에 넣어 <code>i</code>가 더 위일 확률을 만든다.</p>
+        <div class="formula" aria-label="RankNet 쌍별 확률">P<sub>ij</sub> = 1 / (1 + exp(−σ(s<sub>i</sub> − s<sub>j</sub>)))</div>
+        <div class="formula" aria-label="RankNet 교차 엔트로피 손실">L<sub>ij</sub> = − P̄<sub>ij</sub> log P<sub>ij</sub> − (1 − P̄<sub>ij</sub>) log(1 − P<sub>ij</sub>)</div>
+        <div class="pair-demo" aria-label="RankNet 점수 차이 예시">
+          <div class="doc-score good"><strong>문서 A · 관련성 3</strong><span class="score">s<sub>A</sub> = 1.2</span></div>
+          <div class="pair-op" aria-hidden="true">A ≻ B</div>
+          <div class="doc-score"><strong>문서 B · 관련성 1</strong><span class="score">s<sub>B</sub> = 0.4</span></div>
+        </div>
+        <div class="plain-box"><div class="box-title">손으로 계산하면</div><p><code>σ=1</code>일 때 점수 차이는 <code>0.8</code>, 따라서 <code>P(A&gt;B)=sigmoid(0.8)≈0.690</code>이다. 정답이 A 우선이라면 손실은 <code>−log(0.690)≈0.371</code>. 차이가 <code>1.7</code>로 커지면 확률은 약 <code>0.846</code>, 손실은 약 <code>0.167</code>로 줄어든다.</p></div>
+        <div class="loss-rail"><span>초기</span><div class="bar-track"><div class="bar-fill" style="width:69%"></div></div><strong>P=0.690</strong></div>
+        <div class="loss-rail"><span>학습 후</span><div class="bar-track"><div class="bar-fill good" style="width:84.6%"></div></div><strong>P=0.846</strong></div>
+
+        <h3>LambdaRank는 ‘순위를 바꿨을 때 NDCG 영향’을 기울기에 더한다</h3>
+        <p>모든 쌍의 오류가 사용자에게 똑같이 중요하지 않다. 1위와 2위를 바로잡는 교환은 99위와 100위보다 훨씬 중요할 수 있다. LambdaRank는 RankNet 계열의 쌍별 기울기에 두 문서를 바꿨을 때의 <code>|ΔNDCG|</code>를 곱해 상단 순위에 학습 힘을 집중한다.</p>
+        <div class="formula" aria-label="LambdaRank 기울기의 핵심 형태">|λ<sub>ij</sub>| ∝ |ΔNDCG<sub>ij</sub>| · 1 / (1 + exp(σ(s<sub>i</sub> − s<sub>j</sub>)))</div>
+
+        <h3>LambdaMART는 그 기울기를 부스팅 트리가 따라가게 한다</h3>
+        <p>LambdaMART는 LambdaRank의 <code>λ</code>-gradient를 목표값처럼 사용해 회귀 트리를 한 그루씩 추가하는 MART(gradient boosted trees) 모델이다. 비선형 상호작용을 잘 포착하고 서빙이 빨라 고전적 실무 LTR의 대표 선택이 됐다.</p>
+        <div class="formula" aria-label="LambdaMART 가산 트리 모델">F<sub>M</sub>(x) = Σ<sup>M</sup><sub>m=1</sub> η · f<sub>m</sub>(x)</div>
+
+        <h3>ListNet은 목록을 확률 분포로 본다</h3>
+        <p>ListNet의 직관적인 top-one 형태는 정답 등급과 모델 점수를 각각 softmax 분포로 만들고, 두 분포의 교차 엔트로피를 줄이는 것이다. 한 문서의 절대 오차보다 목록 안에서 차지해야 할 확률 질량을 맞춘다.</p>
+        <div class="formula" aria-label="ListNet top-one 확률과 교차 엔트로피">P<sub>z</sub>(j) = exp(z<sub>j</sub>) / Σ<sub>k</sub>exp(z<sub>k</sub>) &nbsp;;&nbsp; L = −Σ<sub>j</sub>P<sub>y</sub>(j)log P<sub>s</sub>(j)</div>
+      </section>
+
+      <section id="metrics">
+        <div class="sec-label">05 · Ranking metrics</div>
+        <h2>NDCG는 ‘높은 관련 문서를 앞에 놓았는가’를 본다</h2>
+        <p class="section-intro">아래는 실무와 LTR 문헌에서 널리 쓰이는 exponential-gain 형태다. 자료에 따라 이득 함수와 로그의 밑은 다르게 정의될 수 있으므로 모델 비교에서는 동일한 정의를 고정해야 한다.</p>
+        <div class="formula" aria-label="DCG와 NDCG 수식">DCG@k = Σ<sup>k</sup><sub>i=1</sub> (2<sup>relᵢ</sup> − 1) / log<sub>2</sub>(i + 1) &nbsp;;&nbsp; NDCG@k = DCG@k / IDCG@k</div>
+        <p><code>2^rel−1</code>은 높은 등급의 이득을 크게 만들고, <code>log₂(i+1)</code>은 아래쪽 결과를 할인한다. <code>IDCG</code>는 같은 문서들을 가장 이상적으로 정렬한 DCG이므로 NDCG는 보통 0–1 범위가 된다.</p>
+        <div class="rank-compare">
+          <article class="rank-panel"><h3>거의 이상적인 목록</h3><ol class="rank-list">
+            <li class="rank-item"><span class="rank-no">01</span><span>문서 A</span><span class="rel">rel 3</span></li>
+            <li class="rank-item"><span class="rank-no">02</span><span>문서 B</span><span class="rel">rel 2</span></li>
+            <li class="rank-item"><span class="rank-no">03</span><span>문서 C</span><span class="rel">rel 0</span></li>
+            <li class="rank-item"><span class="rank-no">04</span><span>문서 D</span><span class="rel">rel 1</span></li>
+          </ol><div class="metric-value">NDCG@4 = 0.9926</div></article>
+          <article class="rank-panel"><h3>좋은 문서를 늦게 배치</h3><ol class="rank-list">
+            <li class="rank-item"><span class="rank-no">01</span><span>문서 D</span><span class="rel">rel 1</span></li>
+            <li class="rank-item"><span class="rank-no">02</span><span>문서 A</span><span class="rel">rel 3</span></li>
+            <li class="rank-item"><span class="rank-no">03</span><span>문서 B</span><span class="rel">rel 2</span></li>
+            <li class="rank-item"><span class="rank-no">04</span><span>문서 C</span><span class="rel">rel 0</span></li>
+          </ol><div class="metric-value">NDCG@4 = 0.7364</div></article>
+        </div>
+        <div class="metric-grid">
+          <article class="metric-card"><span class="tag">MRR</span><strong>첫 정답이 얼마나 빠른가</strong><p><code>MRR=(1/|Q|)Σ 1/rank₍first relevant₎</code>. 정답 하나를 빨리 찾는 QA·내비게이션 질의에 어울린다.</p></article>
+          <article class="metric-card"><span class="tag">MAP</span><strong>여러 정답을 얼마나 앞에 모았나</strong><p>각 관련 문서 위치의 Precision을 평균한 AP를 다시 질의 전체에서 평균한다. 보통 이진 관련성에 사용한다.</p></article>
+          <article class="metric-card"><span class="tag">NDCG</span><strong>등급과 위치를 함께 본다</strong><p>관련성 등급이 여러 단계이고 상단 품질이 중요한 웹·상품 검색에 자연스럽다.</p></article>
+          <article class="metric-card"><span class="tag">P@K / RECALL@K</span><strong>상단 정확도와 후보 회수</strong><p>P@K는 상단의 정답 비율, Recall@K는 전체 정답 중 top-K가 회수한 비율이다.</p></article>
+        </div>
+        <div class="note"><div class="box-title">한 지표로 끝내지 않는다</div><p>최적화 지표와 제품 목표가 다르면 오프라인 점수는 올라도 사용자 경험은 나빠질 수 있다. NDCG·Recall·지연시간·다양성·비즈니스 안전 지표를 함께 보고, 마지막에는 온라인 실험으로 확인한다.</p></div>
+      </section>
+
+      <section id="pipeline">
+        <div class="sec-label">06 · Training &amp; serving</div>
+        <h2>학습은 느려도 되지만, 검색 시점 점수 계산은 빨라야 한다</h2>
+        <div class="pipeline" aria-label="Learning to Rank 전체 파이프라인">
+          <div class="pipeline-step"><span class="pipeline-no">STEP 01</span><div><strong>판단 수집</strong><p>전문가 등급 또는 편향을 보정한 클릭 신호를 질의별로 모은다.</p></div><span class="pipeline-output">labels</span></div>
+          <div class="pipeline-step"><span class="pipeline-no">STEP 02</span><div><strong>특징 로깅</strong><p>학습 때와 서빙 때 동일한 정의로 질의–문서 특징을 계산한다.</p></div><span class="pipeline-output">x(q,d)</span></div>
+          <div class="pipeline-step"><span class="pipeline-no">STEP 03</span><div><strong>qid 단위 분할·학습</strong><p>train/validation/test를 질의별로 나누고 목적함수를 최적화한다.</p></div><span class="pipeline-output">model θ</span></div>
+          <div class="pipeline-step"><span class="pipeline-no">STEP 04</span><div><strong>오프라인 평가</strong><p>기준 랭커와 NDCG@K, Recall@K, 지연시간을 비교한다.</p></div><span class="pipeline-output">verdict</span></div>
+          <div class="pipeline-step"><span class="pipeline-no">STEP 05</span><div><strong>top-N 재랭킹</strong><p>BM25가 빠르게 후보를 찾고 LTR은 그 일부만 정교하게 다시 정렬한다.</p></div><span class="pipeline-output">final rank</span></div>
+        </div>
+        <div class="split-diagram" aria-label="질의 단위 데이터 분할 예시">
+          <div class="split-box"><b>TRAIN · 70%</b><span>qid 1–70<br>모델 파라미터 학습</span></div>
+          <div class="split-box"><b>VALID · 15%</b><span>qid 71–85<br>튜닝·조기 종료</span></div>
+          <div class="split-box"><b>TEST · 15%</b><span>qid 86–100<br>마지막 성능 추정</span></div>
+        </div>
+        <div class="example"><div class="box-title">이 저장소의 10장 실습과 연결</div><p>로컬 노트북은 판단 목록 생성 → BM25·연도 특징 로깅 → 평균·표준편차 정규화 → pairwise 차이 벡터 → 모델 학습 → 기준 검색 뒤 top-500 재랭킹 순서로 구성되어 있다.</p></div>
+      </section>
+
+      <section id="opensearch">
+        <div class="sec-label">07 · OpenSearch production</div>
+        <h2>OpenSearch LTR은 검색 요청 안에서 top-N을 즉시 재정렬한다</h2>
+        <p class="section-intro">OpenSearch의 공식 Learning to Rank 플러그인은 외부에서 학습한 XGBoost·RankLib 모델을 업로드하고, 검색 시 <code>sltr</code>로 후보를 재채점한다. 학습은 오프라인이지만 추론은 검색 요청 안에서 실행되므로 최종 순서가 바로 응답된다. 표준 배포판에는 OpenSearch 2.19부터 LTR 구성 요소가 포함된다.</p>
+        <div class="flow" aria-label="OpenSearch LTR 온라인 검색 흐름">
+          <div class="flow-step"><b>BM25 검색</b><span>빠르게 후보 회수</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>shard별 top-W</b><span>재정렬 후보 제한</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>피처 + 모델</b><span><code>sltr</code> 점수 계산</span></div><div class="flow-arrow" aria-hidden="true">→</div>
+          <div class="flow-step"><b>최종 병합</b><span>정렬 결과 즉시 반환</span></div>
+        </div>
+        <div class="warning"><div class="box-title">전체 인덱스에 sltr를 직접 실행하지 않는다</div><p>공식 문서는 전체 인덱스에 모델을 적용하면 CPU 집약적이라고 경고하며 <code>rescore.window_size</code>로 상위 N개만 재정렬하라고 안내한다. 문서의 <code>window_size: 1000</code>은 사용 예시이지 운영 권장값이나 성능 보장값이 아니다.</p></div>
+
+        <h3><code>window_size</code>는 전체가 아니라 shard마다 적용된다</h3>
+        <p>1,000만 문서 전체를 LTR로 평가하는 것은 아니지만, primary shard가 많으면 후보 수가 예상보다 크게 불어난다. 검색 요청은 각 primary shard의 primary 또는 replica 사본 하나를 방문하고, 각 shard가 자신의 상위 <code>window_size</code>개를 재정렬한다.</p>
+        <div class="formula" aria-label="OpenSearch LTR 비용 근사식">LTR 비용 ∝ primary shards × window_size × features × feature cost</div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="6개 primary shard에서 window와 feature 수에 따른 비용 비교">
+          <table>
+            <caption>primary shard 6개일 때의 피처–문서 평가 단위 비교 · 정확한 CPU 연산량이 아니라 설정 간 규모를 보는 근사치</caption>
+            <thead><tr><th scope="col">window_size</th><th scope="col">피처 수</th><th scope="col">최대 재정렬 문서</th><th scope="col">평가 단위</th><th scope="col">해석</th></tr></thead>
+            <tbody>
+              <tr><td><code>25</code></td><td>10</td><td>150</td><td>1,500</td><td>가벼운 시작점</td></tr>
+              <tr><td><code>100</code></td><td>20</td><td>600</td><td>12,000</td><td>품질–지연 균형 실험</td></tr>
+              <tr class="focus"><td><code>1000</code></td><td>50</td><td>6,000</td><td>300,000</td><td>반드시 부하 검증</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="swipe-hint" aria-hidden="true">표를 좌우로 밀어 전체 내용을 확인할 수 있습니다.</p>
+
+        <h3>노드 수보다 먼저 확인할 네 가지</h3>
+        <div class="metric-grid">
+          <article class="metric-card"><span class="tag">WINDOW × SHARD</span><strong>후보가 shard마다 증폭</strong><p><code>window_size</code>를 10 → 25 → 50 → 100 → 200 순으로 올려 지연 증가율과 Recall@K 개선을 함께 본다.</p></article>
+          <article class="metric-card"><span class="tag">FEATURE COST</span><strong>모델보다 피처가 비쌀 수 있다</strong><p>LTR 피처는 OpenSearch query다. Painless script, fuzzy·wildcard·regexp, nested, 복잡한 function score는 우선 제거해 비교한다.</p></article>
+          <article class="metric-card"><span class="tag">MODEL CACHE</span><strong>큰 모델과 cache miss</strong><p>트리 수·깊이·파일 크기를 줄이고 <code>/_plugins/_ltr/stats</code>에서 model cache hit·miss·eviction을 확인한다.</p></article>
+          <article class="metric-card"><span class="tag">FEATURE LOGGING</span><strong>운영 요청의 중복 계산</strong><p>재정렬과 feature logging을 함께 쓰면 피처 점수를 추가 계산할 수 있다. 서빙 경로에서는 끄고, 필요하면 <code>cache: true</code>를 별도 비교한다.</p></article>
+        </div>
+
+        <h3>데이터 노드 2대가 원인인지 증상으로 구분한다</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="OpenSearch LTR 성능 증상별 원인 판별표">
+          <table>
+            <caption>노드 증설 전에 보는 판별표</caption>
+            <thead><tr><th scope="col">관찰한 현상</th><th scope="col">가능성 높은 원인</th><th scope="col">첫 확인</th></tr></thead>
+            <tbody>
+              <tr><td>동시 요청 1개도 LTR만 느리다</td><td>window·피처·모델·shard</td><td>작은 window와 feature ablation</td></tr>
+              <tr><td>낮은 QPS는 빠르고 부하에서 p95/p99가 뛴다</td><td>2노드의 CPU·search queue 용량</td><td>CPU, queue, rejected, GC</td></tr>
+              <tr><td>window를 절반으로 줄이자 지연도 크게 준다</td><td>재정렬/피처 계산 병목</td><td>Recall@W가 유지되는 최소 window</td></tr>
+              <tr><td>특정 노드만 CPU·GC가 높다</td><td>shard 또는 저장소 skew</td><td><code>_cat/shards</code>, nodes stats, hot threads</td></tr>
+              <tr><td>첫 요청만 느리고 이후 빨라진다</td><td>모델·JIT·페이지 캐시 warm-up</td><td>cold/warm 결과 분리</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><div class="box-title">판단</div><p><strong>2노드는 tail latency와 처리량 문제를 키울 수 있지만 단일 요청 지연의 첫 원인이라고 단정할 수 없다.</strong> QPS 1에서도 느리면 설정과 모델을 먼저 보고, 동시 부하에서만 search queue와 CPU가 포화되면 노드 증설 효과가 크다. replica는 읽기 처리량과 장애 대응을 늘리지만 한 요청이 방문하는 shard 수를 줄이지는 않는다.</p></div>
+
+        <h3>1,000만 문서는 건수보다 <code>pri.store.size</code>로 산정한다</h3>
+        <p>문서 크기와 매핑에 따라 1,000만 건이 30GiB일 수도, 수백 GiB일 수도 있다. AWS의 검색 중심 OpenSearch 가이드는 primary shard 하나를 대략 10–30GiB로 시작하라고 권한다. shard가 너무 크면 복구와 검색이 무거워지고, 너무 많으면 LTR 후보와 조정 비용이 늘어난다.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="primary index 크기에 따른 시작 shard 수">
+          <table>
+            <caption>검색 중심 워크로드의 시작 예시 · 실제 QPS와 매핑으로 반드시 재검증</caption>
+            <thead><tr><th scope="col">Primary index 크기</th><th scope="col">시작 primary shard 수</th><th scope="col">LTR 관점</th></tr></thead>
+            <tbody>
+              <tr><td>약 40GiB</td><td>2</td><td>과도한 분할을 피한다</td></tr>
+              <tr><td>약 100–120GiB</td><td>4–6</td><td>window가 shard마다 적용됨을 계산한다</td></tr>
+              <tr><td>약 300GiB</td><td>10–15</td><td>fan-out과 hot shard를 집중 검증한다</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="plain-box"><div class="box-title">보수적인 최초 부하 테스트 구성</div><p>공식 보장값이 아니라 출발점으로, 데이터 노드 3대 × 8 vCPU / RAM 32GiB / heap 약 16GiB, 빠른 SSD, replica 1개, <code>window_size 25–100</code>, 저비용 피처 10–20개 정도에서 시작해 목표 QPS와 장애 시나리오로 줄이거나 늘린다. 인덱스가 작고 QPS가 낮다면 2대도 충분할 수 있다.</p></div>
+
+        <h3>부하 테스트는 BM25와 LTR의 차이를 분리한다</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="OpenSearch LTR 부하 테스트 매트릭스">
+          <table>
+            <caption>같은 질의 분포·데이터·동시성으로 비교</caption>
+            <thead><tr><th scope="col">실험</th><th scope="col">구성</th><th scope="col">알 수 있는 것</th></tr></thead>
+            <tbody>
+              <tr><td>A</td><td>BM25만</td><td>1차 검색과 클러스터의 기준선</td></tr>
+              <tr><td>B</td><td>BM25 + LTR, window 25/50/100/200</td><td>후보 수에 따른 LTR 증분 비용</td></tr>
+              <tr><td>C</td><td>B에서 피처를 하나씩 제거</td><td>비싼 query·script 피처</td></tr>
+              <tr><td>D</td><td>C에서 모델 크기·logging·cache 변경</td><td>모델 추론과 캐시/로깅 영향</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Warm-up 뒤 최소 1,000회 이상 실행해 p50·p95·p99, latency, service time, QPS, CPU, GC, search queue/rejection을 기록한다. 예시 합격선은 전체 검색 p95 150–250ms, LTR 추가 비용 p95 20–50ms 또는 기준선의 30% 이내지만, 최종 기준은 서비스 SLO여야 한다. Profile API는 자체 오버헤드가 있으므로 원인 분석용 소수 요청에만 사용한다.</p>
+        <pre class="ops-code" aria-label="OpenSearch LTR 성능 진단 API 예시">GET /_cat/plugins?v
+GET /_cat/indices?v&amp;h=index,docs.count,pri.store.size,store.size
+GET /_cat/shards/&lt;index&gt;?v&amp;h=index,shard,prirep,store,node
+GET /_plugins/_ltr/stats
+GET /_nodes/stats/jvm,process,thread_pool,fs,indices/search
+GET /_nodes/hot_threads</pre>
+
+        <h3>공개 사례가 말해 주는 것</h3>
+        <div class="paper-list">
+          <article class="paper"><span class="paper-year">2025</span><div><strong>Secret Escapes · 모델 복잡도가 병목</strong><small>약 200개 피처와 70MB 모델에서 평균 검색 시간이 약 650ms → 2,200ms로 악화됐다. 클러스터 증설은 큰 효과가 없었지만 모델을 약 25MB로 줄이자 약 380ms로 감소했고, 검색 단순화로 feature logging 시간도 75% 줄었다.</small></div><a href="https://infinitelambda.com/a-b-testing-ml-learning-to-rank/" target="_blank" rel="noopener">Case ↗</a></article>
+          <article class="paper"><span class="paper-year">2026</span><div><strong>Swiggy · autocomplete 안에서 LTR 실행</strong><small>매 키 입력마다 호출되는 지연 민감 경로에서 hand-tuned function score를 OpenSearch 내부 LTR로 교체했다. 구체적인 노드 수와 p95 수치는 공개하지 않았다.</small></div><a href="https://medium.com/swiggy-bytes/real-time-ml-ranking-in-autocomplete-part-1-3cdbbd44f85a" target="_blank" rel="noopener">Blog ↗</a></article>
+          <article class="paper"><span class="paper-year">2022</span><div><strong>OpenSearch + Metarank · 외부 reranker 비교</strong><small>네이티브 LTR 플러그인이 아니라 Redis와 별도 랭커를 호출하는 구조다. 공식 OpenSearch 블로그는 후보 수·피처 수·네트워크에 따라 추가 20–30ms 예산을 예상한다.</small></div><a href="https://opensearch.org/blog/ltr-with-opensearch-and-metarank/" target="_blank" rel="noopener">OpenSearch ↗</a></article>
+        </div>
+        <div class="warning"><div class="box-title">공식 LTR 성능표는 없다</div><p>OpenSearch와 AWS 공식 문서는 전체 인덱스 실행 금지, top-N rescore, script feature 주의, 캐시·통계 API는 설명하지만 “1,000만 문서·N개 노드·QPS X에서 p95 Yms” 같은 LTR 전용 벤치마크는 공개하지 않는다. 따라서 예제의 <code>took</code> 값이 아니라 자신의 데이터와 질의 분포로 측정해야 한다.</p></div>
+        <div class="source-row">
+          <a class="source-link" href="ch04_opensearch_ltr_performance.md">OpenSearch LTR 성능 Markdown</a>
+          <a class="source-link" href="https://docs.opensearch.org/latest/install-and-configure/plugins/" target="_blank" rel="noopener">공식 플러그인 목록 ↗</a>
+          <a class="source-link" href="https://docs.opensearch.org/latest/search-plugins/ltr/searching-with-your-model/" target="_blank" rel="noopener">LTR 검색 최적화 ↗</a>
+          <a class="source-link" href="https://docs.opensearch.org/latest/query-dsl/rescore/" target="_blank" rel="noopener">Rescore·window_size ↗</a>
+          <a class="source-link" href="https://docs.opensearch.org/latest/search-plugins/ltr/advanced-functionality/" target="_blank" rel="noopener">캐시·통계·script feature ↗</a>
+          <a class="source-link" href="https://docs.aws.amazon.com/opensearch-service/latest/developerguide/bp-sharding.html" target="_blank" rel="noopener">AWS shard 산정 ↗</a>
+          <a class="source-link" href="https://docs.opensearch.org/latest/benchmark/user-guide/working-with-workloads/creating-custom-workloads/" target="_blank" rel="noopener">OpenSearch Benchmark ↗</a>
+        </div>
+      </section>
+
+      <section id="pitfalls">
+        <div class="sec-label">08 · Failure modes</div>
+        <h2>모델보다 데이터 경계와 서빙 일관성이 더 자주 문제를 만든다</h2>
+        <div class="risk-grid">
+          <article class="risk-card"><span class="risk-no">RISK 01</span><strong>질의 누수</strong><p>같은 qid의 문서가 train과 test에 나뉘면 새 질의 일반화 성능을 과대평가한다.</p></article>
+          <article class="risk-card"><span class="risk-no">RISK 02</span><strong>위치 편향</strong><p>위에 노출돼 클릭된 결과를 정답으로 쓰면 기존 랭커를 그대로 학습한다. 클릭 모델·무작위 탐색이 필요하다.</p></article>
+          <article class="risk-card"><span class="risk-no">RISK 03</span><strong>학습–서빙 불일치</strong><p>특징 계산 코드, 정규화 통계, 결측값 처리가 다르면 오프라인 성능이 재현되지 않는다.</p></article>
+          <article class="risk-card"><span class="risk-no">RISK 04</span><strong>비싼 특징</strong><p>좋은 특징도 top-N 전체에서 너무 느리면 쓸 수 없다. 캐시·사전 계산·단계형 랭킹이 필요하다.</p></article>
+          <article class="risk-card"><span class="risk-no">RISK 05</span><strong>목표 대리 문제</strong><p>클릭률만 높이면 낚시성 결과가 유리할 수 있다. 만족도·전환·안전 제약을 함께 본다.</p></article>
+          <article class="risk-card"><span class="risk-no">RISK 06</span><strong>분포 변화</strong><p>새 콘텐츠와 유행 변화로 특징 분포가 바뀐다. 모니터링, 재판단, 재학습 주기가 필요하다.</p></article>
+        </div>
+      </section>
+
+      <section id="papers">
+        <div class="sec-label">09 · Primary papers</div>
+        <h2>방법론이 어떻게 발전했는지 논문 순서로 읽기</h2>
+        <div class="paper-list">
+          <article class="paper"><span class="paper-year">2002</span><div><strong>Cumulated Gain-Based Evaluation of IR Techniques</strong><small>Kalervo Järvelin, Jaana Kekäläinen · graded relevance와 DCG/NDCG 평가의 기반.</small></div><a href="https://doi.org/10.1145/582415.582418" target="_blank" rel="noopener">DOI ↗</a></article>
+          <article class="paper"><span class="paper-year">2005</span><div><strong>Learning to Rank using Gradient Descent</strong><small>Chris Burges et al. · 쌍별 확률과 교차 엔트로피를 쓰는 RankNet.</small></div><a href="https://www.microsoft.com/en-us/research/publication/learning-to-rank-using-gradient-descent/" target="_blank" rel="noopener">MSR ↗</a></article>
+          <article class="paper"><span class="paper-year">2007</span><div><strong>Learning to Rank with Non-Smooth Cost Functions</strong><small>Burges, Ragno, Le · NDCG 변화량을 기울기에 반영하는 LambdaRank.</small></div><a href="https://www.microsoft.com/en-us/research/publication/learning-to-rank-with-non-smooth-cost-functions/" target="_blank" rel="noopener">MSR ↗</a></article>
+          <article class="paper"><span class="paper-year">2007</span><div><strong>Learning to Rank: From Pairwise Approach to Listwise Approach</strong><small>Zhe Cao et al. · 목록 확률 분포의 교차 엔트로피를 사용하는 ListNet.</small></div><a href="https://www.machinelearning.org/proceedings/icml2007/papers/139.pdf" target="_blank" rel="noopener">PDF ↗</a></article>
+          <article class="paper"><span class="paper-year">2008</span><div><strong>Listwise Approach to Learning to Rank — Theory and Algorithm</strong><small>Fen Xia et al. · listwise 손실 분석과 ListMLE.</small></div><a href="https://icml.cc/Conferences/2008/papers/167.pdf" target="_blank" rel="noopener">PDF ↗</a></article>
+          <article class="paper"><span class="paper-year">2010</span><div><strong>From RankNet to LambdaRank to LambdaMART: An Overview</strong><small>Chris Burges · 세 알고리즘의 연결과 LambdaMART의 상세 설명.</small></div><a href="https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/" target="_blank" rel="noopener">MSR ↗</a></article>
+        </div>
+        <div class="plain-box"><div class="box-title">데이터로 직접 확인하기</div><p>Microsoft의 <a href="https://www.microsoft.com/en-us/research/project/mslr/" target="_blank" rel="noopener">MSLR-WEB10K/30K 공식 데이터셋</a>은 질의–URL 특징 벡터와 0–4 관련성 판단을 제공한다. 알고리즘 비교와 NDCG 실습에 널리 쓰이는 공개 기준점이다.</p></div>
+      </section>
+
+      <section id="recap">
+        <div class="sec-label">10 · Recap</div>
+        <h2>이 일곱 문장만 남겨도 된다</h2>
+        <div class="takeaways">
+          <div class="takeaway"><span class="takeaway-no">01</span><p>LTR은 <strong>질의–문서 특징을 점수로 바꾸는 함수</strong>를 판단 데이터에서 학습하고, 같은 질의 안에서 정렬한다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">02</span><p>pointwise는 문서, pairwise는 문서 쌍, listwise는 목록을 학습 단위로 본다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">03</span><p>RankNet은 쌍의 순서 확률, LambdaRank는 <code>ΔNDCG</code> 가중 기울기, LambdaMART는 그 기울기를 따르는 부스팅 트리다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">04</span><p>NDCG는 높은 관련성 문서를 앞에 둘수록 크게 보상하며, 제품 목표에 맞는 다른 지표와 함께 써야 한다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">05</span><p>실전에서는 qid 단위 분할, 클릭 편향 보정, 특징 일관성, top-N 재랭킹이 모델 선택만큼 중요하다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">06</span><p>OpenSearch LTR 비용은 대략 <strong>primary shard × window × 피처 수 × 피처 비용</strong>으로 커지며, <code>window_size</code>는 shard마다 적용된다.</p></div>
+          <div class="takeaway"><span class="takeaway-no">07</span><p>데이터 노드 2대는 동시 부하의 병목일 수 있지만, QPS 1에서도 느리다면 증설보다 피처·모델·캐시·window를 먼저 진단한다.</p></div>
+        </div>
+        <div class="source-row">
+          <a class="source-link" href="ch04_summary.html#ltr">4장 전체 요약</a>
+          <a class="source-link" href="ch04_opensearch_ltr_performance.md">OpenSearch LTR 성능 MD</a>
+          <a class="source-link" href="https://livebook.manning.com/book/ai-powered-search" target="_blank" rel="noopener">Manning LiveBook에서 보기 ↗</a>
+          <a class="source-link" href="ch04_pagerank.html">PageRank와 비교하기</a>
+        </div>
+      </section>
+      <footer class="page-foot">출처: <em>AI-Powered Search</em> Chapters 4·10, 위 1차 논문, OpenSearch·AWS 공식 문서와 표시된 기업 사례. 표의 영화 데이터·손계산·운영 출발점은 개념 설명과 성능 실험 설계를 위해 단순화했으며, 공식 보장값이 아닙니다.</footer>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var desktopLinks = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var links = desktopLinks.concat(mobileLinks);
+      var sections = desktopLinks.map(function (link) { return document.querySelector(link.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress');
+      var mobileToc = document.querySelector('.mobile-toc');
+      function setActive(href) { links.forEach(function (link) { link.classList.toggle('active', link.getAttribute('href') === href); }); }
+      function updateProgress() { var root = document.documentElement; var max = root.scrollHeight - root.clientHeight; var ratio = max > 0 ? root.scrollTop / max : 0; progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%'; }
+      links.forEach(function (link) { link.addEventListener('click', function () { setActive(link.getAttribute('href')); if (mobileToc && mobileToc.contains(link)) mobileToc.removeAttribute('open'); }); });
+      if ('IntersectionObserver' in window) { var observer = new IntersectionObserver(function (entries) { entries.forEach(function (entry) { if (entry.isIntersecting) setActive('#' + entry.target.id); }); }, { rootMargin: '-18% 0px -72% 0px', threshold: 0 }); sections.forEach(function (section) { if (section) observer.observe(section); }); }
+      window.addEventListener('scroll', updateProgress, { passive: true }); updateProgress(); setActive('#mental-model');
+    })();
+  </script>
+</body>
+</html>

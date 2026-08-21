@@ -1,0 +1,1327 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="AI-Powered Search 4장 크라우드소싱된 관련성: 사용자 신호, 반영된 지능, 신호 부스팅, 협업 필터링, Learning to Rank 정리">
+  <title>4장. 크라우드소싱된 관련성 — 사용자 행동으로 검색을 학습시키기</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-alt: #eaedf2;
+      --ink: #1b2130;
+      --ink-muted: #5b6475;
+      --ink-faint: #8790a0;
+      --rule: #dbe0e8;
+      --accent: #3454d1;
+      --accent-soft: #e7ecfc;
+      --accent-2: #c66f18;
+      --accent-2-soft: #f8e9d4;
+      --good: #167d63;
+      --good-soft: #dff2eb;
+      --warn: #a85616;
+      --warn-soft: #fbe9d8;
+      --danger: #b4444b;
+      --danger-soft: #f8e2e4;
+      --purple: #7254c7;
+      --purple-soft: #eee9fb;
+      --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #12151c;
+      --surface: #1a1f29;
+      --surface-alt: #222938;
+      --ink: #e7e9ee;
+      --ink-muted: #a6aebc;
+      --ink-faint: #747d8d;
+      --rule: #2a3140;
+      --accent: #8ea1ff;
+      --accent-soft: #262e48;
+      --accent-2: #e3a857;
+      --accent-2-soft: #3a2e1c;
+      --good: #67d4b5;
+      --good-soft: #17372f;
+      --warn: #f0b16d;
+      --warn-soft: #3c2b1f;
+      --danger: #f08d94;
+      --danger-soft: #402428;
+      --purple: #b5a1f5;
+      --purple-soft: #302b45;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12151c;
+        --surface: #1a1f29;
+        --surface-alt: #222938;
+        --ink: #e7e9ee;
+        --ink-muted: #a6aebc;
+        --ink-faint: #747d8d;
+        --rule: #2a3140;
+        --accent: #8ea1ff;
+        --accent-soft: #262e48;
+        --accent-2: #e3a857;
+        --accent-2-soft: #3a2e1c;
+        --good: #67d4b5;
+        --good-soft: #17372f;
+        --warn: #f0b16d;
+        --warn-soft: #3c2b1f;
+        --danger: #f08d94;
+        --danger-soft: #402428;
+        --purple: #b5a1f5;
+        --purple-soft: #302b45;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      max-width: 100%;
+      overflow-x: clip;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button { font: inherit; }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--surface-alt);
+      color: var(--accent-2);
+      font: .88em var(--mono);
+    }
+    pre {
+      margin: 16px 0;
+      padding: 17px 19px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: #141820;
+      color: #e9ecf2;
+      font: 12.5px/1.65 var(--mono);
+      tab-size: 2;
+    }
+    pre code { padding: 0; background: none; color: inherit; font: inherit; }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: var(--accent-2);
+    }
+    .page {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      min-width: 0;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 48px;
+    }
+    .toc {
+      position: sticky;
+      top: 24px;
+      flex: 0 0 232px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      padding: 8px 0 20px;
+      font-size: 13px;
+    }
+    .toc-eyebrow {
+      margin-bottom: 12px;
+      color: var(--ink-faint);
+      font: 11px var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .toc a {
+      display: block;
+      margin: 1px 0;
+      padding: 6px 10px 6px 12px;
+      border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0;
+      color: var(--ink-muted);
+      text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+    }
+    .toc a:not(.sub) { margin-top: 10px; }
+    .toc-eyebrow + a { margin-top: 0; }
+    .toc a.sub { padding-left: 24px; color: var(--ink-faint); font-size: 12px; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a:active { transform: scale(.98); }
+    .toc a.active {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 750;
+    }
+    .toc a.sub.active {
+      border-left-color: var(--accent-2);
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+    }
+    .content {
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      max-width: 800px;
+      padding: 56px 0 96px;
+    }
+    .back-nav, .source-link {
+      display: inline-flex;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font: 12px var(--mono);
+      text-decoration: none;
+    }
+    .back-nav { margin-bottom: 28px; background: var(--accent-2-soft); color: var(--accent-2); }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .back-nav:focus-visible, .toc a:focus-visible, .mobile-toc a:focus-visible, .source-link:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 48px; }
+    .kicker, .sec-label {
+      color: var(--accent);
+      font: 700 12px var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      margin: 12px 0 16px;
+      font: 700 clamp(32px, 5vw, 45px)/1.24 var(--serif);
+      letter-spacing: -.025em;
+    }
+    h2 { margin: 8px 0 12px; font: 700 28px/1.35 var(--serif); }
+    h3 { margin: 32px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .lede, .sec-sub { color: var(--ink-muted); }
+    .lede { max-width: 68ch; font-size: 16.5px; }
+    .hero-meta, .cover-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 23px;
+    }
+    .hero-meta span, .cover-tags span, .badge {
+      max-width: 100%;
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      font: 11px var(--mono);
+    }
+    .thesis {
+      position: relative;
+      margin: 34px 0 56px;
+      padding: 28px 30px 25px;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--accent-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .thesis::after {
+      content: "↻";
+      position: absolute;
+      right: 17px;
+      top: -26px;
+      color: var(--accent-2-soft);
+      font: 112px/1 var(--sans);
+    }
+    .thesis-eyebrow { color: var(--accent-2); font: 700 11px var(--mono); text-transform: uppercase; }
+    .thesis blockquote { position: relative; z-index: 1; margin: 13px 0 9px; font: 700 20px/1.65 var(--serif); }
+    .thesis p { position: relative; z-index: 1; margin-bottom: 0; color: var(--ink-muted); font-size: 13px; }
+    .hit { padding: 0 4px; border-radius: 3px; background: var(--accent-2-soft); color: var(--accent-2); font-weight: 700; }
+    section { width: 100%; min-width: 0; margin-top: 72px; scroll-margin-top: 22px; }
+    section section { margin-top: 44px; }
+    .box, .inset, .warning, .example {
+      margin: 22px 0;
+      padding: 19px 21px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .inset { border-left: 3px solid var(--accent-2); background: var(--accent-2-soft); }
+    .warning { border-left: 3px solid var(--danger); background: var(--danger-soft); }
+    .example { border-left: 3px solid var(--good); background: var(--good-soft); }
+    .box-title { margin-bottom: 6px; color: var(--accent); font-weight: 750; }
+    .inset .box-title { color: var(--accent-2); }
+    .warning .box-title { color: var(--danger); }
+    .example .box-title { color: var(--good); }
+    .box p:last-child, .inset p:last-child, .warning p:last-child, .example p:last-child { margin-bottom: 0; }
+
+    .card-grid, .model-grid, .relation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .card, .model-card, .relation-card {
+      padding: 17px 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .card strong, .model-card strong, .relation-card strong { display: block; color: var(--accent); }
+    .card p, .model-card p, .relation-card p { margin: 6px 0 0; color: var(--ink-muted); font-size: 14px; }
+    .model-card.popular { border-top: 3px solid var(--accent-2); }
+    .model-card.personal { border-top: 3px solid var(--purple); }
+    .model-card.general { border-top: 3px solid var(--good); }
+    .model-card.popular strong { color: var(--accent-2); }
+    .model-card.personal strong { color: var(--purple); }
+    .model-card.general strong { color: var(--good); }
+
+    .glossary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .term-card {
+      margin: 0;
+      padding: 16px 17px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .term-card dt { color: var(--accent); font-weight: 750; }
+    .term-card dd { margin: 5px 0 0; color: var(--ink-muted); font-size: 13.5px; }
+
+    .compare-wrap, .table-wrap { max-width: 100%; overflow-x: auto; margin: 20px 0; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13.5px; }
+    th, td { padding: 10px 12px; border: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th { background: var(--surface-alt); color: var(--ink-muted); font: 700 11px var(--mono); letter-spacing: .02em; }
+    tr.highlight td { background: var(--good-soft); }
+    td code { white-space: nowrap; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(7, auto);
+      align-items: stretch;
+      gap: 8px;
+      margin: 24px 0;
+    }
+    .flow-step {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      justify-content: center;
+      padding: 14px 12px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+    }
+    .flow-step b { color: var(--accent); font-size: 13px; }
+    .flow-step span { margin-top: 4px; color: var(--ink-muted); font-size: 11px; }
+    .flow-arrow { align-self: center; color: var(--accent-2); font-size: 20px; }
+
+    .loop {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 11px;
+      margin: 24px 0;
+    }
+    .loop-step {
+      min-height: 116px;
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .loop-step .num { color: var(--accent-2); font: 700 11px var(--mono); }
+    .loop-step strong { display: block; margin: 4px 0; }
+    .loop-step p { margin: 4px 0 0; color: var(--ink-muted); font-size: 12.5px; }
+
+    .signal-timeline {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 4px;
+    }
+    .timeline-track, .timeline-checkout {
+      padding: 15px;
+      border: 1px solid color-mix(in srgb, var(--good) 30%, var(--rule));
+      border-radius: 9px;
+      background: var(--surface);
+    }
+    .timeline-query {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .timeline-query b {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 700 11px var(--mono);
+    }
+    .timeline-events { margin: 12px 0 0; padding: 0; list-style: none; }
+    .timeline-events li {
+      position: relative;
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 8px;
+      padding: 7px 0 7px 14px;
+      border-left: 2px solid var(--rule);
+      color: var(--ink-muted);
+      font-size: 12.5px;
+    }
+    .timeline-events li::before {
+      content: "";
+      position: absolute;
+      left: -5px;
+      top: 14px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--good);
+    }
+    .timeline-events time { color: var(--ink-faint); font: 10px var(--mono); }
+    .timeline-checkout {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 120px 1fr 1fr;
+      align-items: center;
+      gap: 10px;
+      border-color: color-mix(in srgb, var(--accent-2) 35%, var(--rule));
+      background: var(--accent-2-soft);
+    }
+    .timeline-checkout strong { color: var(--accent-2); }
+    .purchase-path {
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink-muted);
+      font-size: 12.5px;
+    }
+    .purchase-path b { display: block; color: var(--accent); font: 700 10px var(--mono); }
+
+    .rank-compare {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+      align-items: stretch;
+      gap: 10px;
+      margin: 22px 0;
+    }
+    .rank-panel {
+      padding: 17px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .rank-panel.before { border-top: 3px solid var(--danger); }
+    .rank-panel.after { border-top: 3px solid var(--good); }
+    .rank-panel h3 { margin: 0 0 4px; font-size: 15px; }
+    .rank-panel > p { margin: 0 0 13px; color: var(--ink-muted); font-size: 12.5px; }
+    .rank-list { margin: 0; padding: 0; list-style: none; }
+    .rank-list li {
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      margin-top: 7px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      background: var(--surface-alt);
+      font-size: 12.5px;
+    }
+    .rank-list .rank { color: var(--ink-faint); font: 700 10px var(--mono); }
+    .rank-list .metric { color: var(--accent-2); font: 700 10px var(--mono); }
+    .rank-list .result-kind { color: var(--ink-muted); }
+    .rank-swap { align-self: center; color: var(--good); font-size: 25px; text-align: center; }
+
+    .matrix-demo {
+      display: grid;
+      grid-template-columns: minmax(150px, 1.3fr) auto minmax(110px, 1fr) auto minmax(110px, 1fr);
+      align-items: center;
+      gap: 10px;
+      margin: 22px 0 8px;
+    }
+    .matrix-block {
+      padding: 13px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+    }
+    .matrix-block strong { display: block; margin-bottom: 9px; color: var(--accent); font-size: 12px; }
+    .matrix-cells { display: grid; gap: 4px; }
+    .matrix-cells.five { grid-template-columns: repeat(5, 1fr); }
+    .matrix-cells.three { grid-template-columns: repeat(3, 1fr); }
+    .matrix-cell {
+      aspect-ratio: 1;
+      min-width: 14px;
+      border: 1px solid var(--rule);
+      border-radius: 3px;
+      background: var(--surface-alt);
+    }
+    .matrix-cell.known { border-color: transparent; background: var(--purple); opacity: .85; }
+    .matrix-cell.latent { border-color: transparent; background: var(--accent); opacity: .78; }
+    .matrix-op { color: var(--accent-2); font: 700 20px var(--mono); }
+    .matrix-caption { margin: 0 0 20px; color: var(--ink-muted); font-size: 12.5px; text-align: center; }
+
+    .hierarchy { margin: 20px 0; }
+    .identity-level {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 12px;
+      margin: 6px auto;
+      padding: 11px 14px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .identity-level:nth-child(1) { width: 100%; }
+    .identity-level:nth-child(2) { width: 94%; }
+    .identity-level:nth-child(3) { width: 88%; }
+    .identity-level:nth-child(4) { width: 82%; }
+    .identity-level:nth-child(5) { width: 76%; }
+    .identity-level strong { color: var(--accent); font: 700 12px var(--mono); }
+    .identity-level span { color: var(--ink-muted); font-size: 13px; }
+
+    details {
+      margin: 18px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    summary {
+      cursor: pointer;
+      padding: 14px 17px;
+      color: var(--accent);
+      font-weight: 750;
+    }
+    details > div { padding: 0 17px 17px; }
+    details[open] summary { border-bottom: 1px solid var(--rule); }
+    .listing-label { margin-bottom: -7px; color: var(--ink-faint); font: 11px var(--mono); }
+
+    .boost-steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 9px;
+      margin: 18px 0;
+    }
+    .boost-step {
+      padding: 13px;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink-muted);
+      font-size: 12px;
+    }
+    .boost-step b { display: block; margin-bottom: 4px; color: var(--accent); }
+
+    .equation {
+      margin: 20px 0;
+      padding: 17px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface-alt);
+      color: var(--accent);
+      text-align: center;
+      font: 700 14px/1.7 var(--mono);
+    }
+    .callout-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      margin-right: 6px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 700 11px var(--mono);
+    }
+    .summary-box {
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .summary-item {
+      display: grid;
+      grid-template-columns: 45px 1fr;
+      gap: 14px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .summary-item:last-child { border-bottom: 0; }
+    .summary-item .num { color: var(--accent-2); font: 700 12px var(--mono); }
+    .summary-item p { margin: 0; }
+    .source-link { margin-top: 20px; background: var(--accent-soft); color: var(--accent); }
+    .source-link:hover { background: var(--accent); color: #fff; }
+    .page-foot { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+
+    @media (max-width: 960px) {
+      .toc { display: none; }
+      .page { padding: 0 20px; }
+      .content { width: 100%; max-width: 100%; padding-top: 32px; }
+      .mobile-toc {
+        display: block;
+        margin: 0 0 28px;
+        border-color: var(--rule);
+        background: var(--surface);
+      }
+      .mobile-toc summary {
+        display: flex;
+        min-height: 46px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        list-style: none;
+      }
+      .mobile-toc summary::-webkit-details-marker { display: none; }
+      .mobile-toc summary::after { content: "+"; color: var(--accent-2); font: 700 18px var(--mono); }
+      .mobile-toc[open] summary::after { content: "−"; }
+      .mobile-toc nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 12px; }
+      .mobile-toc a {
+        min-height: 42px;
+        padding: 9px 10px;
+        border-radius: 7px;
+        color: var(--ink-muted);
+        font-size: 12px;
+        text-decoration: none;
+      }
+      .mobile-toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    }
+    @media (max-width: 700px) {
+      .card-grid, .model-grid, .relation-grid, .glossary-grid, .loop { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .flow-arrow { transform: rotate(90deg); text-align: center; }
+      .mobile-toc nav { grid-template-columns: 1fr; }
+      .signal-timeline, .timeline-checkout { grid-template-columns: 1fr; }
+      .timeline-checkout { grid-column: auto; }
+      .rank-compare { grid-template-columns: 1fr; }
+      .rank-swap { transform: rotate(90deg); }
+      .matrix-demo { grid-template-columns: 1fr; }
+      .matrix-op { transform: rotate(90deg); text-align: center; }
+      .boost-steps { grid-template-columns: 1fr; }
+      .table-wrap::before {
+        content: "← 표는 좌우로 스크롤할 수 있습니다 →";
+        display: block;
+        padding: 0 0 7px;
+        color: var(--ink-faint);
+        font: 10px var(--mono);
+      }
+      .identity-level { width: 100% !important; grid-template-columns: 92px 1fr; }
+      .thesis { padding: 23px 21px; }
+      .thesis blockquote { font-size: 18px; }
+      h2 { font-size: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <nav class="toc" aria-label="이 장의 목차">
+      <div class="toc-eyebrow">Chapter 4</div>
+      <a href="#overview" data-toc>이 장의 목표</a>
+      <a href="#sources" data-toc>4.1.1 세 가지 정보원</a>
+      <a href="#retrotech" class="sub" data-toc>4.1.2 RetroTech 데이터</a>
+      <a href="#signals" class="sub" data-toc>4.1.3 신호 데이터</a>
+      <a href="#identity" class="sub" data-toc>4.1.4 사용자·세션·요청</a>
+      <a href="#reflected" data-toc>4.2 반영된 지능</a>
+      <a href="#boosting" class="sub" data-toc>4.2.2 신호 부스팅</a>
+      <a href="#collaborative" class="sub" data-toc>4.2.3 협업 필터링</a>
+      <a href="#ltr" class="sub" data-toc>4.2.4 Learning to Rank</a>
+      <a href="#other" class="sub" data-toc>4.2.5 다른 모델들</a>
+      <a href="#content-crowd" class="sub" data-toc>4.2.6 콘텐츠 크라우드소싱</a>
+      <a href="#summary" data-toc>핵심 요약</a>
+    </nav>
+
+    <main class="content">
+      <a class="back-nav" href="../index.html">← 스터디 인덱스</a>
+
+      <details class="mobile-toc">
+        <summary>이 장의 목차 <span class="badge">12개 절</span></summary>
+        <nav aria-label="모바일용 이 장의 목차">
+          <a href="#overview">이 장의 목표</a>
+          <a href="#sources">4.1.1 세 가지 정보원</a>
+          <a href="#retrotech">4.1.2 RetroTech 데이터</a>
+          <a href="#signals">4.1.3 신호 데이터</a>
+          <a href="#identity">4.1.4 사용자·세션·요청</a>
+          <a href="#reflected">4.2 반영된 지능</a>
+          <a href="#boosting">4.2.2 신호 부스팅</a>
+          <a href="#collaborative">4.2.3 협업 필터링</a>
+          <a href="#ltr">4.2.4 Learning to Rank</a>
+          <a href="#other">4.2.5 다른 모델들</a>
+          <a href="#content-crowd">4.2.6 콘텐츠 크라우드소싱</a>
+          <a href="#summary">핵심 요약</a>
+        </nav>
+      </details>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 4</div>
+        <h1>크라우드소싱된 관련성</h1>
+        <p class="lede">사용자는 검색어를 입력하고, 결과를 보고, 클릭하고, 장바구니에 담고, 구매한다. 이 장은 그 행동을 단순 로그로 남기는 데서 멈추지 않고 <strong>다음 검색의 관련도를 개선하는 학습 신호</strong>로 바꾸는 전체 과정을 설명한다.</p>
+        <div class="hero-meta">
+          <span>파일 25쪽</span><span>4장 본문 23쪽</span><span>원문 Listing 7개</span><span>원문 표 1개</span><span>원문 그림 8개</span><span>User signals</span><span>Reflected intelligence</span>
+        </div>
+      </header>
+
+      <div class="thesis">
+        <div class="thesis-eyebrow">이 장의 한 문장</div>
+        <blockquote>좋은 검색 시스템은 사용자의 행동을 관찰하고, 그 집단적 판단을 모델로 학습한 뒤, <span class="hit">배운 내용을 다음 검색 결과에 되돌려준다.</span></blockquote>
+        <p>사용자 행동 → 신호 수집 → 집계·학습 → 모델 배포 → 더 나은 결과 → 새로운 행동의 순환이 “반영된 지능”의 핵심이다.</p>
+      </div>
+
+      <section id="overview">
+        <div class="sec-label">Chapter Goal</div>
+        <h2>검색을 스스로 조정하는 시스템으로 바꾸기</h2>
+        <p>관련성을 개선할 정보는 문서 안에만 있지 않다. 사용자가 어떤 질의를 했고, 어떤 결과를 보았으며, 무엇을 클릭하거나 구매했는지는 <strong>사용자가 원한 것을 추정할 수 있는 불완전하지만 중요한 집단적 증거</strong>다. 이 장에서는 이 증거를 안정적으로 기록하고 모델로 바꾸는 방법을 배운다.</p>
+
+        <div class="card-grid">
+          <div class="card"><strong>① 수집</strong><p>질의·노출·클릭·장바구니·구매를 공통 신호 형식으로 남긴다.</p></div>
+          <div class="card"><strong>② 연결</strong><p><code>query_id</code>와 사용자 식별자로 한 요청 이후의 행동을 이어 붙인다.</p></div>
+          <div class="card"><strong>③ 학습</strong><p>신호 부스팅, 협업 필터링, LTR처럼 목적이 다른 모델을 만든다.</p></div>
+          <div class="card"><strong>④ 반영</strong><p>학습한 모델을 검색에 배포하고 다시 생긴 행동으로 계속 갱신한다.</p></div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">이 장을 잘 읽었다는 기준</div>
+          <p>클릭 수를 세는 코드를 외우는 것보다, <strong>무슨 신호를 어떤 단위로 연결할지</strong>, <strong>세 모델이 어떤 범위의 관련성을 학습하는지</strong>, <strong>콜드 스타트와 편향이 왜 생기는지</strong>를 설명할 수 있어야 한다.</p>
+        </div>
+
+        <div class="model-grid">
+          <div class="model-card popular"><strong>대중화된 관련성</strong><p><b>신호 부스팅</b><br>같은 질의에서 많은 사용자가 선택한 문서를 올린다.</p></div>
+          <div class="model-card personal"><strong>개인화된 관련성</strong><p><b>협업 필터링</b><br>비슷한 행동을 한 다른 사용자의 선호로 추천한다.</p></div>
+          <div class="model-card general"><strong>일반화된 관련성</strong><p><b>Learning to Rank</b><br>모든 질의·문서에 적용할 랭킹 규칙을 학습한다.</p></div>
+          <div class="model-card"><strong>더 넓은 반영된 지능</strong><p>오탈자·구·동의어·용어 관계, 사용자 프로필, 문서 유사도도 신호에서 학습할 수 있다.</p></div>
+        </div>
+      </section>
+
+      <section id="sources">
+        <div class="sec-label">4.1.1 · Content vs. signals vs. models</div>
+        <h2>검색을 개선하는 세 가지 정보원</h2>
+        <p class="sec-sub">문서는 “무엇이 있는가”를, 신호는 “사람이 무엇을 원했는가”를, 모델은 두 정보를 압축해 “어떻게 해석하고 예측할까”를 제공한다.</p>
+
+        <dl class="glossary-grid">
+          <div class="term-card"><dt>콘텐츠 · Content</dt><dd>웹 페이지, 상품, 파일, 이미지, 영상, 사실 등 검색 대상. 사용자가 찾는 정보와 답을 담는다.</dd></div>
+          <div class="term-card"><dt>신호 · Signals</dt><dd>질의, 노출, 클릭, 장바구니, 구매처럼 사용자가 콘텐츠와 상호작용하며 남긴 관찰값.</dd></div>
+          <div class="term-card"><dt>모델 · Models</dt><dd>콘텐츠와 신호로 학습한 지식 그래프, 엔티티 목록, LLM, 랭킹·추천 모델 등의 정제된 표현.</dd></div>
+          <div class="term-card"><dt>크라우드소싱 · Crowdsourcing</dt><dd>많은 사람의 입력을 모아 새로운 지식을 얻는 방식. 직접 평가뿐 아니라 암묵적 행동도 포함한다.</dd></div>
+        </dl>
+
+        <div class="card-grid">
+          <div class="card"><strong>명시적 크라우드소싱</strong><p>문서 수동 태깅, Mechanical Turk 작업, 오류·악성 콘텐츠 신고처럼 사용자가 의도적으로 판단을 제공한다.</p></div>
+          <div class="card"><strong>암묵적 크라우드소싱</strong><p>질의·노출·클릭·장바구니·구매처럼 일상 행동을 관찰해 대규모 집단 판단을 추정한다.</p></div>
+        </div>
+
+        <div class="example">
+          <div class="box-title">원문의 핵심 예시 · “driver”는 무엇을 뜻하는가?</div>
+          <p>문서에서 <code>driver</code>와 함께 등장하는 단어를 세면 코퍼스가 많이 보유한 의미가 드러난다. 반면 <code>driver</code>를 검색한 사용자의 다른 질의를 모으면 실제 사용자가 찾는 의미가 드러난다.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">driver의 의미를 콘텐츠 공동 출현과 사용자 검색 신호로 비교</caption>
+            <thead><tr><th scope="col">콘텐츠에서 함께 등장</th><th scope="col">문서 비율</th><th scope="col">사용자의 다른 검색어</th><th scope="col">신호 비율</th></tr></thead>
+            <tbody>
+              <tr><td>taxi</td><td>40%</td><td>screwdriver</td><td>50%</td></tr>
+              <tr><td>car</td><td>35%</td><td>printer</td><td>30%</td></tr>
+              <tr><td>golf</td><td>15%</td><td>windows</td><td>25%</td></tr>
+              <tr><td>club</td><td>12%</td><td>mac</td><td>15%</td></tr>
+              <tr><td>printer</td><td>3%</td><td>golf</td><td>2%</td></tr>
+              <tr><td>linux</td><td>3%</td><td>club</td><td>2%</td></tr>
+              <tr><td>windows</td><td>1%</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">두 목록이 다른 이유</div>
+          <p><strong>콘텐츠 관점</strong>은 “우리 문서에 어떤 의미가 많이 존재하는가?”에 답하고, <strong>신호 관점</strong>은 “사용자가 어떤 의미를 많이 찾는가?”에 답한다. 검색의 목적은 사용자가 원하는 것을 보여주는 일이므로 신호가 강력하지만, 충분한 콘텐츠와 깨끗한 신호가 함께 있어야 한다.</p>
+        </div>
+
+        <div class="warning">
+          <div class="box-title">한쪽만 사용하면 생기는 문제</div>
+          <p><strong>콘텐츠 기반 추천</strong>은 문서 속성이 사용자에게 실제로 중요한지 모른다. <strong>신호 기반 추천</strong>은 상호작용이 적으면 동작하지 않고, 이미 노출된 항목만 다시 추천하는 자기강화 루프를 만들 수 있다. 목표는 둘 중 하나를 고르는 것이 아니라 균형 있게 결합하는 것이다.</p>
+        </div>
+      </section>
+
+      <section id="retrotech">
+        <div class="sec-label">4.1.2 · RetroTech dataset</div>
+        <h2>일관된 실습 무대: RetroTech</h2>
+        <p>RetroTech는 최신 제품 대신 과거의 하드웨어·소프트웨어·음반·영상을 판매하는 가상의 전자상거래 회사다. 전자상거래는 질의부터 구매까지 행동이 명확해 신호의 가치를 설명하기 좋고, 이 책의 여러 장에서 같은 데이터로 모델을 발전시킬 수 있다.</p>
+
+        <div class="inset">
+          <div class="box-title">기법 선택은 업종보다 데이터 조건에 좌우된다</div>
+          <p>이 장의 방법은 전자상거래에만 한정되지 않는다. 어떤 기법이 효과적인지는 특정 사용 사례보다 <strong>콘텐츠와 신호의 양(volume)과 다양성(variety)</strong>에 더 크게 좌우된다.</p>
+        </div>
+
+        <div class="card-grid">
+          <div class="card"><strong>products.csv</strong><p><code>upc</code>, 상품명, 제조사, 짧은 설명, 긴 설명을 가진 약 5만 개 상품.</p></div>
+          <div class="card"><strong>signals.csv</strong><p>약 1년 동안의 검색·노출·클릭·구매를 흉내 낸 사용자 행동 데이터.</p></div>
+        </div>
+
+        <details>
+          <summary>Listing 4.1 · 상품 카탈로그 예시 보기</summary>
+          <div>
+            <pre><code>"upc","name","manufacturer","short_description","long_description"
+"096009010836","Fists of Bruce Lee - Dolby - DVD",,,
+"043396061965","The Professional - Widescreen Uncut - DVD",,,
+"085391862024","Pokemon the Movie: 2000 - DVD",,,
+"067003016025","Summerbreeze - CD","Nettwerk",,
+"731454813822","Back for the First Time [PA] - CD","Def Jam South",,</code></pre>
+          </div>
+        </details>
+
+        <div class="listing-label">Listing 4.2 · 상품 문서 색인</div>
+        <pre><code>products_collection = engine.create_collection("products")
+products_dataframe = load_dataframe("data/retrotech/products.csv")
+products_collection.write(products_dataframe)
+
+# Output: Successfully written 48194 documents</code></pre>
+
+        <div class="listing-label">Listing 4.3 · 상품 검색 요청</div>
+        <pre><code>def product_search_request(query, param_overrides={}):
+    request = {
+        "query": query,
+        "query_fields": ["name", "manufacturer", "long_description"],
+        "return_fields": ["upc", "name", "manufacturer",
+                          "short_description", "score"],
+        "limit": 5,
+        "order_by": [("score", "desc"), ("upc", "asc")]
+    }
+    return request | param_overrides
+
+query = "ipod"
+response = products_collection.search(**product_search_request(query))</code></pre>
+
+        <div class="box">
+          <div class="box-title">현재 상태: 검색은 되지만 관련성은 나쁘다</div>
+          <p>48,194개 상품은 성공적으로 색인되고 <code>ipod</code> 검색도 결과를 반환한다. 그러나 아직은 기본 키워드 매칭뿐이라 사용자가 기대하는 순서와 거리가 멀다. 이 “동작하지만 똑똑하지 않은 검색”이 이후 신호 모델의 기준선이다.</p>
+        </div>
+
+        <div class="listing-label">Listing 4.4 · 행동 신호 색인</div>
+        <pre><code>signals_collection = engine.create_collection("signals")
+signals_collection.write(from_csv("data/retrotech/signals.csv"))</code></pre>
+      </section>
+
+      <section id="signals">
+        <div class="sec-label">4.1.3 · Exploring the signals data</div>
+        <h2>행동을 다시 조립할 수 있게 기록한다</h2>
+        <p>신호 유형마다 필요한 값은 다르다. 질의는 키워드가 필요하고, 클릭은 클릭한 문서와 그 클릭을 만든 원래 질의가 필요하다. 책은 새 신호 유형이 늘어도 처리 코드를 반복해서 바꾸지 않도록 다섯 필드의 공통 형식을 사용한다.</p>
+
+        <dl class="glossary-grid">
+          <div class="term-card"><dt>query_id</dt><dd>이 행동의 출발점이 된 특정 시점의 질의 신호 ID. 같은 검색어라도 서로 다른 실행은 다른 ID다.</dd></div>
+          <div class="term-card"><dt>user</dt><dd>검색 사용자를 나타내는 식별자. 로그인 ID가 없으면 더 약한 식별자로 대체한다.</dd></div>
+          <div class="term-card"><dt>type</dt><dd><code>query</code>, <code>results</code>, <code>click</code>, <code>add-to-cart</code>, <code>purchase</code> 등 행동 종류.</dd></div>
+          <div class="term-card"><dt>target</dt><dd>신호가 가리키는 검색어 또는 문서. <code>results</code>는 순서가 보존된 문서 목록이다.</dd></div>
+          <div class="term-card"><dt>signal_time</dt><dd>행동이 발생한 정확한 시각. 세션 추정과 시간 가중치 계산의 근거가 된다.</dd></div>
+        </dl>
+
+        <div class="example">
+          <div class="box-title">원문의 전체 행동 시나리오</div>
+          <div class="signal-timeline" aria-label="두 질의에서 시작한 행동이 한 번의 결제로 이어지는 신호 타임라인">
+            <div class="timeline-track">
+              <div class="timeline-query"><b>Q1</b><code>ipad</code></div>
+              <ol class="timeline-events">
+                <li><time>09:00:00</time><span>결과 <code>doc1, doc2, doc3</code> 노출</span></li>
+                <li><time>09:00:10</time><span><code>doc1</code> 클릭</span></li>
+                <li><time>09:00:29</time><span><code>doc3</code> 클릭</span></li>
+                <li><time>09:03:40</time><span><code>doc3</code> 장바구니</span></li>
+              </ol>
+            </div>
+            <div class="timeline-track">
+              <div class="timeline-query"><b>Q2</b><code>ipad cover</code></div>
+              <ol class="timeline-events">
+                <li><time>09:04:00</time><span>결과 <code>doc4, doc5</code> 노출</span></li>
+                <li><time>09:04:40</time><span><code>doc4</code> 클릭</span></li>
+                <li><time>09:05:50</time><span><code>doc4</code> 장바구니</span></li>
+              </ol>
+            </div>
+            <div class="timeline-checkout">
+              <strong>09:07:15 · 결제</strong>
+              <div class="purchase-path"><b>query_id 1</b><code>doc3</code> purchase</div>
+              <div class="purchase-path"><b>query_id 2</b><code>doc4</code> purchase</div>
+            </div>
+          </div>
+          <p>한 번의 결제라도 각 상품을 원래 질의에 따로 연결해야, 어떤 검색이 어떤 구매를 만들었는지 다시 조립할 수 있다.</p>
+        </div>
+
+        <details>
+          <summary>Table 4.1 · 원본 신호 11행 확인</summary>
+          <div>
+            <div class="table-wrap">
+              <table>
+                <caption class="sr-only">u123 사용자의 두 질의와 후속 행동을 기록한 11개 신호</caption>
+                <thead><tr><th scope="col">query_id</th><th scope="col">user</th><th scope="col">type</th><th scope="col">target</th><th scope="col">signal_time</th></tr></thead>
+                <tbody>
+                  <tr><td>1</td><td>u123</td><td>query</td><td>ipad</td><td>09:00:00</td></tr>
+                  <tr><td>1</td><td>u123</td><td>results</td><td>doc1,doc2,doc3</td><td>09:00:00</td></tr>
+                  <tr><td>1</td><td>u123</td><td>click</td><td>doc1</td><td>09:00:10</td></tr>
+                  <tr><td>1</td><td>u123</td><td>click</td><td>doc3</td><td>09:00:29</td></tr>
+                  <tr><td>1</td><td>u123</td><td>add-to-cart</td><td>doc3</td><td>09:03:40</td></tr>
+                  <tr><td>2</td><td>u123</td><td>query</td><td>ipad cover</td><td>09:04:00</td></tr>
+                  <tr><td>2</td><td>u123</td><td>results</td><td>doc4,doc5</td><td>09:04:00</td></tr>
+                  <tr><td>2</td><td>u123</td><td>click</td><td>doc4</td><td>09:04:40</td></tr>
+                  <tr><td>2</td><td>u123</td><td>add-to-cart</td><td>doc4</td><td>09:05:50</td></tr>
+                  <tr><td>1</td><td>u123</td><td>purchase</td><td>doc3</td><td>09:07:15</td></tr>
+                  <tr><td>2</td><td>u123</td><td>purchase</td><td>doc4</td><td>09:07:15</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="sec-sub">원문의 날짜는 모든 행이 <code>2024-05-01</code>이며, 표에서는 행동 흐름을 빠르게 읽도록 시각만 표시했다.</p>
+          </div>
+        </details>
+
+        <div class="card-grid">
+          <div class="card"><strong>query와 results를 분리</strong><p>다음 페이지를 보거나 무한 스크롤로 새 결과가 노출되어도 기존 질의 행을 수정하지 않고 새 노출 신호를 추가할 수 있다.</p></div>
+          <div class="card"><strong>특정 질의 실행에 연결</strong><p>검색 결과는 시간에 따라 바뀐다. <code>query_id</code>는 키워드가 아니라 사용자가 실제로 본 결과 집합의 출발점을 가리킨다.</p></div>
+          <div class="card"><strong>결과 순서를 보존</strong><p><code>results.target</code>은 순서 있는 목록이다. 이후 랭킹 편향과 관련성 판단을 분석할 때 노출 위치가 중요하다.</p></div>
+          <div class="card"><strong>구매를 상품별로 분리</strong><p>한 결제 안의 상품이 서로 다른 질의에서 왔을 수 있으므로 각 상품을 원래 <code>query_id</code>에 연결한다.</p></div>
+        </div>
+      </section>
+
+      <section id="identity">
+        <div class="sec-label">4.1.4 · Users, sessions, and requests</div>
+        <h2>가능한 한 오래 지속되는 식별자에 연결한다</h2>
+        <p>신호가 많아도 같은 사람의 연속 행동을 연결하지 못하면 의도를 배우기 어렵다. 로그인 사용자는 내부 사용자 ID가 있지만, 비로그인·공개 검색은 쿠키와 기기 단서처럼 더 유동적인 식별자가 필요하다.</p>
+
+        <div class="hierarchy" aria-label="지속성에 따른 사용자 식별자 계층">
+          <div class="identity-level"><strong>User ID</strong><span>로그인 계정. 여러 기기를 넘어 유지되는 가장 강한 식별자.</span></div>
+          <div class="identity-level"><strong>Device ID</strong><span>같은 기기에서 여러 세션에 걸쳐 지속. 기기 ID 또는 IP + 기기 지문.</span></div>
+          <div class="identity-level"><strong>Browser ID</strong><span>같은 브라우저·앱에서 지속되는 쿠키 기반 식별자.</span></div>
+          <div class="identity-level"><strong>Session ID</strong><span>한 세션 동안 유지. 시크릿 모드의 세션 쿠키도 여기에 해당.</span></div>
+          <div class="identity-level"><strong>Request ID</strong><span>한 요청에서만 유지. 쿠키를 끄면 요청마다 새 사용자처럼 보인다.</span></div>
+        </div>
+
+        <ul>
+          <li>영구 쿠키가 켜져 있으면 하나의 Browser ID 아래 여러 Session ID, 그 아래 여러 Request ID가 생긴다.</li>
+          <li>세션마다 쿠키를 지우면 Browser ID 하나에 Session ID 하나가 연결되지만 요청은 여러 개일 수 있다.</li>
+          <li>쿠키를 끄면 요청마다 Browser ID와 Session ID가 모두 새로 생긴다.</li>
+        </ul>
+
+        <div class="warning">
+          <div class="box-title">신호 설계는 나중에 복구하기 어렵다</div>
+          <p>질의와 후속 행동을 처음부터 연결하지 않으면 AI 검색의 학습 능력이 크게 줄어든다. 타임스탬프로 세션을 추정할 수는 있지만 정보 손실을 완전히 되돌리기 어렵다. 물론 식별자 수집·보존은 개인정보 보호와 동의 정책 안에서 설계해야 한다.</p>
+        </div>
+      </section>
+
+      <section id="reflected">
+        <div class="sec-label">4.2.1 · What is reflected intelligence?</div>
+        <h2>반영된 지능: 행동을 배워 다음 결과에 돌려주기</h2>
+        <div class="example">
+          <div class="box-title">철물점의 망치 예시</div>
+          <p>직원이 손님에게 망치가 2번 통로에 있다고 안내했다. 손님은 2번 통로에서 빈손으로 나와 5번 통로에서 망치를 들고 나왔다. 다음 날 다른 손님도 똑같이 행동했다. 그런데도 계속 2번 통로를 안내한다면 형편없는 직원이다. 기본 검색 엔진도 이전 사용자의 반응을 배우지 않으면 이 직원과 같다.</p>
+        </div>
+
+        <div class="flow" aria-label="반영된 지능의 기본 흐름">
+          <div class="flow-step"><b>사용자 질의</b><span>Alonzo → ipad</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>결과 노출</b><span>doc10, doc22, doc12…</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>행동</b><span>doc22 클릭·구매</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>모델 학습</b><span>집계·ML → 검색에 재배포</span></div>
+        </div>
+
+        <p>Alonzo가 <code>ipad</code>를 검색하고 <code>doc22</code>를 클릭한 뒤 구매하면, 질의·노출·클릭·구매 신호가 남는다. 다른 모든 사용자의 신호와 함께 집계하면 특정 질의의 인기 문서를 올리거나, 개인별 추천을 만들거나, 모든 검색에 통하는 문서 특징의 중요도를 학습할 수 있다.</p>
+
+        <div class="loop" aria-label="지속적인 반영된 지능 피드백 루프">
+          <div class="loop-step"><span class="num">01</span><strong>검색</strong><p>사용자가 질의를 실행한다.</p></div>
+          <div class="loop-step"><span class="num">02</span><strong>현재 모델 적용</strong><p>모델이 매칭·랭킹을 개선한다.</p></div>
+          <div class="loop-step"><span class="num">03</span><strong>결과 노출</strong><p>정확한 순서와 시각을 기록한다.</p></div>
+          <div class="loop-step"><span class="num">04</span><strong>행동 수집</strong><p>클릭·구매 등 후속 신호를 연결한다.</p></div>
+          <div class="loop-step"><span class="num">05</span><strong>집계·학습</strong><p>신호를 목적별 모델로 변환한다.</p></div>
+          <div class="loop-step"><span class="num">06</span><strong>재배포</strong><p>개선한 모델로 다음 검색을 돕는다.</p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">왜 “반영된” 지능인가?</div>
+          <p>지능이 모델 안에 한 번 고정되어 있는 것이 아니라, 사용자의 집단적 판단이 시스템에 들어와 모델로 정제되고 다시 사용자 경험에 <strong>반사(reflect)</strong>되기 때문이다. 관심사와 콘텐츠가 변하면 새 신호가 모델을 다시 조정한다.</p>
+        </div>
+      </section>
+
+      <section id="boosting">
+        <div class="sec-label">4.2.2 · Popularized relevance</div>
+        <h2>신호 부스팅: 같은 질의에서 많이 선택된 문서를 올린다</h2>
+        <p>인기 질의는 신호가 많이 쌓이고 사업적으로도 중요하다. 같은 질의에서 사용자가 가장 많이 클릭한 문서를 세어 해당 문서를 부스트하면, 단순하면서도 큰 개선을 얻을 수 있다. 이것이 <strong>대중화된 관련성(popularized relevance)</strong>이다.</p>
+
+        <div class="listing-label">Listing 4.5 · 부스팅 전 기본 iPad 검색</div>
+        <pre><code>query = "ipad"
+request = product_search_request(query)
+response = products_collection.search(**request)
+display_product_search(query, response["docs"])</code></pre>
+
+        <div class="example">
+          <div class="box-title">원문의 <code>ipad</code> 실패</div>
+          <p>키워드만 사용하면 <code>ipad</code>를 여러 번 언급한 액세서리가 실제 iPad보다 위에 나온다. 텍스트 빈도는 “많이 언급된 문서”를 찾았지만, 사용자가 원한 상품 종류까지 이해하지 못했다.</p>
+        </div>
+
+        <div class="equation">boost(query, doc) = 동일한 query에서 doc이 클릭된 횟수</div>
+
+        <div class="boost-steps" aria-label="신호 부스팅 모델 생성 3단계">
+          <div class="boost-step"><b>1 · 연결</b>클릭을 같은 <code>query_id</code>의 질의와 조인한다.</div>
+          <div class="boost-step"><b>2 · 집계</b>질의–문서 조합별 클릭 수를 센다.</div>
+          <div class="boost-step"><b>3 · 저장</b>결과를 <code>signals_boosting</code>에 쓴다.</div>
+        </div>
+
+        <details>
+          <summary>Listing 4.6 · 클릭 신호 집계 SQL</summary>
+          <div>
+            <pre><code>SELECT q.target AS query,
+       c.target AS doc,
+       COUNT(c.target) AS boost
+FROM signals c
+LEFT JOIN signals q ON c.query_id = q.query_id
+WHERE c.type = 'click'
+  AND q.type = 'query'
+GROUP BY q.target, doc
+ORDER BY boost DESC</code></pre>
+          </div>
+        </details>
+
+        <div class="box">
+          <div class="box-title">사이드카 컬렉션이란?</div>
+          <p>주 컬렉션 <code>products</code> 옆에서 검색을 돕는 별도 컬렉션이다. 원시 행동은 <code>signals</code>, 집계된 질의별 문서 부스트는 <code>signals_boosting</code>에 저장한다. 모델의 입력·출력을 본문 문서와 분리해 갱신하기 쉽다.</p>
+        </div>
+
+        <details>
+          <summary>Listing 4.7 · 집계 부스트를 검색 요청에 적용</summary>
+          <div>
+            <pre><code>def search_for_boosts(query, collection, query_field="query"):
+    boosts_request = {
+        "query": query,
+        "query_fields": [query_field],
+        "return_fields": ["query", "doc", "boost"],
+        "limit": 10,
+        "order_by": [("boost", "desc")]
+    }
+    return collection.search(**boosts_request)["docs"]
+
+def create_boosts_query(boost_documents):
+    return " ".join(
+        [f'"{b["doc"]}"^{b["boost"]}' for b in boost_documents]
+    )
+
+query = "ipad"
+boost_docs = search_for_boosts(query, signals_boosting_collection)
+request = product_search_request(query)
+request["query_boosts"] = create_boosts_query(boost_docs)
+response = products_collection.search(**request)</code></pre>
+          </div>
+        </details>
+
+        <div class="rank-compare" aria-label="iPad 검색의 신호 부스팅 적용 전후 비교">
+          <div class="rank-panel before">
+            <h3>적용 전 · 키워드 빈도 중심</h3>
+            <p><code>ipad</code>를 여러 번 언급한 주변 상품이 우세하다.</p>
+            <ol class="rank-list">
+              <li><span class="rank">01</span><span class="result-kind">iPad 액세서리</span><span class="metric">반복 언급</span></li>
+              <li><span class="rank">02</span><span class="result-kind">iPad 케이스</span><span class="metric">반복 언급</span></li>
+              <li><span class="rank">03</span><span class="result-kind">iPad 주변기기</span><span class="metric">반복 언급</span></li>
+            </ol>
+          </div>
+          <div class="rank-swap" aria-hidden="true">→</div>
+          <div class="rank-panel after">
+            <h3>적용 후 · 실제 선택 중심</h3>
+            <p>사용자가 선택한 실제 iPad 상품이 위로 이동한다.</p>
+            <ol class="rank-list">
+              <li><span class="rank">01</span><span><code>885909457588</code><br><span class="result-kind">실제 iPad</span></span><span class="metric">966 clicks</span></li>
+              <li><span class="rank">02</span><span><code>885909457595</code><br><span class="result-kind">실제 iPad</span></span><span class="metric">205 clicks</span></li>
+              <li><span class="rank">03</span><span><code>885909471812</code><br><span class="result-kind">실제 iPad</span></span><span class="metric">202 clicks</span></li>
+            </ol>
+          </div>
+        </div>
+
+        <details>
+          <summary>원문 출력 · 상위 10개 부스트 수치</summary>
+          <div>
+            <div class="table-wrap">
+              <table>
+                <caption class="sr-only">iPad 질의에서 클릭 수가 높은 상위 10개 상품 UPC</caption>
+                <thead><tr><th scope="col">순위</th><th scope="col">iPad 질의에서 부스트할 UPC</th><th scope="col">클릭 수</th></tr></thead>
+                <tbody>
+                  <tr class="highlight"><td>1</td><td><code>885909457588</code></td><td>966</td></tr>
+                  <tr><td>2</td><td><code>885909457595</code></td><td>205</td></tr>
+                  <tr><td>3</td><td><code>885909471812</code></td><td>202</td></tr>
+                  <tr><td>4</td><td><code>886111287055</code></td><td>109</td></tr>
+                  <tr><td>5</td><td><code>843404073153</code></td><td>73</td></tr>
+                  <tr><td>6</td><td><code>635753493559</code></td><td>62</td></tr>
+                  <tr><td>7</td><td><code>885909457601</code></td><td>62</td></tr>
+                  <tr><td>8</td><td><code>885909472376</code></td><td>61</td></tr>
+                  <tr><td>9</td><td><code>610839379408</code></td><td>29</td></tr>
+                  <tr><td>10</td><td><code>884962753071</code></td><td>28</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <pre><code>"885909457588"^966 "885909457595"^205 "885909471812"^202
+"886111287055"^109 "843404073153"^73 ...</code></pre>
+
+        <p>책의 기본 Solr 구현에서는 이 부스트 질의가 내부적으로 <code>sum(1,query($boost_query))</code>와 같은 곱셈 부스트로 적용된다. 기본 점수에 1을 더해 원래 점수를 없애지 않으면서, 선택된 문서의 관련도 점수를 끌어올리는 방식이다.</p>
+
+        <div class="warning">
+          <div class="box-title">단순 집계 뒤에 남는 설계 문제</div>
+          <p>신호가 적은 꼬리 질의에서는 오히려 품질이 나빠질 수 있다. 실전에서는 질의 시점 부스트와 색인 시점 부스트, 최신 신호 가중치, 가짜 클릭 방어, 클릭·구매 등 서로 다른 신호의 가중치를 함께 설계해야 한다. 책은 이를 8장에서 자세히 다룬다.</p>
+        </div>
+      </section>
+
+      <section id="collaborative">
+        <div class="sec-label">4.2.3 · Personalized relevance</div>
+        <h2>협업 필터링: 비슷한 사람의 선택으로 개인을 돕는다</h2>
+        <p>신호 부스팅이 “모두에게 대체로 인기 있는 문서”를 찾는다면, 협업 필터링은 일부 사용자의 선호를 관찰해 다른 사용자의 선호를 예측한다. 흔히 보는 “이 상품을 좋아한 사용자가 함께 좋아한 상품”이 대표적인 결과다.</p>
+        <a class="source-link" href="ch04_collaborative_filtering.html">협업 필터링 별도 정리 보기 →</a>
+
+        <div class="example">
+          <div class="box-title">원문의 Alonzo 추천 예시</div>
+          <p>Alonzo가 <code>doc22: iPad Pro</code>와 강하게 상호작용했고, 같은 문서에 반응한 사용자들이 <code>doc12: Kindle Fire</code>에도 반응했다면 Alonzo에게 <code>doc12</code>를 추천할 수 있다.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Alonzo와 Ming의 문서 상호작용 강도 예시</caption>
+            <thead><tr><th scope="col">사용자</th><th scope="col">아이템</th><th scope="col">상호작용 강도 예</th><th scope="col">해석</th></tr></thead>
+            <tbody>
+              <tr><td>Alonzo</td><td>doc22</td><td>1.0</td><td>강한 선호</td></tr>
+              <tr><td>Alonzo</td><td>doc12</td><td>0.4</td><td>약한 선호</td></tr>
+              <tr><td>Ming</td><td>doc12</td><td>0.9</td><td>강한 선호</td></tr>
+              <tr><td>Ming</td><td>doc22</td><td>0.6</td><td>중간 선호</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>행렬이 희소하면 잠재 요인으로 압축한다</h3>
+        <p>사용자–아이템 상호작용 행렬이 충분히 채워져 있으면 같은 아이템에 반응한 이웃 사용자를 직접 찾을 수 있다. 하지만 실제 행렬은 대부분 비어 있다. 이때 <strong>행렬 분해(matrix factorization)</strong>로 하나의 큰 행렬을 “사용자 → 잠재 요인”과 “잠재 요인 → 아이템” 두 행렬로 나눈다.</p>
+        <div class="matrix-demo" aria-label="희소한 사용자 아이템 행렬을 두 개의 작은 잠재 요인 행렬로 분해하는 개념도">
+          <div class="matrix-block">
+            <strong>사용자 × 아이템 · 희소</strong>
+            <div class="matrix-cells five" aria-hidden="true">
+              <span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span>
+              <span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span>
+              <span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span>
+              <span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span>
+              <span class="matrix-cell"></span><span class="matrix-cell known"></span><span class="matrix-cell"></span><span class="matrix-cell"></span><span class="matrix-cell known"></span>
+            </div>
+          </div>
+          <div class="matrix-op" aria-hidden="true">≈</div>
+          <div class="matrix-block">
+            <strong>사용자 × 잠재 요인</strong>
+            <div class="matrix-cells three" aria-hidden="true">
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+              <span class="matrix-cell latent"></span><span class="matrix-cell latent"></span><span class="matrix-cell latent"></span>
+            </div>
+          </div>
+          <div class="matrix-op" aria-hidden="true">×</div>
+          <div class="matrix-block">
+            <strong>잠재 요인 × 아이템</strong>
+            <div class="matrix-cells five" aria-hidden="true">
+              <span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span>
+              <span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span>
+              <span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span><span class="matrix-cell known"></span>
+            </div>
+          </div>
+        </div>
+        <p class="matrix-caption">빈칸이 많은 큰 행렬을, 공유 취향을 나타내는 작은 잠재 요인 공간으로 압축한다.</p>
+        <div class="equation">사용자 × 아이템 ≈ (사용자 × 잠재 요인) × (잠재 요인 × 아이템)</div>
+        <p>잠재 요인은 사람이 미리 정한 “브랜드”나 “가격”일 필요가 없다. 사용자들이 공통으로 반응한 패턴에서 아이템의 중요한 성질이 학습된다. 문서 내용을 몰라도 행동만으로 취향과 아이템 유사성을 찾을 수 있다는 점이 협업 필터링의 힘이다.</p>
+
+        <div class="warning">
+          <div class="box-title">콜드 스타트와 프레젠테이션 편향</div>
+          <p>새 문서는 신호가 없어 추천되지 않고, 추천되지 않으니 신호가 생기지 않는 모순에 빠진다. 이미 인기 있는 문서는 더 많이 노출되어 더 많은 신호를 얻는다. 이 자기강화 순환은 결과 다양성을 낮추는 <strong>프레젠테이션 편향</strong>이며, 책은 12장에서 대응한다.</p>
+        </div>
+      </section>
+
+      <section id="ltr">
+        <div class="sec-label">4.2.4 · Generalized relevance</div>
+        <h2>Learning to Rank: 관련성 판단을 일반 랭킹 규칙으로 바꾼다</h2>
+        <p>신호 부스팅과 협업 필터링은 신호가 붙은 문서에 강하다. LTR은 질의와 문서의 관련성 판단 목록으로 랭킹 분류기를 학습해 <strong>아직 직접 신호가 없는 질의·문서에도 적용 가능한 관련성</strong>을 만든다.</p>
+        <a class="source-link" href="ch04_learning_to_rank.html">Learning to Rank 별도 정리 보기 →</a>
+
+        <div class="flow" aria-label="Learning to Rank의 검색 흐름">
+          <div class="flow-step"><b>질의</b><span>ipad</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>빠른 1차 검색</b><span>BM25로 top-N</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>LTR 재랭킹</b><span>풍부한 특징 계산</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>최종 결과</b><span>doc3, doc1, doc2</span></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Learning to Rank 모델의 특징과 예시 가중치</caption>
+            <thead><tr><th scope="col">원문 그림 4.7의 특징 예</th><th scope="col">학습된 가중치 예</th><th scope="col">무엇을 표현하는가</th></tr></thead>
+            <tbody>
+              <tr><td><code>title_match_any_terms</code></td><td>15.25</td><td>질의어가 제목에 일치하는 정도</td></tr>
+              <tr><td><code>is_known_category</code></td><td>10</td><td>알려진 상품 범주에 해당하는지</td></tr>
+              <tr><td><code>popularity</code></td><td>9.5</td><td>문서의 전반적 인기</td></tr>
+              <tr><td><code>content_age</code></td><td>9.2</td><td>콘텐츠의 시간적 특성</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>복잡한 랭킹 분류기로 전체 일치 문서를 모두 채점하면 너무 느리다. 그래서 보통 BM25 같은 빠른 함수로 수백~수천 개의 top-N 후보를 찾고, 그 후보만 LTR 모델로 재랭킹한다. 정확도는 거의 유지하면서 계산 비용을 크게 줄이는 전형적인 구조다.</p>
+
+        <div class="box">
+          <div class="box-title">가중치가 항상 설명 가능한 것은 아니다</div>
+          <p>단순한 랭킹 모델은 특징과 가중치를 사람이 읽을 수 있지만, 고급 딥러닝 랭킹 분류기는 반드시 해석 가능하거나 설명 가능할 필요가 없다. 모델 품질 평가와 운영 관찰이 별도로 필요한 이유다.</p>
+        </div>
+
+        <div class="card-grid">
+          <div class="card"><strong>명시적 판단</strong><p>도메인 전문가가 “이 질의에는 이 순서가 옳다”는 관련성 판단 목록을 만든다.</p></div>
+          <div class="card"><strong>암묵적 판단</strong><p>노출·클릭·구매 신호에서 관련성 판단을 추정한다. 두 방식을 함께 사용할 수도 있다.</p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">세 모델의 범위를 한 문장으로</div>
+          <p><strong>신호 부스팅</strong>은 “이 질의에서 모두가 무엇을 골랐나?”, <strong>협업 필터링</strong>은 “이 사용자와 비슷한 사람은 무엇을 골랐나?”, <strong>LTR</strong>은 “여러 판단에서 공통으로 드러난 좋은 랭킹의 규칙은 무엇인가?”에 답한다.</p>
+        </div>
+      </section>
+
+      <section id="other">
+        <div class="sec-label">4.2.5 · Other reflected intelligence models</div>
+        <h2>사용자와 콘텐츠 사이의 모든 행동은 그래프의 간선이다</h2>
+        <p>같은 원시 신호라도 어떻게 집계하고 학습하느냐에 따라 서로 다른 관계를 얻을 수 있다. 질의·사용자·문서·속성을 노드로 보고 행동을 간선으로 보면 활용 범위가 선명해진다.</p>
+
+        <div class="relation-grid">
+          <div class="relation-card"><strong>사용자 → 문서</strong><p>Alonzo에게 <code>doc22: iPad Pro</code>, <code>doc12: Kindle Fire</code> 추천.</p></div>
+          <div class="relation-card"><strong>사용자 → 선호 속성</strong><p>Alonzo는 tablets, Apple, black, 32GB를 선호한다는 프로필.</p></div>
+          <div class="relation-card"><strong>문서 → 문서</strong><p><code>doc22</code>와 함께 선택되는 유사·관련 문서를 추천.</p></div>
+          <div class="relation-card"><strong>질의 → 문서</strong><p><code>ipad</code>에 <code>doc22</code> 0.98, <code>doc12</code> 0.6 같은 관련 강도.</p></div>
+        </div>
+
+        <p>여기에 질의 신호를 언어 데이터로 사용하면 도메인 특유의 구, 흔한 오탈자, 동의어와 관련 용어도 자동으로 찾을 수 있다. 결국 반영된 지능은 추천 모델 몇 개의 이름이 아니라, <strong>사람이 남긴 관계를 재사용해 시스템을 학습시키는 패턴</strong>이다.</p>
+      </section>
+
+      <section id="content-crowd">
+        <div class="sec-label">4.2.6 · Crowdsourcing from content</div>
+        <h2>사용자가 만든 콘텐츠도 신호가 된다</h2>
+        <p>크라우드소싱은 행동 로그에만 한정되지 않는다. 고객 리뷰의 별점은 품질 신호가 되고, 댓글의 감성 분석 결과는 긍정·중립·부정에 따라 원문 상품을 부스트하거나 패널티를 주는 신호가 된다. 스팸·악용 신고도 마찬가지다.</p>
+
+        <div class="example">
+          <div class="box-title">PageRank가 보여주는 확장된 관점</div>
+          <p>PageRank는 한 웹 페이지의 본문만 보지 않고, 다른 페이지 제작자들이 어디로 링크했는지를 집단적 판단으로 해석한다. 권위 있는 페이지가 많이 인용하는 페이지는 품질이 높을 가능성이 크다는 가정이다. 즉 링크도 사람이 콘텐츠를 만들며 남긴 암묵적 행동 신호다.</p>
+          <a class="source-link" href="ch04_pagerank.html">PageRank 별도 정리 보기 →</a>
+        </div>
+
+        <div class="equation">문서 내부 정보 + 문서 사이 링크 + 사용자 생성 콘텐츠 + 행동 신호 → 더 풍부한 도메인 이해</div>
+
+        <p>콘텐츠의 용어 사용 방식도 많은 작성자가 함께 만든 언어 데이터다. 문서 사이의 직접 링크, 댓글, 평가, 신고, 용어의 공동 출현을 모두 관계로 보면 지식 그래프와 도메인 언어 학습으로 자연스럽게 이어진다.</p>
+      </section>
+
+      <section id="summary">
+        <div class="sec-label">Summary</div>
+        <h2>4장의 핵심을 다시 연결하기</h2>
+        <div class="summary-box">
+          <div class="summary-item"><div class="num">01</div><p><strong>세 가지 연료:</strong> 콘텐츠는 검색 대상을, 신호는 실제 사용자 의도를, 모델은 두 정보를 정제한 예측과 해석을 제공한다.</p></div>
+          <div class="summary-item"><div class="num">02</div><p><strong>신호 설계:</strong> 질의·노출·클릭·구매를 특정 <code>query_id</code>, 사용자 식별자, 시각에 연결하고 결과 순서를 보존해야 나중에 올바르게 학습할 수 있다.</p></div>
+          <div class="summary-item"><div class="num">03</div><p><strong>반영된 지능:</strong> 행동을 수집하고 모델을 학습한 뒤 검색에 재배포하는 피드백 루프가 사용자와 콘텐츠의 변화에 맞춰 관련성을 계속 조정한다.</p></div>
+          <div class="summary-item"><div class="num">04</div><p><strong>대중화된 관련성:</strong> 신호 부스팅은 인기 질의에서 많이 선택된 문서를 올려 가장 빠르고 직접적인 개선을 만든다.</p></div>
+          <div class="summary-item"><div class="num">05</div><p><strong>개인화된 관련성:</strong> 협업 필터링은 사용자–아이템 행동 패턴과 잠재 요인으로 개인의 선호와 문서 유사성을 예측한다.</p></div>
+          <div class="summary-item"><div class="num">06</div><p><strong>일반화된 관련성:</strong> LTR은 판단 목록에서 랭킹 특징과 가중치를 학습하고, 보통 빠른 1차 검색의 top-N을 재랭킹한다.</p></div>
+          <div class="summary-item"><div class="num">07</div><p><strong>주의점:</strong> 신호가 부족한 콜드 스타트, 이미 노출된 결과가 더 강해지는 프레젠테이션 편향, 가짜 신호와 개인정보 보호를 함께 다뤄야 한다.</p></div>
+          <div class="summary-item"><div class="num">08</div><p><strong>더 넓은 활용:</strong> 리뷰·댓글·링크·용어 사용도 크라우드소싱된 지능이며 추천, 사용자 프로필, 동의어, 지식 그래프 학습으로 확장된다.</p></div>
+        </div>
+
+        <a class="source-link" href="https://livebook.manning.com/book/ai-powered-search" target="_blank" rel="noopener">Manning LiveBook에서 보기 ↗</a>
+      </section>
+
+      <footer class="page-foot">출처: <em>AI-Powered Search</em>, Chapter 4 — Crowdsourced relevance (Manning). 원문의 절 구조, RetroTech 예시, 표·코드·그림의 핵심 수치를 바탕으로 학습용 한국어 자료로 재구성했습니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileToc = document.querySelector('.mobile-toc');
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress');
+      var suppressUntil = 0;
+
+      function setActive(link) {
+        var href = link ? link.getAttribute('href') : '';
+        links.concat(mobileLinks).forEach(function (item) {
+          item.classList.toggle('active', item.getAttribute('href') === href);
+        });
+      }
+
+      function updateProgress() {
+        var root = document.documentElement;
+        var max = root.scrollHeight - root.clientHeight;
+        var ratio = max > 0 ? root.scrollTop / max : 0;
+        progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%';
+      }
+
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+        });
+      });
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+          if (mobileToc) mobileToc.removeAttribute('open');
+        });
+      });
+
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          if (Date.now() < suppressUntil) return;
+          entries.forEach(function (entry) {
+            var index = sections.indexOf(entry.target);
+            if (index !== -1 && entry.isIntersecting) setActive(links[index]);
+          });
+        }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (section) { if (section) observer.observe(section); });
+      }
+
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+      setActive(links[0]);
+    })();
+  </script>
+</body>
+</html>

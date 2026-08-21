@@ -1,0 +1,1129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="AI-Powered Search 5장 지식 그래프 학습: Open Information Extraction, Hearst 패턴, Semantic Knowledge Graph, 관련도, 질의 확장, 콘텐츠 기반 추천 정리">
+  <title>5장. 지식 그래프 학습 — 콘텐츠 속 관계를 검색에 연결하기</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-alt: #eaedf2;
+      --ink: #1b2130;
+      --ink-muted: #5b6475;
+      --ink-faint: #8790a0;
+      --rule: #dbe0e8;
+      --accent: #3454d1;
+      --accent-soft: #e7ecfc;
+      --accent-2: #c66f18;
+      --accent-2-soft: #f8e9d4;
+      --good: #167d63;
+      --good-soft: #dff2eb;
+      --danger: #b4444b;
+      --danger-soft: #f8e2e4;
+      --purple: #7254c7;
+      --purple-soft: #eee9fb;
+      --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #12151c;
+      --surface: #1a1f29;
+      --surface-alt: #222938;
+      --ink: #e7e9ee;
+      --ink-muted: #a6aebc;
+      --ink-faint: #747d8d;
+      --rule: #2a3140;
+      --accent: #8ea1ff;
+      --accent-soft: #262e48;
+      --accent-2: #e3a857;
+      --accent-2-soft: #3a2e1c;
+      --good: #67d4b5;
+      --good-soft: #17372f;
+      --danger: #f08d94;
+      --danger-soft: #402428;
+      --purple: #b5a1f5;
+      --purple-soft: #302b45;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #12151c;
+        --surface: #1a1f29;
+        --surface-alt: #222938;
+        --ink: #e7e9ee;
+        --ink-muted: #a6aebc;
+        --ink-faint: #747d8d;
+        --rule: #2a3140;
+        --accent: #8ea1ff;
+        --accent-soft: #262e48;
+        --accent-2: #e3a857;
+        --accent-2-soft: #3a2e1c;
+        --good: #67d4b5;
+        --good-soft: #17372f;
+        --danger: #f08d94;
+        --danger-soft: #402428;
+        --purple: #b5a1f5;
+        --purple-soft: #302b45;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      max-width: 100%;
+      overflow-x: clip;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button { font: inherit; }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--surface-alt);
+      color: var(--accent-2);
+      font: .88em var(--mono);
+    }
+    pre {
+      margin: 16px 0;
+      padding: 17px 19px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: #141820;
+      color: #e9ecf2;
+      font: 12.5px/1.65 var(--mono);
+      tab-size: 2;
+    }
+    pre code { padding: 0; background: none; color: inherit; font: inherit; }
+    ::selection { background: var(--accent-2-soft); color: var(--ink); }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: var(--accent-2);
+    }
+    .page {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+      min-width: 0;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+      gap: 48px;
+    }
+    .toc {
+      position: sticky;
+      top: 24px;
+      flex: 0 0 232px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      padding: 8px 0 20px;
+      font-size: 13px;
+    }
+    .toc-eyebrow {
+      margin-bottom: 12px;
+      color: var(--ink-faint);
+      font: 11px var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .toc a {
+      display: block;
+      margin: 1px 0;
+      padding: 6px 10px 6px 12px;
+      border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0;
+      color: var(--ink-muted);
+      text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+    }
+    .toc a:not(.sub) { margin-top: 10px; }
+    .toc-eyebrow + a { margin-top: 0; }
+    .toc a.sub { padding-left: 24px; color: var(--ink-faint); font-size: 12px; }
+    .toc a:hover { color: var(--ink); background: var(--surface-alt); }
+    .toc a:active { transform: scale(.98); }
+    .toc a.active {
+      border-left-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 750;
+    }
+    .toc a.sub.active {
+      border-left-color: var(--accent-2);
+      background: var(--accent-2-soft);
+      color: var(--accent-2);
+    }
+    .content {
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      max-width: 800px;
+      padding: 56px 0 96px;
+    }
+    .back-nav, .source-link {
+      display: inline-flex;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font: 12px var(--mono);
+      text-decoration: none;
+    }
+    .back-nav { margin-bottom: 28px; background: var(--accent-2-soft); color: var(--accent-2); }
+    .back-nav:hover { background: var(--accent-2); color: #fff; }
+    .source-link { border: 1px solid var(--rule); color: var(--accent); }
+    .source-link:hover { background: var(--accent-soft); }
+    .back-nav:focus-visible, .toc a:focus-visible, .mobile-toc a:focus-visible,
+    .source-link:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 48px; }
+    .kicker, .sec-label {
+      color: var(--accent);
+      font: 700 12px var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      margin: 12px 0 16px;
+      font: 700 clamp(32px, 5vw, 45px)/1.24 var(--serif);
+      letter-spacing: -.025em;
+    }
+    h2 { margin: 8px 0 12px; font: 700 28px/1.35 var(--serif); }
+    h3 { margin: 32px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .lede, .sec-sub { color: var(--ink-muted); }
+    .lede { max-width: 68ch; font-size: 16.5px; }
+    .hero-meta, .cover-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 23px;
+    }
+    .hero-meta span, .cover-tags span, .badge {
+      max-width: 100%;
+      padding: 5px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      color: var(--ink-muted);
+      font: 11px var(--mono);
+    }
+    .thesis {
+      position: relative;
+      margin: 34px 0 56px;
+      padding: 28px 30px 25px;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--accent-2);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .thesis::after {
+      content: "⌘";
+      position: absolute;
+      right: 17px;
+      top: -25px;
+      color: var(--accent-2-soft);
+      font: 112px/1 var(--sans);
+    }
+    .thesis-eyebrow { color: var(--accent-2); font: 700 11px var(--mono); text-transform: uppercase; }
+    .thesis blockquote { position: relative; z-index: 1; margin: 13px 0 9px; font: 700 20px/1.65 var(--serif); }
+    .thesis p { position: relative; z-index: 1; margin-bottom: 0; color: var(--ink-muted); font-size: 13px; }
+    .hit { padding: 0 4px; border-radius: 3px; background: var(--accent-2-soft); color: var(--accent-2); font-weight: 700; }
+    section { width: 100%; min-width: 0; margin-top: 72px; scroll-margin-top: 22px; }
+    section section { margin-top: 44px; }
+    .box, .inset, .warning, .example {
+      margin: 22px 0;
+      padding: 19px 21px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .inset { background: var(--accent-soft); }
+    .warning { border-left: 4px solid var(--danger); background: var(--danger-soft); }
+    .example { border-left: 4px solid var(--accent-2); background: var(--accent-2-soft); }
+    .box-title { margin-bottom: 6px; color: var(--accent); font: 750 13px var(--mono); }
+    .warning .box-title { color: var(--danger); }
+    .example .box-title { color: var(--accent-2); }
+
+    .path-grid, .compare-grid, .card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 13px;
+      margin: 22px 0;
+    }
+    .path-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .path-card, .compare-card, .card {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .path-card strong, .compare-card strong, .card strong { display: block; margin-bottom: 7px; }
+    .path-card p, .compare-card p, .card p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+    .path-card .num {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 13px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font: 700 11px var(--mono);
+    }
+    .compare-card.explicit { border-top: 3px solid var(--accent); }
+    .compare-card.semantic { border-top: 3px solid var(--accent-2); }
+
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin: 24px 0;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .flow-step {
+      flex: 1 0 138px;
+      min-width: 0;
+      padding: 15px 13px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+    }
+    .flow-step b { display: block; color: var(--accent); font-size: 13px; }
+    .flow-step span { display: block; margin-top: 4px; color: var(--ink-muted); font-size: 12px; }
+    .flow-arrow { align-self: center; color: var(--ink-faint); font-size: 18px; }
+
+    .triple {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      margin: 20px 0;
+    }
+    .triple-node {
+      min-width: 0;
+      padding: 15px 10px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      text-align: center;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+    .triple-node.subject { border-color: var(--accent); color: var(--accent); }
+    .triple-node.relation { border-color: var(--accent-2); color: var(--accent-2); }
+    .triple-node.object { border-color: var(--good); color: var(--good); }
+    .triple-arrow { color: var(--ink-faint); }
+    .triple-caption { margin-top: -10px; color: var(--ink-muted); font-size: 12px; text-align: center; }
+
+    .graph-demo {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .graph-column { display: flex; flex-direction: column; gap: 9px; }
+    .graph-heading { color: var(--ink-faint); font: 700 10px var(--mono); text-align: center; text-transform: uppercase; }
+    .graph-node {
+      padding: 9px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      background: var(--surface-alt);
+      font-size: 12px;
+      text-align: center;
+    }
+    .graph-node.blue { background: var(--accent-soft); color: var(--accent); }
+    .graph-node.orange { background: var(--accent-2-soft); color: var(--accent-2); }
+    .graph-node.green { background: var(--good-soft); color: var(--good); }
+    .graph-edge { color: var(--ink-faint); font: 10px var(--mono); text-align: center; }
+
+    .table-wrap {
+      width: 100%;
+      margin: 22px 0;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 11px 13px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th { background: var(--surface-alt); color: var(--ink-muted); font: 700 11px var(--mono); }
+    tr:last-child td { border-bottom: 0; }
+    td.score { color: var(--accent-2); font: 700 12px var(--mono); white-space: nowrap; }
+
+    details.code-details {
+      margin: 18px 0;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    details.code-details > summary {
+      cursor: pointer;
+      padding: 13px 16px;
+      color: var(--accent);
+      font: 700 12px var(--mono);
+    }
+    details.code-details[open] > summary { border-bottom: 1px solid var(--rule); }
+    details.code-details pre { margin: 0; border: 0; border-radius: 0 0 var(--radius) var(--radius); }
+
+    .index-diagram {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: stretch;
+      gap: 9px;
+      margin: 23px 0;
+    }
+    .index-panel {
+      min-width: 0;
+      padding: 16px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .index-panel strong { display: block; margin-bottom: 9px; color: var(--accent); }
+    .index-panel p { margin: 5px 0; color: var(--ink-muted); font-size: 12px; }
+    .index-panel code { display: block; margin: 5px 0; overflow-wrap: anywhere; }
+    .index-arrow { align-self: center; color: var(--accent-2); font: 700 17px var(--mono); }
+
+    .equation {
+      margin: 23px 0;
+      padding: 22px 18px;
+      overflow-x: auto;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+      font: 16px/1.7 var(--mono);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .equation small { display: block; margin-top: 10px; color: var(--ink-muted); font: 12px/1.5 var(--sans); white-space: normal; }
+    .score-scale {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      margin: 20px 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+    }
+    .score-scale div { padding: 14px 10px; text-align: center; }
+    .score-scale strong { display: block; font: 700 15px var(--mono); }
+    .score-scale span { color: var(--ink-muted); font-size: 12px; }
+    .score-scale .negative { background: var(--danger-soft); }
+    .score-scale .neutral { background: var(--surface-alt); }
+    .score-scale .positive { background: var(--good-soft); }
+
+    .rank-list { display: grid; gap: 7px; margin: 20px 0; }
+    .rank-row { display: grid; grid-template-columns: 104px 1fr 58px; align-items: center; gap: 10px; }
+    .rank-term { overflow: hidden; text-overflow: ellipsis; font: 700 12px var(--mono); }
+    .rank-track { height: 9px; overflow: hidden; border-radius: 999px; background: var(--surface-alt); }
+    .rank-bar { height: 100%; border-radius: inherit; background: var(--accent); }
+    .rank-score { color: var(--accent-2); font: 11px var(--mono); text-align: right; }
+
+    .strategy {
+      display: grid;
+      grid-template-columns: 144px 1fr;
+      gap: 12px;
+      padding: 15px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .strategy:last-child { border-bottom: 0; }
+    .strategy strong { color: var(--accent); font-size: 13px; }
+    .strategy p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+    .strategy code { display: block; margin-top: 7px; overflow-wrap: anywhere; }
+
+    .summary-box {
+      margin: 24px 0;
+      overflow: hidden;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .summary-item { display: grid; grid-template-columns: 46px 1fr; gap: 10px; padding: 15px 18px; border-bottom: 1px solid var(--rule); }
+    .summary-item:last-child { border-bottom: 0; }
+    .summary-item .num { color: var(--accent-2); font: 700 11px var(--mono); }
+    .summary-item p { margin: 0; }
+    .page-foot { margin-top: 72px; padding-top: 22px; border-top: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    @media (max-width: 900px) {
+      .page { display: block; padding: 0 20px; }
+      .toc { display: none; }
+      .content { max-width: 800px; margin: 0 auto; padding-top: 34px; }
+      .mobile-toc { display: block; margin: 0 0 34px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+      .mobile-toc summary { cursor: pointer; padding: 13px 16px; color: var(--accent); font: 700 12px var(--mono); }
+      .mobile-toc nav { padding: 0 14px 14px; }
+      .mobile-toc a { display: block; padding: 7px 5px; color: var(--ink-muted); font-size: 13px; text-decoration: none; }
+      .mobile-toc a.active { color: var(--accent); font-weight: 700; }
+    }
+
+    @media (max-width: 620px) {
+      .page { padding: 0 15px; }
+      .content { padding-bottom: 64px; }
+      h1 { font-size: 33px; }
+      h2 { font-size: 25px; }
+      section { margin-top: 58px; }
+      .thesis { padding: 22px 20px; }
+      .path-grid, .compare-grid, .card-grid { grid-template-columns: 1fr; }
+      .triple { grid-template-columns: 1fr; }
+      .triple-arrow { transform: rotate(90deg); text-align: center; }
+      .graph-demo { grid-template-columns: 1fr; }
+      .index-diagram { grid-template-columns: 1fr; }
+      .index-arrow { transform: rotate(90deg); text-align: center; }
+      .rank-row { grid-template-columns: 82px 1fr 50px; }
+      .strategy { grid-template-columns: 1fr; gap: 5px; }
+      .score-scale { grid-template-columns: 1fr; }
+      .equation { font-size: 13px; text-align: left; }
+      .table-wrap::before, .equation::before {
+        display: block;
+        color: var(--ink-faint);
+        font: 10px/1.4 var(--mono);
+        white-space: normal;
+      }
+      .table-wrap::before {
+        content: "← 표를 좌우로 스크롤 →";
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .equation::before {
+        content: "← 수식을 좌우로 스크롤 →";
+        margin-bottom: 9px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <aside class="toc" aria-label="이 페이지 목차">
+      <div class="toc-eyebrow">Chapter 05</div>
+      <a href="#overview" data-toc>한눈에 보기</a>
+      <a href="#basics" data-toc>5.1 지식 그래프</a>
+      <a href="#search-engine" data-toc>5.2 검색 엔진 활용</a>
+      <a href="#extraction" data-toc>5.3 정보 추출</a>
+      <a class="sub" href="#rdf" data-toc>임의 관계 · RDF</a>
+      <a class="sub" href="#hearst" data-toc>Hearst 패턴</a>
+      <a href="#skg" data-toc>5.4 시맨틱 지식 그래프</a>
+      <a class="sub" href="#structure" data-toc>색인과 그래프 순회</a>
+      <a class="sub" href="#relatedness" data-toc>관련도 가중치</a>
+      <a class="sub" href="#expansion" data-toc>질의 확장</a>
+      <a class="sub" href="#recommendation" data-toc>콘텐츠 추천</a>
+      <a class="sub" href="#arbitrary" data-toc>임의 관계 모델링</a>
+      <a href="#semantic-search" data-toc>5.5 시맨틱 검색</a>
+      <a href="#summary" data-toc>핵심 요약</a>
+    </aside>
+
+    <main class="content">
+      <a class="back-nav" href="../index.html">← 스터디 인덱스</a>
+
+      <details class="mobile-toc">
+        <summary>이 페이지 목차</summary>
+        <nav aria-label="모바일 목차">
+          <a href="#overview">한눈에 보기</a>
+          <a href="#basics">5.1 지식 그래프</a>
+          <a href="#search-engine">5.2 검색 엔진 활용</a>
+          <a href="#extraction">5.3 정보 추출</a>
+          <a href="#rdf">임의 관계 · RDF</a>
+          <a href="#hearst">Hearst 패턴</a>
+          <a href="#skg">5.4 시맨틱 지식 그래프</a>
+          <a href="#structure">색인과 그래프 순회</a>
+          <a href="#relatedness">관련도 가중치</a>
+          <a href="#expansion">질의 확장</a>
+          <a href="#recommendation">콘텐츠 추천</a>
+          <a href="#arbitrary">임의 관계 모델링</a>
+          <a href="#semantic-search">5.5 시맨틱 검색</a>
+          <a href="#summary">핵심 요약</a>
+        </nav>
+      </details>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 5</div>
+        <h1>지식 그래프 학습</h1>
+        <p class="lede">텍스트에 숨어 있는 <strong>주체–관계–객체</strong>를 명시적 그래프로 꺼내고, 더 나아가 검색 색인 자체를 실시간으로 순회하는 <strong>시맨틱 지식 그래프(SKG)</strong>로 해석하는 장이다.</p>
+        <div class="hero-meta">
+          <span>28 pages</span>
+          <span>Open Information Extraction</span>
+          <span>Semantic Knowledge Graph</span>
+          <span>Query Expansion</span>
+        </div>
+      </header>
+
+      <div class="thesis">
+        <div class="thesis-eyebrow">이 장의 한 문장</div>
+        <blockquote>문서는 단순한 문자열 묶음이 아니라, 함께 등장하는 용어와 문맥이 만든 거대한 관계 그래프다.</blockquote>
+        <p>명시적 지식 그래프는 관계를 저장하고, SKG는 색인 안의 관계를 질의 순간에 발견하고 순위를 매긴다.</p>
+      </div>
+
+      <section id="overview">
+        <div class="sec-label">Reading map</div>
+        <h2>두 종류의 그래프를 구분하면 전체가 보인다</h2>
+        <p>이 장은 처음에는 NLP로 사실을 추출해 <strong>명시적 지식 그래프</strong>를 만드는 법을 보여주고, 후반에는 역색인과 정방향 색인을 오가며 관계를 즉석에서 계산하는 <strong>시맨틱 지식 그래프</strong>로 전환한다.</p>
+
+        <div class="compare-grid">
+          <div class="compare-card explicit">
+            <strong>명시적 지식 그래프</strong>
+            <p>노드와 간선을 미리 저장한다. 관계 이름이 분명하고 직접 순회하기 좋지만, 구축·정제·동기화 비용이 든다.</p>
+          </div>
+          <div class="compare-card semantic">
+            <strong>시맨틱 지식 그래프 · SKG</strong>
+            <p>색인된 문서 집합의 통계로 노드와 간선을 질의 시점에 물질화한다. 별도 모델링 없이 도메인 관계를 발견한다.</p>
+          </div>
+        </div>
+
+        <div class="path-grid" aria-label="5장의 학습 흐름">
+          <div class="path-card"><span class="num">01</span><strong>추출</strong><p>문장에서 주체·동사·객체와 상하위 개념을 꺼낸다.</p></div>
+          <div class="path-card"><span class="num">02</span><strong>순회</strong><p>질의 → 문서 → 용어로 색인을 양방향 이동한다.</p></div>
+          <div class="path-card"><span class="num">03</span><strong>적용</strong><p>관련 용어로 질의를 확장하고 추천과 관계 탐색에 쓴다.</p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">LLM으로 가는 징검다리</div>
+          <p>책은 SKG를 작은 언어 모델로 설명한다. LLM처럼 일반 언어를 폭넓게 추론하지는 않지만, <strong>현재 검색 색인 안에 실제로 존재하는 관계</strong>를 질의할 수 있어 도메인 특화 문맥 추론에 강하다.</p>
+        </div>
+      </section>
+
+      <section id="basics">
+        <div class="sec-label">5.1 · Working with knowledge graphs</div>
+        <h2>노드는 엔터티, 간선은 관계다</h2>
+        <p><strong>노드(node, vertex)</strong>는 용어·사람·장소·사물·개념 같은 엔터티이고, <strong>간선(edge)</strong>은 두 노드 사이의 관계다. 간선을 따라가면 개별 사실을 결합해 새로운 사실을 추론할 수 있다.</p>
+
+        <div class="example">
+          <div class="box-title">그림 5.1의 학회 예시</div>
+          <p>저자 4명 → 공동 연구 논문 → DSAA 2016 → Montreal → Quebec → Canada, 그리고 개최 시점 October 2016이 연결된다. 이 간선을 따라가면 “한 저자는 2016년 10월 캐나다 Montreal에 있었다”는 사실을 추론할 수 있다.</p>
+        </div>
+
+        <div class="flow" aria-label="학회 지식 그래프 순회 예시">
+          <div class="flow-step"><b>저자</b><span>Trey Grainger 외 3명</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>논문</b><span>Semantic Knowledge Graph</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>학회</b><span>DSAA 2016</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>장소·시각</b><span>Montreal · October 2016</span></div>
+        </div>
+
+        <h3>지식 그래프를 얻는 세 가지 방법</h3>
+        <div class="card-grid">
+          <div class="card"><strong>처음부터 구축</strong><p>Neo4j, Apache TinkerPop, ArangoDB 같은 그래프 DB로 도메인 모델을 직접 만든다.</p></div>
+          <div class="card"><strong>기존 그래프 연결</strong><p>ConceptNet, DBpedia, LLM 등 이미 구축된 일반 지식을 가져온다.</p></div>
+          <div class="card"><strong>콘텐츠에서 자동 생성</strong><p>현재 보유한 문서에서 도메인 엔터티와 관계를 추출한다. 이 장의 주된 선택이다.</p></div>
+          <div class="card"><strong>혼합도 가능</strong><p>기존 지식으로 시작하되, 조직 특유의 용어와 관계를 덮어쓰거나 추가할 수 있다.</p></div>
+        </div>
+        <p>일반 지식 검색에는 기존 그래프가 좋은 출발점이지만, 도메인 검색에서는 고유한 엔터티와 전문 용어가 빠질 수 있다. 그래서 <span class="hit">콘텐츠로부터의 자동 생성</span>이 중요하다.</p>
+      </section>
+
+      <section id="search-engine">
+        <div class="sec-label">5.2 · Using our search engine as a knowledge graph</div>
+        <h2>그래프를 위해 꼭 새 시스템이 필요한 것은 아니다</h2>
+        <p>책의 기본 검색 엔진인 Apache Solr는 그래프 순회 기능과 패싯 기반 집계를 이미 제공한다. 외부 그래프 DB는 더 복잡한 순회 문법을 줄 수 있지만, 요청 조정·데이터 동기화·인프라 운영이라는 새로운 비용도 만든다.</p>
+
+        <div class="compare-grid">
+          <div class="compare-card explicit"><strong>외부 그래프 DB</strong><p>정교한 그래프 질의에 유리하다. 대신 검색 엔진과 별도 저장소의 데이터 일관성 및 운영을 책임져야 한다.</p></div>
+          <div class="compare-card semantic"><strong>검색 엔진 통합</strong><p>검색과 그래프 순회를 같은 색인에서 수행한다. 특히 역색인을 이용한 SKG 연산은 검색 엔진 안에서 효과적이다.</p></div>
+        </div>
+        <div class="box">
+          <div class="box-title">이 장의 범위</div>
+          <p>그래프를 <em>어떻게 학습하는지</em>에 집중한다. 구문 추출, 오탈자 탐지, 동의어 확장, 질의 재작성까지 묶는 완전한 시맨틱 질의 파이프라인은 7장에서 다룬다.</p>
+        </div>
+      </section>
+
+      <section id="extraction">
+        <div class="sec-label">5.3 · Automatically extracting knowledge graphs</div>
+        <h2>텍스트에서 사실을 꺼내는 Open Information Extraction</h2>
+        <p>수동 그래프는 전문가 지식과 지속적인 갱신이 필요하고, 관리자의 편향과 오류가 들어갈 수 있다. <strong>Open Information Extraction(Open IE)</strong>은 문장의 품사와 의존 관계를 분석해 콘텐츠에서 사실을 직접 추출한다.</p>
+
+        <div class="flow" aria-label="Open Information Extraction 흐름">
+          <div class="flow-step"><b>원문</b><span>문장·문단</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>언어 분석</b><span>품사·의존 구조·개체</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>사실 추출</b><span>subject · relation · object</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>그래프</b><span>노드와 간선 저장</span></div>
+        </div>
+
+        <p>최근에는 UniRel·REBEL처럼 관계 삼중항 추출에 특화된 LLM 방식이 더 미묘한 관계를 포착한다. 책은 작동 원리를 이해하고 사용자 정의 패턴을 만들 수 있도록, 전통적인 <strong>의존 그래프 기반 방식</strong>부터 설명한다.</p>
+      </section>
+
+      <section id="rdf">
+        <div class="sec-label">5.3.1 · Arbitrary relationships</div>
+        <h2>문장을 RDF 삼중항으로 바꾼다</h2>
+        <p>RDF(Resource Description Framework) 삼중항은 그래프의 한 사실을 <strong>주체(subject)–관계(relation)–객체(object)</strong> 세 부분으로 표현한다.</p>
+
+        <div class="example">
+          <div class="box-title">원문의 Colin 예시</div>
+          <p>문장 <em>“Colin attends Riverside High School”</em>에서 동사 <code>attends</code>가 관계가 된다.</p>
+          <div class="triple" aria-label="Colin attends Riverside High School RDF 삼중항">
+            <div class="triple-node subject">Colin</div><div class="triple-arrow">→</div>
+            <div class="triple-node relation">attends</div><div class="triple-arrow">→</div>
+            <div class="triple-node object">Riverside High School</div>
+          </div>
+          <p class="triple-caption"><code>("Colin", "attends", "Riverside High School")</code></p>
+        </div>
+
+        <h3>Listing 5.1 · spaCy로 관계와 대명사 연결하기</h3>
+        <p>먼저 co-reference 모델이 <code>They</code>를 <code>Data Scientists</code>로 되돌리고, spaCy가 문장을 나눈 뒤 주어·동사·목적어를 찾는다.</p>
+
+        <details class="code-details" open>
+          <summary>핵심 코드와 입력 보기</summary>
+          <pre><code>def extract_relationships(text, lang_model, coref_model):
+    resolved_text = resolve_coreferences(text, coref_model)
+    sentences = get_sentences(resolved_text, lang_model)
+    return resolve_facts(sentences, lang_model)
+
+text = """
+Data Scientists build machine learning models. They also write code.
+Companies employ Data Scientists.
+Software Engineers also write code. Companies employ Software Engineers.
+"""
+
+lang_model = spacy.load("en_core_web_sm")
+coref_model = spacy.load("en_coreference_web_trf")
+graph = extract_relationships(text, lang_model, coref_model)</code></pre>
+        </details>
+
+        <pre><code>['Data Scientists', 'build', 'machine learning models']
+['Data Scientists', 'write', 'code']
+['Companies', 'employ', 'Data Scientists']
+['Software Engineers', 'write', 'code']
+['Companies', 'employ', 'Software Engineers']</code></pre>
+
+        <div class="graph-demo" aria-label="Listing 5.1에서 추출된 지식 그래프">
+          <div class="graph-column"><div class="graph-heading">Actors</div><div class="graph-node blue">Data Scientists</div><div class="graph-node blue">Software Engineers</div><div class="graph-node blue">Companies</div></div>
+          <div class="graph-column"><div class="graph-heading">Edges</div><div class="graph-edge">build →</div><div class="graph-edge">write →</div><div class="graph-edge">employ →</div></div>
+          <div class="graph-column"><div class="graph-heading">Objects</div><div class="graph-node green">machine learning models</div><div class="graph-node green">code</div><div class="graph-node green">직군 노드</div></div>
+        </div>
+
+        <div class="warning">
+          <div class="box-title">임의 동사 관계는 노이즈가 많다</div>
+          <p>동사는 활용형이 달라지고, 동의어가 많고, 의미가 겹친다. 추출한 관계 목록을 가지치기하고 합치고 정규화해야 한다. 그래서 책은 이후에 더 단순하고 안정적인 <code>is_a</code>와 통계적 <code>is_related_to</code> 관계에 집중한다.</p>
+        </div>
+      </section>
+
+      <section id="hearst">
+        <div class="sec-label">5.3.2 · Hyponyms and hypernyms</div>
+        <h2>Hearst 패턴으로 “A는 B의 일종”을 찾는다</h2>
+        <p><strong>하위어(hyponym)</strong>는 더 구체적인 개념, <strong>상위어(hypernym)</strong>는 더 일반적인 개념이다. <code>phillips head → screwdriver → tool</code>에서 Phillips head는 screwdriver의 하위어이고, tool은 screwdriver의 상위어다.</p>
+
+        <div class="flow" aria-label="상하위 개념 예시">
+          <div class="flow-step"><b>phillips head</b><span>구체적 하위어</span></div>
+          <div class="flow-arrow">is_a →</div>
+          <div class="flow-step"><b>screwdriver</b><span>중간 개념</span></div>
+          <div class="flow-arrow">is_a →</div>
+          <div class="flow-step"><b>tool</b><span>일반적 상위어</span></div>
+        </div>
+
+        <p>Hearst 패턴은 <em>“skills such as machine learning and python”</em>처럼 상하위 관계를 강하게 암시하는 언어 템플릿이다. 다음은 책이 제시한 다섯 가지 단순 패턴이다.</p>
+        <details class="code-details">
+          <summary>Listing 5.2 · 단순 Hearst 패턴 보기</summary>
+          <pre><code>simple_hearst_patterns = [
+  ("(NP_\\w+ (, )?such as (NP_\\w+ ?(, )?(and |or )?)+)", "first"),
+  ("(such NP_\\w+ (, )?as (NP_\\w+ ?(, )?(and |or )?)+)", "first"),
+  ("((NP_\\w+ ?(, )?)+(and |or )?other NP_\\w+)", "last"),
+  ("(NP_\\w+ (, )?include (NP_\\w+ ?(, )?(and |or )?)+)", "first"),
+  ("(NP_\\w+ (, )?especially (NP_\\w+ ?(, )?(and |or )?)+)", "first")
+]</code></pre>
+        </details>
+
+        <div class="example">
+          <div class="box-title">Listing 5.3 · 원문 입력에서 추출된 is_a 관계</div>
+          <p><em>“Many data scientists have skills such as machine learning, python, deep learning, apache spark …”</em> 같은 문장들을 약 50개의 패턴으로 검사한다.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Hearst 패턴으로 추출한 하위어와 상위어</caption>
+            <thead><tr><th scope="col">하위어</th><th scope="col">관계</th><th scope="col">상위어</th></tr></thead>
+            <tbody>
+              <tr><td>machine learning · python · deep learning · apache spark</td><td><code>is_a</code></td><td>skill</td></tr>
+              <tr><td>commute time · company culture · salary · health insurance · pto</td><td><code>is_a</code></td><td>job benefit</td></tr>
+              <tr><td>Google · Apple</td><td><code>is_a</code></td><td>tech company</td></tr>
+              <tr><td>San Francisco · Miami · New York</td><td><code>is_a</code></td><td>big city</td></tr>
+              <tr><td>Software Engineer · Registered Nurse · DevOps Engineer</td><td><code>is_a</code></td><td>Job role</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>임의의 동사를 관계로 쓰는 것보다 결과가 훨씬 깨끗하다. 오탈자·대체 표기·동의어 같은 모호성은 남지만, 관계 유형 자체가 <code>is_a</code> 하나로 고정되어 정제하기 쉽다.</p>
+        <div class="warning">
+          <div class="box-title">명시적 추출은 손실이 있는 변환이다</div>
+          <p>삼중항만 떼어 저장하면 그 사실이 나온 문장과 문서의 주변 문맥이 사라진다. SKG는 용어를 원래 문맥과 분리하지 않고, 색인 안에서 실시간으로 관계를 순회해 이 문제를 줄인다.</p>
+        </div>
+      </section>
+
+      <section id="skg">
+        <div class="sec-label">5.4 · Semantic knowledge graphs</div>
+        <h2>SKG는 문서 대신 “관련 용어”를 검색한다</h2>
+        <p>시맨틱 지식 그래프는 <strong>도메인 안의 어떤 관계든 실시간으로 순회하고 랭킹할 수 있는, 자동 생성된 압축 모델</strong>이다. 일반 검색이 질의와 관련된 문서를 순위화한다면, SKG는 질의와 관련된 용어를 순위화한다.</p>
+
+        <div class="example">
+          <div class="box-title">Advil을 문서가 아니라 관계로 검색하기</div>
+          <p>건강 포럼을 색인한 뒤 <code>advil</code> 노드에서 출발하면 <code>motrin</code>, <code>aleve</code>, <code>ibuprofen</code> 같은 진통제 관련 용어가 나온다. 고정 동의어 사전이 아니라, 현재 코퍼스의 공동 출현으로 만든 <strong>동적 관련어</strong>다.</p>
+        </div>
+
+        <div class="card-grid">
+          <div class="card"><strong>질의 확장</strong><p>정확한 문자열이 없어도 개념적으로 가까운 문서를 찾는다.</p></div>
+          <div class="card"><strong>추천</strong><p>문서를 대표하는 관련 용어로 비슷한 콘텐츠를 검색한다.</p></div>
+          <div class="card"><strong>분류·중의성 해소</strong><p>용어가 어느 문맥과 범주에서 사용되는지 실시간으로 비교한다.</p></div>
+          <div class="card"><strong>이상 탐지·정제</strong><p>보통의 분포와 어긋나는 용어나 데이터를 찾는다.</p></div>
+        </div>
+
+        <h3>좋은 데이터셋은 문맥이 반복된다</h3>
+        <p>두 용어가 여러 문서에서 함께 나타나야 관계의 강도를 안정적으로 추정할 수 있다. 주제별 대표 문서 하나가 있는 Wikipedia보다 질문·포럼·채용 공고·리뷰처럼 여러 사용자가 비슷한 주제를 반복해 쓰는 컬렉션이 SKG에 유리하다.</p>
+        <p>책은 채용 공고 데이터와 Stack Exchange의 <code>health</code>, <code>scifi</code>, <code>devops</code>, <code>travel</code>, <code>cooking</code> 포럼을 사용한다.</p>
+      </section>
+
+      <section id="structure">
+        <div class="sec-label">5.4.3 · Structure of an SKG</div>
+        <h2>용어 → 문서 → 용어, 두 번 이동하면 간선이 생긴다</h2>
+        <p>SKG의 노드와 간선은 따로 저장하지 않는다. 검색 엔진이 이미 가진 <strong>역색인(inverted index)</strong>과 <strong>정방향 색인(forward index)</strong>을 오가며 질의 시점에 만든다.</p>
+
+        <div class="index-diagram" aria-label="SKG에서 역색인과 정방향 색인을 오가는 흐름">
+          <div class="index-panel"><strong>질의·용어</strong><code>skill:Java</code><p>임의 질의도 문서 집합으로 해석되므로 하나의 노드가 된다.</p></div>
+          <div class="index-arrow">역색인 →</div>
+          <div class="index-panel"><strong>문서 집합</strong><code>doc 1, 3, 6</code><p>질의와 일치하는 문서들의 교집합이 관계의 근거다.</p></div>
+          <div class="index-arrow">정방향 →</div>
+          <div class="index-panel"><strong>관련 용어</strong><code>Scala</code><code>Hibernate</code><p>해당 문서 안의 필드 값들을 모아 다음 노드 후보로 만든다.</p></div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">그림 5.4–5.5의 세 관점</div>
+          <ul>
+            <li><strong>자료구조 관점:</strong> 용어는 문서 목록으로, 문서는 용어 목록으로 매핑된다.</li>
+            <li><strong>집합 관점:</strong> 두 용어가 나타나는 문서 집합의 교집합이 관계다.</li>
+            <li><strong>그래프 관점:</strong> 용어가 노드, 교집합이 있는 두 노드 사이가 간선이다.</li>
+          </ul>
+        </div>
+
+        <p>한 번 더 반복하면 다단계 순회가 된다. 예를 들어 <code>skill:Java</code>에서 관련 스킬을 찾고, 그 스킬들이 등장한 문서의 <code>job_title</code>로 이동해 Software Engineer, Data Scientist, Java Developer 같은 직무를 얻는다.</p>
+        <div class="flow" aria-label="다단계 SKG 순회 예시">
+          <div class="flow-step"><b>skill: Java</b><span>시작 노드</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>관련 skills</b><span>Scala · Hibernate</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>관련 job_title</b><span>Software Engineer · Java Developer</span></div>
+        </div>
+        <p>Oncology처럼 원래 노드들과 겹치는 문서가 없으면 간선도 생기지 않아 다음 단계에 나타나지 않는다. 그리고 연결된 모든 노드가 똑같이 중요하지 않으므로, 간선에 <strong>가중치</strong>가 필요하다.</p>
+      </section>
+
+      <section id="relatedness">
+        <div class="sec-label">5.4.4 · Edge weights</div>
+        <h2>많이 같이 나오는 것보다 “기대보다 더 같이 나오는가”가 중요하다</h2>
+        <p>단순 공동 출현 횟수만 보면 <code>the</code>, <code>a</code> 같은 흔한 단어가 무엇과도 강하게 연결된다. 분포 가설의 핵심은 두 단어가 같은 문맥에서 나타날 뿐 아니라, <strong>무작위 단어와 비교했을 때 유난히 비슷한 분포</strong>를 가져야 한다는 점이다.</p>
+
+        <div class="equation" role="img" aria-label="관련도는 x와 전경 질의가 함께 등장한 문서 수에서 전경 문서 수와 배경 확률의 곱을 뺀 뒤, 전경 문서 수와 배경 확률의 분산 제곱근으로 나눈 값이다">
+          relatedness(x, fg, bg) = (|D<sub>x</sub> ∩ D<sub>fg</sub>| − |D<sub>fg</sub>| · P<sub>x</sub>) / √(|D<sub>fg</sub>| · P<sub>x</sub> · (1 − P<sub>x</sub>))
+          <small>P<sub>x</sub> = |D<sub>bg</sub> ∩ D<sub>x</sub>| / |D<sub>bg</sub>| · 책의 식을 HTML 표기로 옮김</small>
+        </div>
+
+        <ul>
+          <li><code>D_x</code>: 후보 용어 또는 질의 <code>x</code>와 일치하는 문서 집합</li>
+          <li><code>D_fg</code>: 비교 기준이 되는 전경(foreground) 질의와 일치하는 문서 집합</li>
+          <li><code>D_bg</code>: 전체 컬렉션 또는 무작위 표본 같은 배경(background) 집합</li>
+          <li><code>P_x</code>: 배경의 임의 문서에서 <code>x</code>를 만날 확률</li>
+        </ul>
+
+        <div class="example">
+          <div class="box-title">pain을 전경으로, 전체 문서를 배경으로</div>
+          <p><code>advil</code>이 전체 문서에서 흔한 정도보다 <code>pain</code> 문서에서 훨씬 자주 나오면 양의 관련도를 얻는다. 흔한 불용어는 전경과 배경의 비율이 비슷해 0에 가까워진다.</p>
+        </div>
+
+        <div class="score-scale" aria-label="정규화된 관련도 점수 해석">
+          <div class="negative"><strong>−1.0에 가까움</strong><span>서로 다른 영역에 치우침</span></div>
+          <div class="neutral"><strong>0.0에 가까움</strong><span>특별한 관계가 없음</span></div>
+          <div class="positive"><strong>+1.0에 가까움</strong><span>강한 양의 관련성</span></div>
+        </div>
+
+        <h3>Listing 5.4 · Advil의 관련 용어 순회</h3>
+        <details class="code-details" open>
+          <summary>SKG 순회 코드 보기</summary>
+          <pre><code>health_skg = get_skg(engine.get_collection("health"))
+
+nodes_to_traverse = [
+    {"field": "body", "values": ["advil"]},
+    {"field": "body", "min_occurrences": 2, "limit": 8}
+]
+
+traversal = health_skg.traverse(*nodes_to_traverse)
+print_graph(traversal, "advil")</code></pre>
+        </details>
+
+        <div class="rank-list" aria-label="Advil 관련 용어와 관련도 순위">
+          <div class="rank-row"><span class="rank-term">advil</span><span class="rank-track"><span class="rank-bar" style="width:100%"></span></span><span class="rank-score">0.70986</span></div>
+          <div class="rank-row"><span class="rank-term">motrin</span><span class="rank-track"><span class="rank-bar" style="width:84.4%"></span></span><span class="rank-score">0.59897</span></div>
+          <div class="rank-row"><span class="rank-term">aleve</span><span class="rank-track"><span class="rank-bar" style="width:65.7%"></span></span><span class="rank-score">0.46620</span></div>
+          <div class="rank-row"><span class="rank-term">ibuprofen</span><span class="rank-track"><span class="rank-bar" style="width:53.9%"></span></span><span class="rank-score">0.38264</span></div>
+          <div class="rank-row"><span class="rank-term">alleve</span><span class="rank-track"><span class="rank-bar" style="width:51.6%"></span></span><span class="rank-score">0.36649</span></div>
+          <div class="rank-row"><span class="rank-term">tylenol</span><span class="rank-track"><span class="rank-bar" style="width:46.6%"></span></span><span class="rank-score">0.33048</span></div>
+          <div class="rank-row"><span class="rank-term">naproxen</span><span class="rank-track"><span class="rank-bar" style="width:44%"></span></span><span class="rank-score">0.31226</span></div>
+          <div class="rank-row"><span class="rank-term">acetaminophen</span><span class="rank-track"><span class="rank-bar" style="width:24.9%"></span></span><span class="rank-score">0.17706</span></div>
+        </div>
+
+        <p>Solr에서는 패싯이 <code>term → docs → term</code> 순회를, <code>RelatednessAgg</code>가 이 관련도 계산을 담당한다. 책의 <code>skg.traverse()</code>는 긴 JSON Facet 요청을 감싸는 추상화이며, <code>transform_request()</code>로 실제 엔진 요청을 볼 수 있다.</p>
+      </section>
+
+      <section id="expansion">
+        <div class="sec-label">5.4.5 · Query expansion</div>
+        <h2>Vibranium이 무엇인지 몰라도, 코퍼스가 문맥을 알려준다</h2>
+        <p>SKG는 입력 질의를 노드로 삼아 개념적으로 가까운 용어를 찾는다. 이를 가중치와 함께 원래 질의에 더하면 <strong>희소 어휘 확장(sparse lexical expansion)</strong>이 된다.</p>
+
+        <h3>Listing 5.5 · Vibranium의 문맥 발견</h3>
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Vibranium과 관련된 용어 및 관련도</caption>
+            <thead><tr><th scope="col">순위</th><th scope="col">관련 용어</th><th scope="col">관련도</th><th scope="col">문맥</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>vibranium</td><td class="score">0.94237</td><td>자기 자신</td></tr>
+              <tr><td>2</td><td>wakandan</td><td class="score">0.81970</td><td>Vibranium의 기원인 Wakanda 문화</td></tr>
+              <tr><td>3</td><td>adamantium</td><td class="score">0.80724</td><td>Marvel의 또 다른 강한 가상 금속</td></tr>
+              <tr><td>4</td><td>wakanda</td><td class="score">0.79122</td><td>가상의 국가</td></tr>
+              <tr><td>5</td><td>alloy</td><td class="score">0.75724</td><td>Captain America 방패 합금</td></tr>
+              <tr><td>6</td><td>maclain</td><td class="score">0.75623</td><td>합금을 만든 인물</td></tr>
+              <tr><td>7</td><td>klaw</td><td class="score">0.75222</td><td>Vibranium과 깊이 관련된 인물</td></tr>
+              <tr><td>8</td><td>america's</td><td class="score">0.74002</td><td>Captain America's shield 문맥</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Listing 5.6 · 관련도를 부스트로 옮기기</h3>
+        <pre><code>vibranium^5 vibranium^0.94237 wakandan^0.8197
+adamantium^0.80724 wakanda^0.79122 alloy^0.75724
+maclain^0.75623 klaw^0.75222 america's^0.74002</code></pre>
+        <p>원래 질의에는 임의로 5배 부스트를 주고, 확장 용어는 관련도만큼 가중한다. 원래 단어가 결과 목록에 다시 포함되는 것은 정상이다. 실제 질의가 구나 복합 표현일 수도 있으므로, 사용자의 원 질의를 별도로 보존하는 편이 안전하다.</p>
+
+        <h3>Listing 5.7 · 정밀도와 재현율에 따라 재작성한다</h3>
+        <div class="box">
+          <div class="strategy"><strong>단순 확장</strong><p>원어 또는 확장어 하나만 있어도 일치한다. 재현율이 가장 넓다.<code>query + expansion · min_match: 1</code></p></div>
+          <div class="strategy"><strong>정밀도↑ 재현율↓</strong><p>전체 용어의 30% 이상 일치를 요구해 더 풍부한 개념 문맥을 가진 문서만 남긴다.<code>query + expansion · min_match: 30%</code></p></div>
+          <div class="strategy"><strong>상위 정밀도↑</strong><p>원래 <code>vibranium</code>을 필수로 하고 확장어를 랭킹 신호로 쓴다. 원문 일치 문서는 유지된다.<code>vibranium AND (expansion) · min_match: 2</code></p></div>
+          <div class="strategy"><strong>재현율 소폭↑</strong><p>원래 단어를 필수로 하지 않고 두 용어 일치를 요구한다. 개념적으로 비슷한 새 문서가 들어올 수 있다.<code>query + expansion · min_match: 2</code></p></div>
+          <div class="strategy"><strong>결과 동일·랭킹 개선</strong><p>원래 질의로 문서 집합을 고정하고, 확장어는 부스트에만 넣는다.<code>query: vibranium · query_boosts: expansion</code></p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">핵심 설계 질문</div>
+          <p>확장어를 <em>매칭 조건</em>으로 쓸지, <em>랭킹 신호</em>로만 쓸지가 정밀도–재현율 균형을 결정한다. 가능한 재작성은 무한히 많으므로, 검색 목표와 평가셋으로 선택해야 한다.</p>
+        </div>
+      </section>
+
+      <section id="recommendation">
+        <div class="sec-label">5.4.6 · Content-based recommendations</div>
+        <h2>문서의 단어를 주제에 맞게 다시 채점하면 추천 질의가 된다</h2>
+        <p>사용자 행동이 부족해 협업 필터링을 쓰기 어려울 때, SKG는 문서 내용만으로 도메인 문맥을 반영한 추천을 만든다. 문서 안의 여러 용어를 알려진 주제와 비교해, 관련도가 높은 것만 남겨 질의로 사용한다.</p>
+
+        <div class="example">
+          <div class="box-title">Listing 5.8 · “star wars” 문서 해석</div>
+          <p>입력 문서는 Luke, Magneto, Cyclops, Darth Vader, Princess Leia, Wolverine, apple, banana, galaxy, force, blaster, Chloe를 일부러 섞는다. SKG는 이 단어들을 <code>star wars</code> 문맥에 대한 관련도로 정렬한다.</p>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Star Wars 주제에 대한 문서 용어 관련도</caption>
+            <thead><tr><th scope="col">관련 용어</th><th scope="col">관련도</th><th scope="col">추천 질의 포함?</th><th scope="col">해석</th></tr></thead>
+            <tbody>
+              <tr><td>luke</td><td class="score">0.75212</td><td>포함</td><td>강한 Star Wars 문맥</td></tr>
+              <tr><td>force</td><td class="score">0.73248</td><td>포함</td><td>강한 Star Wars 문맥</td></tr>
+              <tr><td>darth vader</td><td class="score">0.69378</td><td>포함</td><td>강한 Star Wars 문맥</td></tr>
+              <tr><td>galaxy</td><td class="score">0.58693</td><td>포함</td><td>관련 문맥</td></tr>
+              <tr><td>princess leia</td><td class="score">0.50491</td><td>포함</td><td>관련 인물</td></tr>
+              <tr><td>blaster</td><td class="score">0.47143</td><td>포함</td><td>관련 사물</td></tr>
+              <tr><td>chloe</td><td class="score">0.00000</td><td>제외</td><td>관계 없음</td></tr>
+              <tr><td>cyclops · magneto · wolverine</td><td class="score">−0.01825 이하</td><td>제외</td><td>X-Men 문맥</td></tr>
+              <tr><td>banana · apple</td><td class="score">−0.03190 이하</td><td>제외</td><td>무관한 일반 단어</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Listing 5.9 · 0.25보다 높은 용어만 추천 질의로</h3>
+        <pre><code>"luke"^0.75212 "force"^0.73248 "darth vader"^0.69378
+"galaxy"^0.58693 "princess leia"^0.50491 "blaster"^0.47143</code></pre>
+
+        <h3>Listing 5.10 · 상위 추천 결과</h3>
+        <ol>
+          <li>At the end of Return of the Jedi, did Darth Vader learn that Princess Leia was his daughter?</li>
+          <li>Did Luke know the “Chosen One” prophecy?</li>
+          <li>Was Darth Vader at his strongest during Episode III?</li>
+          <li>Why couldn't Snoke or Kylo Ren trace Luke using the Force?</li>
+          <li>Does Kylo Ren know that Darth Vader reconciled with Luke?</li>
+        </ol>
+
+        <p>이렇게 사용자 신호 없이도 도메인과 문맥을 아는 콘텐츠 기반 추천이 만들어진다. 결과가 부족하면 한 단계 더 순회해 원문에 직접 없지만 원문 용어와 관련된 새 용어까지 확장할 수 있다.</p>
+      </section>
+
+      <section id="arbitrary">
+        <div class="sec-label">5.4.7 · Arbitrary relationships</div>
+        <h2>관계를 질의로 표현할 수 있다면, 관계 자체도 노드가 된다</h2>
+        <p>지금까지는 모든 간선을 <code>is_related_to</code>로 보았다. 그러나 SKG에서 노드는 결국 문서 집합이므로, <strong>관계를 근사하는 질의</strong>도 중간 노드로 만들 수 있다.</p>
+
+        <div class="flow" aria-label="Jean Grey 관계 노드를 이용한 임의 관계 순회">
+          <div class="flow-step"><b>jean grey</b><span>시작 노드</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>in love with</b><span>관계를 표현한 중간 노드</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>관련 인물 후보</b><span>summers · cyclops · xavier …</span></div>
+        </div>
+
+        <details class="code-details" open>
+          <summary>Listing 5.11 · 관계 노드를 물질화하는 코드</summary>
+          <pre><code>scifi_skg = get_skg(engine.get_collection("scifi"))
+
+starting_node = "jean grey"
+relationship = "in love with"
+nodes_to_traverse = [
+    {"field": "body", "values": [starting_node]},
+    {"field": "body", "values": [relationship],
+     "default_operator": "OR"},
+    {"field": "body", "min_occurrences": 25, "limit": 10}
+]
+
+traversal = scifi_skg.traverse(*nodes_to_traverse)</code></pre>
+        </details>
+
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">Jean Grey와 in love with 문맥에서 관련된 용어</caption>
+            <thead><tr><th scope="col">용어</th><th scope="col">관련도</th><th scope="col">해석</th></tr></thead>
+            <tbody>
+              <tr><td>jean · grey</td><td class="score">0.84915 · 0.74742</td><td>시작 질의 자체라 가장 높다.</td></tr>
+              <tr><td>summers · cyclops</td><td class="score">0.61021 · 0.60693</td><td>Scott Summers와 Cyclops는 같은 인물이며 대표적 연인이다.</td></tr>
+              <tr><td>xavier</td><td class="score">0.53004</td><td>일부 이야기에서 Jean Grey에게 관심을 보인 멘토다.</td></tr>
+              <tr><td>wolverine</td><td class="score">0.48053</td><td>반복적으로 등장하는 연애 관계다.</td></tr>
+              <tr><td>mutant · x · mutants</td><td class="score">0.46532 · 0.45028 · 0.42568</td><td>강한 관련어지만 “누가 사랑했는가”의 답은 아니다.</td></tr>
+              <tr><td>magneto</td><td class="score">0.42197</td><td>작품 일부에서 관심이 묘사된 인물이다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="warning">
+          <div class="box-title">이것은 사실 DB가 아니라 통계적 지식 그래프다</div>
+          <p><code>mutant</code>와 <code>x</code>도 함께 나오듯, 관계는 코퍼스의 통계적 상관관계다. 사람·장소·사물을 먼저 개체명으로 추출해 색인하면 단일 토큰 대신 <code>Scott Summers</code>, <code>Charles Xavier</code> 같은 깨끗한 결과를 얻을 수 있다.</p>
+        </div>
+
+        <p>또한 관계가 원문 코퍼스에 충분히 논의되어야 한다. 예시는 우연한 동시 출현을 줄이기 위해 <code>min_occurrences: 25</code>를 사용한다. 책은 거짓 양성을 줄이려면 최소 발생 횟수를 1보다 크게 두라고 권한다.</p>
+      </section>
+
+      <section id="semantic-search">
+        <div class="sec-label">5.5 · Using knowledge graphs for semantic search</div>
+        <h2>지식 그래프는 질의 해석과 랭킹을 연결한다</h2>
+        <p>SKG는 임의 질의에서 문맥에 민감한 관련 용어를 찾고, 각 관계에 점수를 준다. 이 능력은 질의 확장뿐 아니라 실시간 분류, 키워드 해석, 다의어 구분, 추천과 랭킹 개선의 기반이 된다.</p>
+
+        <div class="flow" aria-label="5장에서 7장으로 이어지는 시맨틱 검색 흐름">
+          <div class="flow-step"><b>5장</b><span>그래프 추출·SKG 순회</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>6장</b><span>오탈자·동의어·도메인 구 학습</span></div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step"><b>7장</b><span>질의 파싱과 종단간 시맨틱 검색</span></div>
+        </div>
+
+        <p>명시적 그래프는 Open IE로 얻은 사실을 구조화하고, SKG는 원문 색인에서 관계를 동적으로 발견한다. 이후 장에서는 이 둘에 오탈자·동의어·도메인 구를 더하고, 실제 들어오는 질의를 올바른 엔터티와 문맥에 연결한다.</p>
+      </section>
+
+      <section id="summary">
+        <div class="sec-label">Summary</div>
+        <h2>5장의 핵심을 다시 연결하기</h2>
+        <div class="summary-box">
+          <div class="summary-item"><div class="num">01</div><p><strong>그래프의 기본:</strong> 노드는 도메인의 엔터티, 간선은 엔터티 사이의 관계다. 간선을 따라가면 흩어진 사실을 결합할 수 있다.</p></div>
+          <div class="summary-item"><div class="num">02</div><p><strong>Open IE:</strong> 의존 구문과 개체 인식으로 텍스트를 주체–관계–객체 삼중항으로 바꾼다.</p></div>
+          <div class="summary-item"><div class="num">03</div><p><strong>관계 품질:</strong> 임의 동사 관계는 노이즈가 많지만, Hearst 패턴으로 얻는 하위어–상위어 <code>is_a</code> 관계는 더 깨끗하다.</p></div>
+          <div class="summary-item"><div class="num">04</div><p><strong>SKG:</strong> 역색인과 정방향 색인을 오가며 별도 데이터 모델링 없이 색인된 콘텐츠를 지식 그래프이자 작은 언어 모델로 사용한다.</p></div>
+          <div class="summary-item"><div class="num">05</div><p><strong>가중치:</strong> 단순 공동 출현이 아니라 전경에서의 실제 출현이 배경 확률의 기대치보다 얼마나 큰지를 관련도로 측정한다.</p></div>
+          <div class="summary-item"><div class="num">06</div><p><strong>질의 확장:</strong> Vibranium처럼 낯선 용어도 코퍼스에서 관련 문맥을 찾고, 정밀도·재현율 목표에 맞춰 매칭 조건이나 랭킹 부스트로 사용한다.</p></div>
+          <div class="summary-item"><div class="num">07</div><p><strong>콘텐츠 추천:</strong> 문서 용어를 주제에 대한 관련도로 걸러 추천 질의를 만들면 사용자 신호가 없어도 문맥을 아는 추천이 가능하다.</p></div>
+          <div class="summary-item"><div class="num">08</div><p><strong>한계:</strong> SKG는 통계적 상관관계를 사용하므로 노이즈가 있고, 관계가 코퍼스에 충분히 표현되어 있어야 한다. 개체 추출과 최소 발생 횟수로 품질을 높일 수 있다.</p></div>
+        </div>
+
+        <a class="source-link" href="https://livebook.manning.com/book/ai-powered-search" target="_blank" rel="noopener">Manning LiveBook에서 보기 ↗</a>
+      </section>
+
+      <footer class="page-foot">출처: <em>AI-Powered Search</em>, Chapter 5 — Knowledge graph learning (Manning). 원문의 절 구조, 수식, 11개 코드 예제와 출력의 핵심 수치를 바탕으로 학습용 한국어 자료로 재구성했습니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileToc = document.querySelector('.mobile-toc');
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress');
+      var suppressUntil = 0;
+
+      function setActive(link) {
+        var href = link ? link.getAttribute('href') : '';
+        links.concat(mobileLinks).forEach(function (item) {
+          item.classList.toggle('active', item.getAttribute('href') === href);
+        });
+      }
+
+      function updateProgress() {
+        var root = document.documentElement;
+        var max = root.scrollHeight - root.clientHeight;
+        var ratio = max > 0 ? root.scrollTop / max : 0;
+        progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%';
+      }
+
+      links.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+        });
+      });
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link);
+          suppressUntil = Date.now() + 900;
+          if (mobileToc) mobileToc.removeAttribute('open');
+        });
+      });
+
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          if (Date.now() < suppressUntil) return;
+          entries.forEach(function (entry) {
+            var index = sections.indexOf(entry.target);
+            if (index !== -1 && entry.isIntersecting) setActive(links[index]);
+          });
+        }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (section) { if (section) observer.observe(section); });
+      }
+
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+      setActive(links[0]);
+    })();
+  </script>
+</body>
+</html>
