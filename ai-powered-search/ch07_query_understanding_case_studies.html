@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="AI-Powered Search 7장 보충 자료: 대규모 서비스의 Query Understanding, 엔티티·의도·속성 추출, Query Plan과 동적 검색 쿼리 생성 사례를 ch07 코드와 연결해 정리">
+  <title>7장 보충. Query Understanding 기업 사례</title>
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --surface: #ffffff;
+      --surface-2: #e9edf3;
+      --ink: #18202e;
+      --muted: #596578;
+      --faint: #8490a2;
+      --rule: #d8dee8;
+      --accent: #3156c8;
+      --accent-soft: #e6ecff;
+      --orange: #be681d;
+      --orange-soft: #f8e8d7;
+      --teal: #087a70;
+      --teal-soft: #dff3ef;
+      --purple: #7050bb;
+      --purple-soft: #eee8fb;
+      --danger: #ad3f49;
+      --danger-soft: #f8e2e5;
+      --code-bg: #141923;
+      --code-ink: #ecf0f7;
+      --radius: 11px;
+      --serif: "AppleMyungjo", "Noto Serif KR", "Nanum Myeongjo", Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", "Malgun Gothic", sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    }
+    :root[data-theme="dark"] {
+      --bg: #11151c;
+      --surface: #191f29;
+      --surface-2: #222b38;
+      --ink: #e8ebf1;
+      --muted: #a8b1c0;
+      --faint: #778294;
+      --rule: #2c3544;
+      --accent: #93a8ff;
+      --accent-soft: #26304d;
+      --orange: #e5aa64;
+      --orange-soft: #3b2d1e;
+      --teal: #69d5c6;
+      --teal-soft: #173a36;
+      --purple: #b7a0ef;
+      --purple-soft: #302943;
+      --danger: #ee9199;
+      --danger-soft: #41252a;
+      --code-bg: #0d1118;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #11151c; --surface: #191f29; --surface-2: #222b38;
+        --ink: #e8ebf1; --muted: #a8b1c0; --faint: #778294; --rule: #2c3544;
+        --accent: #93a8ff; --accent-soft: #26304d; --orange: #e5aa64;
+        --orange-soft: #3b2d1e; --teal: #69d5c6; --teal-soft: #173a36;
+        --purple: #b7a0ef; --purple-soft: #302943; --danger: #ee9199;
+        --danger-soft: #41252a; --code-bg: #0d1118;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { max-width: 100%; overflow-x: clip; scroll-behavior: smooth; }
+    body {
+      margin: 0; max-width: 100%; overflow-x: clip; background: var(--bg); color: var(--ink);
+      font-family: var(--sans); line-height: 1.72; -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    button { font: inherit; color: inherit; }
+    code { padding: 2px 5px; border-radius: 4px; background: var(--surface-2); color: var(--orange); font: .88em var(--mono); }
+    pre {
+      margin: 14px 0; padding: 17px 19px; overflow: auto; border: 1px solid var(--rule);
+      border-radius: var(--radius); background: var(--code-bg); color: var(--code-ink);
+      font: 12.5px/1.65 var(--mono); tab-size: 2;
+    }
+    pre code { padding: 0; background: none; color: inherit; font: inherit; }
+    ::selection { background: var(--orange-soft); }
+    .reading-progress { position: fixed; z-index: 40; inset: 0 auto auto 0; width: 0; height: 3px; background: var(--orange); }
+    .page { display: flex; align-items: flex-start; width: 100%; max-width: 1260px; margin: 0 auto; padding: 0 24px; gap: 48px; }
+    .toc {
+      position: sticky; top: 24px; flex: 0 0 238px; max-height: calc(100vh - 48px); overflow-y: auto;
+      padding: 8px 0 20px; font-size: 13px;
+    }
+    .toc-eyebrow { margin-bottom: 12px; color: var(--faint); font: 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .toc a {
+      display: block; margin: 1px 0; padding: 6px 10px 6px 12px; border-left: 2px solid var(--rule);
+      border-radius: 0 6px 6px 0; color: var(--muted); text-decoration: none;
+      transition: color .12s, border-color .12s, background-color .12s, transform .12s;
+    }
+    .toc a:not(.sub) { margin-top: 9px; }
+    .toc a.sub { padding-left: 24px; color: var(--faint); font-size: 12px; }
+    .toc a:hover { color: var(--ink); background: var(--surface-2); }
+    .toc a:active { transform: scale(.98); }
+    .toc a.active { border-left-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    .toc a.sub.active { border-left-color: var(--orange); background: var(--orange-soft); color: var(--orange); }
+    .content { flex: 1 1 auto; width: 100%; min-width: 0; max-width: 840px; padding: 52px 0 96px; }
+    .top-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 30px; }
+    .top-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .back-nav, .theme-toggle, .source-link {
+      display: inline-flex; align-items: center; min-height: 34px; padding: 6px 13px; border-radius: 999px;
+      font: 12px var(--mono); text-decoration: none;
+    }
+    .back-nav { background: var(--orange-soft); color: var(--orange); }
+    .back-nav:hover { background: var(--orange); color: #fff; }
+    .theme-toggle { cursor: pointer; border: 1px solid var(--rule); background: var(--surface); }
+    .theme-toggle:hover { background: var(--surface-2); }
+    .source-link { border: 1px solid var(--rule); color: var(--accent); }
+    .source-link:hover { background: var(--accent-soft); }
+    .back-nav:focus-visible, .theme-toggle:focus-visible, .toc a:focus-visible, .mobile-toc a:focus-visible,
+    .source-link:focus-visible, .case-link:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mobile-toc { display: none; }
+    .hero { margin-bottom: 50px; }
+    .kicker, .sec-label { color: var(--accent); font: 750 12px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 { margin: 12px 0 16px; font: 700 clamp(32px, 5vw, 45px)/1.23 var(--serif); letter-spacing: -.027em; }
+    h2 { margin: 8px 0 12px; font: 700 28px/1.36 var(--serif); }
+    h3 { margin: 31px 0 10px; font-size: 18px; line-height: 1.45; }
+    p { margin: 10px 0 16px; overflow-wrap: break-word; }
+    ul, ol { padding-left: 22px; }
+    li + li { margin-top: 6px; }
+    .lede, .sec-sub { color: var(--muted); }
+    .lede { max-width: 69ch; font-size: 16.5px; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 23px; }
+    .hero-meta span, .badge { padding: 5px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--muted); font: 11px var(--mono); }
+    .thesis, .box, .inset, .warning, .example {
+      margin: 22px 0; padding: 19px 21px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface);
+    }
+    .thesis { position: relative; margin: 32px 0 56px; padding: 27px 30px 25px; overflow: hidden; border-left: 4px solid var(--orange); }
+    .thesis::after { content: "query plan"; position: absolute; right: 17px; top: 8px; color: var(--orange-soft); font: 700 38px var(--mono); transform: rotate(-5deg); }
+    .thesis-eyebrow { color: var(--orange); font: 750 11px var(--mono); text-transform: uppercase; }
+    .thesis blockquote { position: relative; z-index: 1; margin: 12px 0 9px; font: 700 20px/1.62 var(--serif); }
+    .thesis p { position: relative; z-index: 1; margin-bottom: 0; color: var(--muted); font-size: 13px; }
+    section { width: 100%; min-width: 0; margin-top: 74px; scroll-margin-top: 22px; }
+    section section { margin-top: 45px; }
+    .box-title { margin-bottom: 7px; color: var(--accent); font-weight: 780; }
+    .inset { border-left: 4px solid var(--teal); background: var(--teal-soft); }
+    .warning { border-left: 4px solid var(--danger); background: var(--danger-soft); }
+    .warning .box-title { color: var(--danger); }
+    .example { border-left: 4px solid var(--orange); }
+    .grid-2, .grid-3, .metric-grid { display: grid; gap: 14px; margin: 22px 0; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3, .metric-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .card { min-width: 0; padding: 18px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .card strong { display: block; margin-bottom: 6px; color: var(--accent); }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .card.orange strong { color: var(--orange); }
+    .card.teal strong { color: var(--teal); }
+    .card.purple strong { color: var(--purple); }
+    .flow {
+      display: flex; align-items: stretch; gap: 10px; margin: 24px 0; padding: 19px;
+      overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface);
+    }
+    .flow-step { flex: 1 1 100px; min-width: 104px; padding: 14px; border-radius: 8px; background: var(--surface-2); text-align: center; }
+    .flow-step b { display: block; color: var(--accent); }
+    .flow-step span { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .flow-arrow { align-self: center; flex: 0 0 auto; color: var(--orange); font: 700 20px var(--mono); }
+    .table-wrap { width: 100%; margin: 22px 0; overflow-x: auto; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; font-size: 13px; }
+    caption { padding: 13px 15px; color: var(--muted); text-align: left; font-weight: 700; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+    th { background: var(--surface-2); color: var(--muted); font: 750 11px var(--mono); letter-spacing: .03em; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td.rank { width: 50px; color: var(--orange); font: 700 12px var(--mono); white-space: nowrap; }
+    .cases { display: grid; gap: 14px; margin: 24px 0; }
+    .case { padding: 20px 21px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+    .case-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .case-company { color: var(--accent); font: 750 11px var(--mono); letter-spacing: .07em; text-transform: uppercase; }
+    .case h3 { margin: 5px 0 8px; font-size: 18px; }
+    .case p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .case-link { flex: 0 0 auto; padding: 5px 10px; border: 1px solid var(--rule); border-radius: 999px; color: var(--accent); font: 11px var(--mono); text-decoration: none; }
+    .case-link:hover { background: var(--accent-soft); }
+    .case-map { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
+    .case-map b { color: var(--orange); font: 700 11px var(--mono); }
+    .case-map span { color: var(--muted); font-size: 13px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+    .tags span { padding: 3px 7px; border-radius: 5px; background: var(--surface-2); color: var(--muted); font: 10.5px var(--mono); }
+    .architecture { display: grid; gap: 11px; margin: 24px 0; }
+    .arch-row { display: grid; grid-template-columns: 150px 1fr; gap: 13px; align-items: stretch; }
+    .arch-label { display: grid; place-items: center; padding: 13px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font: 750 12px var(--mono); text-align: center; }
+    .arch-body { padding: 13px 15px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--muted); font-size: 13px; }
+    .arch-body code { font-size: 11px; }
+    .checklist { counter-reset: checks; margin: 24px 0; border-top: 1px solid var(--rule); }
+    .check { display: grid; grid-template-columns: 42px 1fr; gap: 13px; padding: 18px 0; border-bottom: 1px solid var(--rule); }
+    .check::before { counter-increment: checks; content: "0" counter(checks); color: var(--orange); font: 700 12px var(--mono); }
+    .check strong { display: block; margin-bottom: 4px; }
+    .check p { margin: 0; color: var(--muted); font-size: 14px; }
+    .reading-list { list-style: none; padding: 0; margin: 24px 0; counter-reset: reading; }
+    .reading-list li { position: relative; padding: 17px 18px 17px 58px; border-bottom: 1px solid var(--rule); }
+    .reading-list li:first-child { border-top: 1px solid var(--rule); }
+    .reading-list li::before { counter-increment: reading; content: counter(reading); position: absolute; left: 14px; top: 17px; display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%; background: var(--accent); color: #fff; font: 700 11px var(--mono); }
+    .reading-list a { color: var(--accent); font-weight: 760; text-decoration: none; }
+    .reading-list a:hover { text-decoration: underline; }
+    .reading-list span { display: block; color: var(--muted); font-size: 13px; }
+    .source-list { display: grid; gap: 9px; margin: 20px 0; }
+    .source-item { display: grid; grid-template-columns: 105px 1fr; gap: 13px; padding: 11px 0; border-bottom: 1px solid var(--rule); }
+    .source-item b { color: var(--faint); font: 700 11px var(--mono); }
+    .source-item a { color: var(--accent); text-decoration: none; overflow-wrap: anywhere; }
+    .source-item a:hover { text-decoration: underline; }
+    .page-foot { margin-top: 58px; padding-top: 20px; border-top: 1px solid var(--rule); color: var(--faint); font-size: 12px; }
+    @media (max-width: 900px) {
+      .page { display: block; padding: 0 20px; }
+      .toc { display: none; }
+      .content { max-width: 800px; margin: 0 auto; padding-top: 32px; }
+      .mobile-toc { display: block; margin: 20px 0 38px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); }
+      .mobile-toc summary { cursor: pointer; padding: 14px 17px; font-weight: 750; }
+      .mobile-toc nav { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 0 12px 14px; }
+      .mobile-toc a { padding: 7px 9px; border-radius: 6px; color: var(--muted); font-size: 12px; text-decoration: none; }
+      .mobile-toc a.active { background: var(--accent-soft); color: var(--accent); font-weight: 750; }
+    }
+    @media (max-width: 620px) {
+      .page { padding: 0 15px; }
+      .content { padding-bottom: 68px; }
+      h1 { font-size: 32px; }
+      h2 { font-size: 24px; }
+      .top-row { align-items: flex-start; }
+      .top-actions { max-width: 160px; }
+      .thesis { padding: 22px 21px; }
+      .thesis::after { display: none; }
+      .grid-2, .grid-3, .metric-grid { grid-template-columns: 1fr; }
+      .mobile-toc nav { grid-template-columns: 1fr; }
+      .flow { padding: 14px; }
+      .flow-step { flex: 1 0 140px; min-width: 140px; }
+      .case-head { display: block; }
+      .case-link { display: inline-flex; margin-top: 9px; }
+      .arch-row { grid-template-columns: 1fr; gap: 6px; }
+      .arch-label { place-items: start; text-align: left; }
+      .source-item { grid-template-columns: 1fr; gap: 2px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+  <div class="page">
+    <aside class="toc" aria-label="문서 목차">
+      <div class="toc-eyebrow">Chapter 07 · Field Notes</div>
+      <a href="#overview" data-toc>전체 지도</a>
+      <a href="#core-cases" data-toc>먼저 읽을 사례</a>
+      <a href="#global-cases" data-toc>글로벌 기업 사례</a>
+      <a class="sub" href="#entity-cases" data-toc>엔티티·속성 추출</a>
+      <a href="#korean-cases" data-toc>한국 기업 사례</a>
+      <a href="#modern-cases" data-toc>LLM 기반 변형</a>
+      <a href="#architecture" data-toc>공통 실무 아키텍처</a>
+      <a href="#chapter-map" data-toc>ch07 코드 매핑</a>
+      <a href="#reading-path" data-toc>추천 읽기 순서</a>
+      <a href="#sources" data-toc>출처</a>
+    </aside>
+
+    <main class="content">
+      <div class="top-row">
+        <a class="back-nav" href="ch06_summary.html">← 6장 요약</a>
+        <div class="top-actions">
+          <a class="source-link" href="https://github.com/treygrainger/ai-powered-search/blob/main/chapters/ch07/2.semantic-search.ipynb">ch07 노트북</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="밝은 테마와 어두운 테마 전환">테마 전환</button>
+        </div>
+      </div>
+
+      <header class="hero">
+        <div class="kicker">AI-Powered Search · Chapter 7 Supplement</div>
+        <h1>Query Understanding,<br>실무에서는 어떻게 조립할까</h1>
+        <p class="lede">ch07의 <code>Solr /tag → query tree → transform_query</code>는 교육용 축약판이다. 실제 대규모 서비스도 원문 쿼리를 바로 검색엔진에 넘기지 않고, 엔티티·의도·속성을 구조화한 중간 표현을 만든 뒤 검색 계획과 엔진별 쿼리로 변환한다.</p>
+        <div class="hero-meta">
+          <span>14 company cases</span>
+          <span>entity · intent · attributes</span>
+          <span>query plan · rewrite · DSL</span>
+          <span>source check · 2026-09-05</span>
+        </div>
+      </header>
+
+      <div class="thesis">
+        <div class="thesis-eyebrow">핵심 관찰</div>
+        <blockquote>검색 품질의 차이는 검색엔진 문법보다, 사용자의 말을 검증 가능한 Query Plan으로 번역하는 계층에서 크게 벌어진다.</blockquote>
+        <p>기업마다 규칙, FST, NER, 임베딩, LLM의 비중은 다르지만 <strong>원문 → 의미 구조 → 실행 쿼리</strong>라는 경계는 놀랄 만큼 비슷하다.</p>
+      </div>
+
+      <details class="mobile-toc">
+        <summary>이 문서의 목차</summary>
+        <nav aria-label="모바일 문서 목차">
+          <a href="#overview">전체 지도</a>
+          <a href="#core-cases">먼저 읽을 사례</a>
+          <a href="#global-cases">글로벌 기업 사례</a>
+          <a href="#entity-cases">엔티티·속성 추출</a>
+          <a href="#korean-cases">한국 기업 사례</a>
+          <a href="#modern-cases">LLM 기반 변형</a>
+          <a href="#architecture">공통 실무 아키텍처</a>
+          <a href="#chapter-map">ch07 코드 매핑</a>
+          <a href="#reading-path">추천 읽기 순서</a>
+          <a href="#sources">출처</a>
+        </nav>
+      </details>
+
+      <section id="overview">
+        <div class="sec-label">Overview</div>
+        <h2>검색창과 검색엔진 사이에는 번역 계층이 있다</h2>
+        <p>사용자가 쓰는 언어는 모호하고 생략이 많다. 반면 검색엔진은 필드, 필터, 지리 조건, 부스트, 정렬처럼 명시적인 연산을 요구한다. Query Understanding은 이 간격을 메우는 계층이다.</p>
+
+        <div class="flow" aria-label="Query Understanding 전체 파이프라인">
+          <div class="flow-step"><b>raw query</b><span>사용자 원문</span></div><div class="flow-arrow">→</div>
+          <div class="flow-step"><b>normalize</b><span>철자·동의어·구문</span></div><div class="flow-arrow">→</div>
+          <div class="flow-step"><b>understand</b><span>entity·intent·attribute</span></div><div class="flow-arrow">→</div>
+          <div class="flow-step"><b>query plan</b><span>필터·부스트·라우팅</span></div><div class="flow-arrow">→</div>
+          <div class="flow-step"><b>engine DSL</b><span>Solr·OpenSearch</span></div><div class="flow-arrow">→</div>
+          <div class="flow-step"><b>rank</b><span>retrieval·rerank</span></div>
+        </div>
+
+        <div class="grid-3">
+          <div class="card orange"><strong>Detection</strong><p><code>Charlotte</code>라는 문자열 구간을 찾는다.</p></div>
+          <div class="card teal"><strong>Linking</strong><p>어느 Charlotte인지 canonical entity와 연결한다.</p></div>
+          <div class="card purple"><strong>Planning</strong><p>좌표·반경·카테고리를 실제 검색 연산으로 바꾼다.</p></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">엔티티 추출과 쿼리 생성은 분리한다</div>
+          <p>NER가 <em>무엇을 언급했는지</em> 찾는 단계라면, entity linking은 <em>어떤 대상인지</em> 결정한다. Query Planner는 그 결과를 <em>어떤 필터와 검색 전략으로 실행할지</em> 결정한다. 한 모델이나 한 검색 DSL에 세 책임을 섞지 않는 것이 공통 패턴이다.</p>
+        </div>
+      </section>
+
+      <section id="core-cases">
+        <div class="sec-label">Must Read</div>
+        <h2>ch07과 가장 가까운 세 가지 사례</h2>
+        <p class="sec-sub">전체 목록을 모두 읽기보다 아래 세 편으로 아키텍처, 의미 분석, 커머스 적용을 먼저 잡는 편이 효율적이다.</p>
+
+        <div class="table-wrap">
+          <table>
+            <caption>ch07과의 직접성 기준 추천 순위</caption>
+            <thead><tr><th scope="col">순위</th><th scope="col">자료</th><th scope="col">핵심 구조</th><th scope="col">ch07 대응</th></tr></thead>
+            <tbody>
+              <tr><td class="rank">01</td><td><strong>DoorDash</strong><br>In-house Search Engine</td><td>Query Understanding + Query Planning Pipeline + SQL-like API</td><td><code>query tree → transform_query</code></td></tr>
+              <tr><td class="rank">02</td><td><strong>Meta</strong><br>Photo Search</td><td>intent·syntax·entity linking·rewrite → s-expression</td><td><code>/tag → semantic function → DSL</code></td></tr>
+              <tr><td class="rank">03</td><td><strong>Instacart</strong><br>Browsing and Ordering</td><td>intent → product modifier → catalog match → ranking</td><td>entity·attribute 추출과 후보 선택</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cases">
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">DoorDash · 2024</div><h3>Introducing DoorDash’s in-house search engine</h3></div>
+              <a class="case-link" href="https://careersatdoordash.com/blog/introducing-doordashs-in-house-search-engine/" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>Broker가 raw query를 Query Understanding/Planning 서비스로 보내 재작성한다. 지리 제약과 비즈니스 규칙은 클라이언트가 아니라 중앙 Query Planning Pipeline에 두며, 최종 검색은 SQL-like API로 표현한다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>generate_query_tree()</code>와 <code>transform_query()</code>를 서비스 경계로 키운 모습.</span></div>
+            <div class="tags"><span>query planning</span><span>declarative config</span><span>geo constraints</span><span>Lucene</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Meta · 2017</div><h3>Under the hood: Photo Search</h3></div>
+              <a class="case-link" href="https://engineering.fb.com/2017/05/22/ml-applications/under-the-hood-photo-search/" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>질의 의도, 구문 분석, entity linking, concept rewrite, query embedding을 조합한다. 상위 aggregator가 분석 결과를 검색 서버가 실행할 <code>s-expression</code>으로 바꾸고, intent에 따라 검색 vertical도 선택한다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span>엔티티·의미 함수를 찾고 Query Tree를 Solr 구문으로 바꾸는 흐름과 가장 닮았다.</span></div>
+            <div class="tags"><span>intent</span><span>entity linking</span><span>rewrite</span><span>vertical routing</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Instacart · 2019</div><h3>The story behind an Instacart order, Part 2</h3></div>
+              <a class="case-link" href="https://tech.instacart.com/the-story-behind-an-instacart-order-part-2-browsing-and-ordering-6b6a6066a706" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>상품 검색을 intent 판별, product modifier 추출, catalog matching, ranking의 단계로 설명한다. <code>organic</code>, 크기, 브랜드처럼 상품명을 보조하는 표현을 별도 의미 신호로 다룬다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>city</code>, <code>near</code>, <code>top</code>을 서로 다른 타입으로 분리하는 이유를 커머스 관점에서 볼 수 있다.</span></div>
+            <div class="tags"><span>product modifiers</span><span>catalog matching</span><span>ranking</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="global-cases">
+        <div class="sec-label">Global Engineering</div>
+        <h2>쿼리 이해를 공통 플랫폼으로 만든 사례</h2>
+
+        <div class="cases">
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Pinterest · 2015</div><h3>Building a platform to understand search queries</h3></div>
+              <a class="case-link" href="https://medium.com/pinterest-engineering/building-a-platform-to-understand-search-queries-7138e923c06a" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>검색 로그와 메타데이터를 결합해 query-level 의미 정보를 만들고, 이를 autocomplete·query expansion·rewrite 같은 여러 소비자가 재사용하는 플랫폼으로 운영한다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>/tag</code>의 출력을 한 노트북 로직에 가두지 않고 공용 Query Understanding 신호로 제공하는 형태.</span></div>
+            <div class="tags"><span>shared platform</span><span>query expansion</span><span>autocomplete</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">LinkedIn · 2026</div><h3>Reimagining LinkedIn’s search tech stack</h3></div>
+              <a class="case-link" href="https://www.linkedin.com/blog/engineering/search/reimagining-linkedins-search-stack" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>자유 텍스트를 facet·tag 같은 구조 신호로 해석하고 lexical/embedding retrieval과 ranking으로 연결하는 현대적 검색 스택을 설명한다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span>태그된 Query Tree가 lexical 검색과 semantic retrieval의 공통 입력이 되는 방향.</span></div>
+            <div class="tags"><span>facets</span><span>tags</span><span>hybrid retrieval</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Airbnb · 2019</div><h3>Contextualizing Airbnb by Building Knowledge Graph</h3></div>
+              <a class="case-link" href="https://medium.com/airbnb-engineering/contextualizing-airbnb-by-building-knowledge-graph-b7077e268d5a" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>숙소·장소·여행 개념을 그래프로 연결하고 Graph Query API를 통해 관계 기반 문맥을 제공한다. 엔티티를 찾은 다음 무엇과 연결하고 확장할지에 초점을 둔다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>get_semantic_knowledge_graph().traverse()</code>의 제품 규모 버전으로 읽기 좋다.</span></div>
+            <div class="tags"><span>knowledge graph</span><span>entity context</span><span>graph API</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Microsoft Research · 2019</div><h3>Learning web search intent representations from massive logs</h3></div>
+              <a class="case-link" href="https://www.microsoft.com/en-us/research/blog/learning-web-search-intent-representations-from-massive-web-search-logs/" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>대규모 검색·클릭 로그에서 쿼리 의도 표현을 학습한다. 규칙 사전에 없는 long-tail 쿼리를 행동 신호로 일반화하는 접근이다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span>결정적 엔티티 태깅을 보완하는 학습형 intent representation.</span></div>
+            <div class="tags"><span>query logs</span><span>intent representation</span><span>weak supervision</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="entity-cases">
+        <div class="sec-label">Entity &amp; Attribute</div>
+        <h2>문자열을 찾는 것과 실제 대상을 연결하는 것은 다르다</h2>
+        <p><code>Charlotte</code>라는 span을 찾은 뒤에도 어느 주의 도시인지, 상품 쿼리의 <code>apple</code>이 브랜드인지 식품인지 결정해야 한다. 실무에서는 mention detection, type classification, normalization, entity linking을 별도 문제로 다룬다.</p>
+
+        <div class="grid-2">
+          <div class="card orange"><strong>Amazon · AVEN-GR</strong><p>상품 검색어에서 brand·material·color 같은 속성값을 추출하고 product graph를 이용해 정규화한다.</p></div>
+          <div class="card teal"><strong>Google · Piggyback</strong><p>짧은 웹 쿼리에서 entity mention detection과 knowledge-base linking을 함께 수행한다.</p></div>
+        </div>
+
+        <div class="cases">
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Amazon Science · 2023</div><h3>AVEN-GR: Attribute value extraction and normalization using product graphs</h3></div>
+              <a class="case-link" href="https://www.amazon.science/publications/aven-gr-attribute-value-extraction-and-normalization-using-product-graphs" target="_blank" rel="noopener">논문 ↗</a>
+            </div>
+            <p>Query Attribute Understanding을 NER와 entity normalization 문제로 다룬다. 추출한 표현을 표준 속성값에 연결해야 필터와 facet으로 안전하게 사용할 수 있다는 점이 핵심이다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>surface_form → canonical_form</code> 분리와 정확히 대응한다.</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Google Research · 2016</div><h3>A Piggyback System for Joint Entity Mention Detection and Linking in Web Queries</h3></div>
+              <a class="case-link" href="https://research.google/pubs/a-piggyback-system-for-joint-entity-mention-detection-and-linking-in-web-queries/" target="_blank" rel="noopener">논문 ↗</a>
+            </div>
+            <p>문법이 불완전하고 짧은 웹 검색어에서 엔티티 언급 구간을 찾고 실제 지식베이스 엔티티로 연결한다. 단순 사전 매칭 이후의 중의성 해소를 이해하기 좋다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>tags[].ids</code> 후보 중 popularity로 하나를 고르는 단순 로직을 학습형 linking으로 확장한 문제.</span></div>
+          </article>
+        </div>
+
+        <div class="warning">
+          <div class="box-title">NER가 곧 검색 쿼리는 아니다</div>
+          <p>모델이 <code>서울</code>을 장소로 인식해도 좌표, 서비스 지역, 언어별 표기, 검색 인덱스의 canonical ID가 없으면 안정적인 필터를 만들 수 없다. 따라서 <strong>추출 → 연결 → 검증 → 계획</strong>의 경계가 필요하다.</p>
+        </div>
+      </section>
+
+      <section id="korean-cases">
+        <div class="sec-label">Korean Engineering</div>
+        <h2>한국어 쿼리와 국내 커머스 사례</h2>
+
+        <div class="cases">
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">NAVER D2 · 2021</div><h3>데이터 분석 결과를 효과적으로 제공하기 위한 그래프 데이터베이스 구축</h3></div>
+              <a class="case-link" href="https://d2.naver.com/helloworld/8446520" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>쇼핑 검색 주제를 <code>Topic</code>, <code>Entity</code>, <code>Attribute</code>, <code>Tag</code>로 구조화해 그래프 데이터로 연결한다. 엔티티와 속성의 스키마 설계 관점에서 ch07과 가장 가까운 한국어 자료다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>type / surface_form / canonical_form / semantic_function</code>을 더 일반적인 검색 지식 모델로 확장해 볼 수 있다.</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">NAVER D2 · 2025</div><h3>호텔 검색, 어떻게 달라졌을까요? 3편 — 검색 시스템</h3></div>
+              <a class="case-link" href="https://d2.naver.com/helloworld/4896087" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>다국어 음차·번역, POI 매칭, 검색 키워드와 스니펫 추출을 통해 호텔 검색 커버리지를 넓힌다. 지역명과 장소 엔티티를 실제 여행 검색에 연결하는 사례다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span>Geonames 도시 사전과 <code>city → location_coordinates</code> 연결의 실서비스 확장판.</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">MUSINSA Tech · 2021</div><h3>검색어 분석을 통한 상품 정렬 개선</h3></div>
+              <a class="case-link" href="https://medium.com/musinsa-tech/%EA%B2%80%EC%83%89%EC%96%B4-%EB%B6%84%EC%84%9D%EC%9D%84-%ED%86%B5%ED%95%9C-%EC%83%81%ED%92%88-%EC%A0%95%EB%A0%AC-%EA%B0%9C%EC%84%A0-b92ded2923c3" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>검색어 분석 결과를 Elasticsearch 기반 상품 검색과 정렬 신호에 반영한다. 분석 자체뿐 아니라 추출 결과가 실제 랭킹 행동으로 이어져야 한다는 점을 보여준다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>popularity()</code>가 별점 부스트 연산으로 변환되는 부분과 연결해서 읽기 좋다.</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">NAVER D2 · 2025</div><h3>LLM으로 완성하는 초개인화 서비스 ② 사용자 검색 의도 세분화</h3></div>
+              <a class="case-link" href="https://d2.naver.com/helloworld/4936925" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>검색 로그의 질의를 더 세밀한 의도 단위로 분류한다. 추출한 intent를 검색 경로 선택, 피드 개인화, 랭킹 분기로 사용하는 현대적 사례다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>type</code>과 <code>semantic_function</code>을 학습형 intent taxonomy로 확장하는 방향.</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="modern-cases">
+        <div class="sec-label">LLM &amp; Learned Systems</div>
+        <h2>LLM은 파이프라인을 없애기보다 앞단을 유연하게 만든다</h2>
+        <p>최신 사례에서는 LLM이 자연어를 더 풍부하게 해석하지만, 운영 단계에서는 여전히 제한된 스키마, 후보 검색, 필터링, 랭킹 같은 결정적 경계를 둔다.</p>
+
+        <div class="cases">
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Uber · 2024</div><h3>QueryGPT — Natural Language to SQL</h3></div>
+              <a class="case-link" href="https://www.uber.com/us/en/blog/query-gpt/" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>검색 사례는 아니지만 intent agent가 질문을 업무 영역에 연결하고, table agent가 후보 스키마를 선택한 뒤 SQL을 생성·검증한다. 자연어에서 구조화 쿼리로 가는 경계가 선명하다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>entity linking → query tree → backend query</code>와 같은 구조이며 출력 언어만 SQL이다.</span></div>
+            <div class="tags"><span>intent routing</span><span>schema linking</span><span>SQL generation</span><span>validation</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Walmart Global Tech · 2025</div><h3>The AI behind cross-lingual search at Walmart</h3></div>
+              <a class="case-link" href="https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/the-ai-behind-cross-lingual-search-at-walmart.html" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>언어 감지, 번역 메모리, entity 보존, 규칙 엔진을 결합한다. 모델 출력만 신뢰하지 않고 브랜드·상품명 같은 엔티티를 보호하는 하이브리드 설계다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span><code>surface_form</code>을 변환하되 <code>canonical_form</code>과 entity identity는 보존하는 문제.</span></div>
+            <div class="tags"><span>cross-lingual</span><span>entity preservation</span><span>rules + ML</span></div>
+          </article>
+
+          <article class="case">
+            <div class="case-head">
+              <div><div class="case-company">Etsy Engineering · 2026</div><h3>How Etsy Uses LLMs to Improve Search Relevance</h3></div>
+              <a class="case-link" href="https://www.etsy.com/codeascraft/how-etsy-uses-llms-to-improve-search-relevance" target="_blank" rel="noopener">원문 ↗</a>
+            </div>
+            <p>사람이 정의한 relevance 기준과 LLM teacher, 경량 student 모델을 조합한다. 실시간 시스템에서는 결과 제거, 랭킹 feature, 학습 가중치, boosting처럼 제한된 방식으로 적용한다.</p>
+            <div class="case-map"><b>CH07 MAP · </b><span>Query Plan 이후 retrieval/ranking 단계에 의미 이해 신호를 안전하게 삽입하는 방법.</span></div>
+            <div class="tags"><span>LLM judge</span><span>distillation</span><span>filtering</span><span>boosting</span></div>
+          </article>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <div class="sec-label">Synthesis</div>
+        <h2>공통 실무 아키텍처: 중간 표현이 중심이다</h2>
+        <p>사례들을 종합하면 핵심은 특정 NER 모델이 아니라, 각 분석 결과를 타입이 있는 중간 표현으로 모으고 검증한 뒤 엔진 쿼리로 컴파일하는 구조다.</p>
+
+        <div class="architecture" aria-label="실무 Query Understanding 구성요소">
+          <div class="arch-row"><div class="arch-label">1 · Normalize</div><div class="arch-body">대소문자, 철자, 언어, 동의어, 단위, 복합 구문을 정규화하되 원문과 offset을 보존한다.</div></div>
+          <div class="arch-row"><div class="arch-label">2 · Detect</div><div class="arch-body">FST·사전·규칙은 알려진 엔티티를, NER·분류기는 long-tail intent와 속성을 찾는다.</div></div>
+          <div class="arch-row"><div class="arch-label">3 · Link</div><div class="arch-body"><code>surface_form</code>을 canonical ID, 좌표, 카테고리, 상품 속성에 연결하고 후보 confidence를 계산한다.</div></div>
+          <div class="arch-row"><div class="arch-label">4 · Plan</div><div class="arch-body">키워드, 필터, geo, 부스트, vertical, retrieval 전략을 엔진 독립 Query Plan으로 만든다.</div></div>
+          <div class="arch-row"><div class="arch-label">5 · Compile</div><div class="arch-body">검증된 필드·연산자만 Solr, Elasticsearch, OpenSearch, SQL 등 대상 DSL로 변환한다.</div></div>
+          <div class="arch-row"><div class="arch-label">6 · Evaluate</div><div class="arch-body">zero-result, reformulation, click, conversion, relevance judge, A/B test로 각 단계를 따로 관찰한다.</div></div>
+        </div>
+
+        <h3>권장 중간 표현</h3>
+        <pre><code>{
+  "raw_query": "서울에서 10만원 이하 평점 높은 한식당",
+  "intent": {"name": "local_restaurant_search", "confidence": 0.97},
+  "entities": [
+    {
+      "span": [0, 2],
+      "surface": "서울",
+      "canonical_id": "city:seoul",
+      "type": "city",
+      "attributes": {"coordinates": "37.5665,126.9780"},
+      "confidence": 0.99
+    }
+  ],
+  "constraints": [
+    {"field": "price", "op": "lte", "value": 100000},
+    {"field": "distance", "op": "within", "value": "10km"}
+  ],
+  "ranking": [{"signal": "rating", "weight": 1.4}],
+  "fallback": {"preserve_lexical_query": true}
+}</code></pre>
+
+        <div class="table-wrap">
+          <table>
+            <caption>분석 방법은 경쟁 관계가 아니라 역할 분담 관계다</caption>
+            <thead><tr><th scope="col">방법</th><th scope="col">잘하는 일</th><th scope="col">주요 위험</th><th scope="col">권장 배치</th></tr></thead>
+            <tbody>
+              <tr><td>FST·Trie·규칙</td><td>알려진 도시·브랜드·연산자, 낮은 지연시간</td><td>사전에 없는 표현과 문맥 중의성</td><td>정밀도가 필요한 deterministic fast path</td></tr>
+              <tr><td>NER·분류 모델</td><td>표현 변형, long-tail intent, 일반화</td><td>entity ID 연결과 confidence 보정 필요</td><td>사전 매칭의 recall 보완</td></tr>
+              <tr><td>Embedding</td><td>어휘 불일치, 의미 후보 검색</td><td>정확한 필터·수치 조건 표현이 약함</td><td>candidate retrieval·enrichment</td></tr>
+              <tr><td>LLM parser</td><td>복합 자연어를 스키마로 변환</td><td>필드·연산자 환각, 비용, 지연시간</td><td>JSON Schema 출력 + allowlist 검증</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="checklist">
+          <div class="check"><div><strong>문자열 DSL을 바로 생성하지 않는다</strong><p>먼저 typed Query Plan을 만들고 backend adapter가 최종 문법을 생성한다.</p></div></div>
+          <div class="check"><div><strong>모르는 구문은 버리지 않는다</strong><p>태깅되지 않은 원문을 lexical query로 보존해 recall 급락을 막는다.</p></div></div>
+          <div class="check"><div><strong>confidence와 fallback을 계약에 넣는다</strong><p>낮은 confidence의 필터는 soft boost로 낮추거나 기본 검색으로 되돌린다.</p></div></div>
+          <div class="check"><div><strong>허용 필드와 연산자를 제한한다</strong><p>특히 LLM 출력은 schema validation과 query budget을 통과해야 한다.</p></div></div>
+          <div class="check"><div><strong>단계별 관측성을 남긴다</strong><p>원문, 추출 엔티티, Query Plan, 최종 DSL, 결과 지표를 연결해 실패 위치를 추적한다.</p></div></div>
+        </div>
+      </section>
+
+      <section id="chapter-map">
+        <div class="sec-label">Chapter 07 Mapping</div>
+        <h2>노트북 코드가 실무 컴포넌트로 커지면</h2>
+
+        <div class="table-wrap">
+          <table>
+            <caption>ch07 코드와 운영 시스템 개념의 1:1 대응</caption>
+            <thead><tr><th scope="col">ch07 요소</th><th scope="col">역할</th><th scope="col">실무 확장</th></tr></thead>
+            <tbody>
+              <tr><td><code>entities</code> collection</td><td>도시·의미 함수 사전</td><td>Entity Catalog / Product Knowledge Graph</td></tr>
+              <tr><td><code>surface_form</code></td><td>사용자가 입력하는 표현</td><td>alias·locale·오탈자·음차 사전</td></tr>
+              <tr><td><code>canonical_form</code></td><td>표준 표현과 검색 대상</td><td>canonical entity ID + versioned metadata</td></tr>
+              <tr><td><code>name_tag</code> + FST</td><td>빠른 사전 기반 phrase match</td><td>deterministic entity detector</td></tr>
+              <tr><td><code>Solr /tag</code></td><td>offset과 후보 엔티티 반환</td><td>Query Understanding API</td></tr>
+              <tr><td><code>generate_query_tree()</code></td><td>키워드와 의미 노드의 중간 표현</td><td>Typed Query Plan / IR</td></tr>
+              <tr><td><code>semantic_function</code></td><td>near·top 같은 연산 의도</td><td>Intent/Operator Registry</td></tr>
+              <tr><td><code>SKG.traverse()</code></td><td>관련어·문서 타입 확장</td><td>Knowledge Graph / Retrieval Enrichment</td></tr>
+              <tr><td><code>transform_query()</code></td><td>노드를 Solr 문법으로 변환</td><td>Backend-specific Query Compiler</td></tr>
+              <tr><td><code>geofilt</code></td><td>도시 좌표를 반경 필터로 실행</td><td>Validated Structured Constraint</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="example">
+          <div class="box-title"><code>top kimchi near Charlotte</code>를 컴파일하는 과정</div>
+          <pre><code>raw query
+  └─ /tag
+      ├─ top        → semantic_function: popularity
+      ├─ kimchi     → keyword
+      ├─ near       → semantic_function: location_distance
+      └─ Charlotte  → city: 4460243, coordinates: 35.22709,-80.84313
+
+typed query tree
+  ├─ boost(stars_rating)
+  ├─ lexical + SKG expansion(kimchi)
+  └─ geo_within(Charlotte, 50km)
+
+Solr compiler
+  ├─ +{!func v="mul(if(stars_rating,stars_rating,0),20)"}
+  ├─ +{!edismax v="kimchi ..."}
+  └─ +{!geofilt d=50 sfield="location_coordinates" pt="35.22709,-80.84313"}</code></pre>
+        </div>
+      </section>
+
+      <section id="reading-path">
+        <div class="sec-label">Reading Path</div>
+        <h2>목적에 따라 읽는 순서를 바꾼다</h2>
+
+        <h3>아키텍처를 먼저 보고 싶다면</h3>
+        <ol class="reading-list">
+          <li><a href="https://careersatdoordash.com/blog/introducing-doordashs-in-house-search-engine/" target="_blank" rel="noopener">DoorDash · In-house Search Engine</a><span>Query Planning 서비스의 경계와 선언형 쿼리 언어</span></li>
+          <li><a href="https://engineering.fb.com/2017/05/22/ml-applications/under-the-hood-photo-search/" target="_blank" rel="noopener">Meta · Photo Search</a><span>의도·엔티티·rewrite에서 검색 실행까지의 전체 흐름</span></li>
+          <li><a href="https://medium.com/pinterest-engineering/building-a-platform-to-understand-search-queries-7138e923c06a" target="_blank" rel="noopener">Pinterest · Query Understanding Platform</a><span>분석 신호를 여러 검색 제품이 재사용하는 방식</span></li>
+        </ol>
+
+        <h3>커머스 검색을 구현한다면</h3>
+        <ol class="reading-list">
+          <li><a href="https://tech.instacart.com/the-story-behind-an-instacart-order-part-2-browsing-and-ordering-6b6a6066a706" target="_blank" rel="noopener">Instacart · Browsing and Ordering</a><span>intent·modifier·catalog match·ranking의 역할 분리</span></li>
+          <li><a href="https://www.amazon.science/publications/aven-gr-attribute-value-extraction-and-normalization-using-product-graphs" target="_blank" rel="noopener">Amazon · AVEN-GR</a><span>속성 추출과 canonical value 정규화</span></li>
+          <li><a href="https://medium.com/musinsa-tech/%EA%B2%80%EC%83%89%EC%96%B4-%EB%B6%84%EC%84%9D%EC%9D%84-%ED%86%B5%ED%95%9C-%EC%83%81%ED%92%88-%EC%A0%95%EB%A0%AC-%EA%B0%9C%EC%84%A0-b92ded2923c3" target="_blank" rel="noopener">MUSINSA · 검색어 분석과 상품 정렬</a><span>한국어 커머스와 Elasticsearch 적용</span></li>
+        </ol>
+
+        <h3>LLM Query Parser를 검토한다면</h3>
+        <ol class="reading-list">
+          <li><a href="https://www.uber.com/us/en/blog/query-gpt/" target="_blank" rel="noopener">Uber · QueryGPT</a><span>intent routing·schema linking·생성·검증의 분업</span></li>
+          <li><a href="https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/the-ai-behind-cross-lingual-search-at-walmart.html" target="_blank" rel="noopener">Walmart · Cross-lingual Search</a><span>모델과 규칙을 결합해 엔티티를 보존하는 방식</span></li>
+          <li><a href="https://www.etsy.com/codeascraft/how-etsy-uses-llms-to-improve-search-relevance" target="_blank" rel="noopener">Etsy · LLM Search Relevance</a><span>실시간 검색에 LLM 신호를 제한적으로 삽입하는 방식</span></li>
+        </ol>
+      </section>
+
+      <section id="sources">
+        <div class="sec-label">Sources &amp; Scope</div>
+        <h2>출처와 읽을 때의 주의점</h2>
+        <p>공식 기업 엔지니어링 블로그와 공식 연구 페이지를 우선했다. Medium 링크는 Pinterest·Instacart·Airbnb·MUSINSA의 공식 엔지니어링 발행 채널이다. 오래된 글은 특정 모델보다 역할 분리와 중간 표현 설계를 중심으로 읽는다.</p>
+
+        <div class="source-list">
+          <div class="source-item"><b>Architecture</b><a href="https://careersatdoordash.com/blog/introducing-doordashs-in-house-search-engine/" target="_blank" rel="noopener">DoorDash — Introducing DoorDash’s in-house search engine</a></div>
+          <div class="source-item"><b>Full pipeline</b><a href="https://engineering.fb.com/2017/05/22/ml-applications/under-the-hood-photo-search/" target="_blank" rel="noopener">Meta — Under the hood: Photo Search</a></div>
+          <div class="source-item"><b>Platform</b><a href="https://medium.com/pinterest-engineering/building-a-platform-to-understand-search-queries-7138e923c06a" target="_blank" rel="noopener">Pinterest — Building a platform to understand search queries</a></div>
+          <div class="source-item"><b>Commerce</b><a href="https://tech.instacart.com/the-story-behind-an-instacart-order-part-2-browsing-and-ordering-6b6a6066a706" target="_blank" rel="noopener">Instacart — The story behind an Instacart order, Part 2</a></div>
+          <div class="source-item"><b>Attributes</b><a href="https://www.amazon.science/publications/aven-gr-attribute-value-extraction-and-normalization-using-product-graphs" target="_blank" rel="noopener">Amazon Science — AVEN-GR</a></div>
+          <div class="source-item"><b>Entity linking</b><a href="https://research.google/pubs/a-piggyback-system-for-joint-entity-mention-detection-and-linking-in-web-queries/" target="_blank" rel="noopener">Google Research — Joint entity mention detection and linking</a></div>
+          <div class="source-item"><b>Knowledge graph</b><a href="https://medium.com/airbnb-engineering/contextualizing-airbnb-by-building-knowledge-graph-b7077e268d5a" target="_blank" rel="noopener">Airbnb — Contextualizing Airbnb by Building Knowledge Graph</a></div>
+          <div class="source-item"><b>Intent logs</b><a href="https://www.microsoft.com/en-us/research/blog/learning-web-search-intent-representations-from-massive-web-search-logs/" target="_blank" rel="noopener">Microsoft Research — Learning web search intent representations</a></div>
+          <div class="source-item"><b>Korean graph</b><a href="https://d2.naver.com/helloworld/8446520" target="_blank" rel="noopener">NAVER D2 — Topic·Entity·Attribute·Tag 그래프</a></div>
+          <div class="source-item"><b>Korean POI</b><a href="https://d2.naver.com/helloworld/4896087" target="_blank" rel="noopener">NAVER D2 — 호텔 검색 시스템</a></div>
+          <div class="source-item"><b>K-commerce</b><a href="https://medium.com/musinsa-tech/%EA%B2%80%EC%83%89%EC%96%B4-%EB%B6%84%EC%84%9D%EC%9D%84-%ED%86%B5%ED%95%9C-%EC%83%81%ED%92%88-%EC%A0%95%EB%A0%AC-%EA%B0%9C%EC%84%A0-b92ded2923c3" target="_blank" rel="noopener">MUSINSA Tech — 검색어 분석을 통한 상품 정렬 개선</a></div>
+          <div class="source-item"><b>NL to SQL</b><a href="https://www.uber.com/us/en/blog/query-gpt/" target="_blank" rel="noopener">Uber — QueryGPT</a></div>
+          <div class="source-item"><b>Cross-lingual</b><a href="https://tech.walmart.com/content/walmart-global-tech/en_us/blog/post/the-ai-behind-cross-lingual-search-at-walmart.html" target="_blank" rel="noopener">Walmart — The AI behind cross-lingual search</a></div>
+          <div class="source-item"><b>LLM relevance</b><a href="https://www.etsy.com/codeascraft/how-etsy-uses-llms-to-improve-search-relevance" target="_blank" rel="noopener">Etsy — How Etsy Uses LLMs to Improve Search Relevance</a></div>
+        </div>
+
+        <div class="inset">
+          <div class="box-title">범위</div>
+          <p>이 자료는 사례 탐색과 ch07 개념 연결을 위한 보충 노트다. 각 기업의 현재 전체 프로덕션 구현을 재현하거나, 공개되지 않은 세부 운영 방식을 추정하지 않는다. 출처 확인 기준일은 2026년 9월 5일이다.</p>
+        </div>
+      </section>
+
+      <footer class="page-foot">AI-Powered Search Chapter 7 학습 보충 자료 · Query Understanding, Entity Linking, Query Planning, Dynamic Query Generation 사례를 공식 기업 자료 중심으로 재구성했습니다.</footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var toggle = document.getElementById('themeToggle');
+      var stored = null;
+      try { stored = localStorage.getItem('chapter-theme'); } catch (e) {}
+      if (stored === 'light' || stored === 'dark') root.setAttribute('data-theme', stored);
+      toggle.addEventListener('click', function () {
+        var current = root.getAttribute('data-theme');
+        var next = current === 'dark' ? 'light' : current === 'light' ? 'dark' :
+          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('chapter-theme', next); } catch (e) {}
+      });
+
+      var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[data-toc]'));
+      var mobileToc = document.querySelector('.mobile-toc');
+      var mobileLinks = Array.prototype.slice.call(document.querySelectorAll('.mobile-toc a'));
+      var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+      var progress = document.getElementById('readingProgress');
+      var suppressUntil = 0;
+      function setActive(link) {
+        var href = link ? link.getAttribute('href') : '';
+        links.concat(mobileLinks).forEach(function (item) {
+          item.classList.toggle('active', item.getAttribute('href') === href);
+        });
+      }
+      function updateProgress() {
+        var max = root.scrollHeight - root.clientHeight;
+        var ratio = max > 0 ? root.scrollTop / max : 0;
+        progress.style.width = Math.max(0, Math.min(100, ratio * 100)) + '%';
+      }
+      links.forEach(function (link) {
+        link.addEventListener('click', function () { setActive(link); suppressUntil = Date.now() + 900; });
+      });
+      mobileLinks.forEach(function (link) {
+        link.addEventListener('click', function () {
+          setActive(link); suppressUntil = Date.now() + 900;
+          if (mobileToc) mobileToc.removeAttribute('open');
+        });
+      });
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          if (Date.now() < suppressUntil) return;
+          entries.forEach(function (entry) {
+            var i = sections.indexOf(entry.target);
+            if (i !== -1 && entry.isIntersecting) setActive(links[i]);
+          });
+        }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+        sections.forEach(function (section) { if (section) observer.observe(section); });
+      }
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+      setActive(links[0]);
+    })();
+  </script>
+</body>
+</html>
