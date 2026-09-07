@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"git rebase origin/main\",\"description\":\"Rebase local commit onto updated origin/main\"}",
+  "error": "Exit code 1\nRebasing (1/1)\rAuto-merging 17-LangGraph/03-Use-Cases/Research-Assistant-Guide.html\nCONFLICT (add/add): Merge conflict in 17-LangGraph/03-Use-Cases/Research-Assistant-Guide.html\nAuto-merging index.html\nerror: could not apply 3641dd2... Add Research Assistant and STORM paper guides, regenerate index\nhint: Resolve all conflicts manually, mark them as resolved with\nhint: \"git add/rm <conflicted_files>\", then run \"git rebase --continue\".\nhint: You can instead skip this commit: run \"git r...",
+  "timestamp": "2026-07-16T03:37:43.251Z",
+  "retry_count": 2
+}
