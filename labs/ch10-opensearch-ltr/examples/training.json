@@ -1,0 +1,385 @@
+{
+  "model_name": "ch10_movie_svm_966dfda0c51d",
+  "feature_names": [
+    "title_bm25",
+    "overview_bm25",
+    "release_year"
+  ],
+  "seed": 42,
+  "split": "query IDs: 90% train / 10% test; sklearn train_test_split",
+  "train_qids": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    47,
+    49,
+    50,
+    51,
+    52,
+    53,
+    55,
+    56,
+    57,
+    58,
+    59,
+    60,
+    61,
+    62,
+    63,
+    64,
+    67,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79,
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94,
+    96,
+    97,
+    98,
+    99,
+    100,
+    101,
+    102,
+    103,
+    104
+  ],
+  "test_qids": [
+    1,
+    11,
+    19,
+    31,
+    46,
+    48,
+    54,
+    65,
+    66,
+    95,
+    105
+  ],
+  "train_rows": 3461,
+  "test_rows": 400,
+  "training_pairs": 18586,
+  "pair_policy": "unequal grades within query; both directions",
+  "means": [
+    0.7339204004131752,
+    0.6458834090777248,
+    1985.8939612828663
+  ],
+  "stds": [
+    1.699562865851218,
+    1.482931670233471,
+    123.57352737054518
+  ],
+  "weights": [
+    0.38504126084985474,
+    0.28044707507716304,
+    0.9776399894644355
+  ],
+  "normalization": "train rows only; population std (ddof=0); zero std replaced by 1",
+  "learner": {
+    "name": "LinearSVC",
+    "fit_intercept": false,
+    "dual": "auto",
+    "max_iter": 10000
+  },
+  "test_metrics": {
+    "scope": "held-out queries; judged documents only; macro average; relevance grade > 0",
+    "k": 5,
+    "denominator": "k (unfilled ranks count as non-relevant)",
+    "title_plus_overview_p_at_5": 0.3454545454545455,
+    "ltr_p_at_5": 0.4181818181818182,
+    "per_query": [
+      {
+        "qid": 1,
+        "keywords": "rambo",
+        "judged_documents": 41,
+        "title_plus_overview_p_at_5": 0.8,
+        "ltr_p_at_5": 0.8,
+        "baseline_top_ids": [
+          "7555",
+          "1370",
+          "1369",
+          "1368",
+          "13258"
+        ],
+        "ltr_top_ids": [
+          "7555",
+          "1370",
+          "1369",
+          "13258",
+          "1368"
+        ]
+      },
+      {
+        "qid": 11,
+        "keywords": "social network",
+        "judged_documents": 28,
+        "title_plus_overview_p_at_5": 0.2,
+        "ltr_p_at_5": 0.2,
+        "baseline_top_ids": [
+          "37799",
+          "10774",
+          "28303",
+          "267752",
+          "18467"
+        ],
+        "ltr_top_ids": [
+          "37799",
+          "10774",
+          "267752",
+          "28303",
+          "32547"
+        ]
+      },
+      {
+        "qid": 19,
+        "keywords": "die hard",
+        "judged_documents": 32,
+        "title_plus_overview_p_at_5": 0.4,
+        "ltr_p_at_5": 0.6,
+        "baseline_top_ids": [
+          "562",
+          "90374",
+          "1573",
+          "26244",
+          "269494"
+        ],
+        "ltr_top_ids": [
+          "562",
+          "1573",
+          "90374",
+          "269494",
+          "1571"
+        ]
+      },
+      {
+        "qid": 31,
+        "keywords": "christmas vacation",
+        "judged_documents": 41,
+        "title_plus_overview_p_at_5": 0.2,
+        "ltr_p_at_5": 0.2,
+        "baseline_top_ids": [
+          "5825",
+          "11419",
+          "76452",
+          "13673",
+          "16342"
+        ],
+        "ltr_top_ids": [
+          "5825",
+          "11419",
+          "13673",
+          "340402",
+          "51052"
+        ]
+      },
+      {
+        "qid": 46,
+        "keywords": "sound of music",
+        "judged_documents": 32,
+        "title_plus_overview_p_at_5": 0.2,
+        "ltr_p_at_5": 0.2,
+        "baseline_top_ids": [
+          "15121",
+          "157117",
+          "56475",
+          "822",
+          "29138"
+        ],
+        "ltr_top_ids": [
+          "157117",
+          "15121",
+          "56475",
+          "29138",
+          "24105"
+        ]
+      },
+      {
+        "qid": 48,
+        "keywords": "300",
+        "judged_documents": 33,
+        "title_plus_overview_p_at_5": 0.4,
+        "ltr_p_at_5": 0.4,
+        "baseline_top_ids": [
+          "1271",
+          "19972",
+          "51261",
+          "155325",
+          "53182"
+        ],
+        "ltr_top_ids": [
+          "1271",
+          "19972",
+          "51261",
+          "53182",
+          "155325"
+        ]
+      },
+      {
+        "qid": 54,
+        "keywords": "indiana jones",
+        "judged_documents": 31,
+        "title_plus_overview_p_at_5": 0.4,
+        "ltr_p_at_5": 0.4,
+        "baseline_top_ids": [
+          "89",
+          "87",
+          "174678",
+          "14103",
+          "2625"
+        ],
+        "ltr_top_ids": [
+          "89",
+          "87",
+          "174678",
+          "14103",
+          "2625"
+        ]
+      },
+      {
+        "qid": 65,
+        "keywords": "the martian",
+        "judged_documents": 40,
+        "title_plus_overview_p_at_5": 0.2,
+        "ltr_p_at_5": 0.2,
+        "baseline_top_ids": [
+          "9849",
+          "286217",
+          "5126",
+          "32307",
+          "34086"
+        ],
+        "ltr_top_ids": [
+          "9849",
+          "286217",
+          "5126",
+          "34086",
+          "32307"
+        ]
+      },
+      {
+        "qid": 66,
+        "keywords": "adultery",
+        "judged_documents": 41,
+        "title_plus_overview_p_at_5": 0.0,
+        "ltr_p_at_5": 0.2,
+        "baseline_top_ids": [
+          "10012",
+          "10180",
+          "10226",
+          "10733",
+          "10996"
+        ],
+        "ltr_top_ids": [
+          "162903",
+          "114150",
+          "81836",
+          "40264",
+          "12405"
+        ]
+      },
+      {
+        "qid": 95,
+        "keywords": "nasa",
+        "judged_documents": 40,
+        "title_plus_overview_p_at_5": 0.2,
+        "ltr_p_at_5": 0.6,
+        "baseline_top_ids": [
+          "95",
+          "10008",
+          "10019",
+          "10162",
+          "10188"
+        ],
+        "ltr_top_ids": [
+          "95",
+          "157336",
+          "169219",
+          "49047",
+          "46195"
+        ]
+      },
+      {
+        "qid": 105,
+        "keywords": "vietnam war",
+        "judged_documents": 41,
+        "title_plus_overview_p_at_5": 0.8,
+        "ltr_p_at_5": 0.8,
+        "baseline_top_ids": [
+          "792",
+          "600",
+          "28",
+          "11778",
+          "16220"
+        ],
+        "ltr_top_ids": [
+          "792",
+          "600",
+          "28",
+          "11778",
+          "241239"
+        ]
+      }
+    ]
+  }
+}

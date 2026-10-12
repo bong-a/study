@@ -1,0 +1,261 @@
+{
+  "chapter": 10,
+  "title": "Learning to rank for generalizable search relevance",
+  "updated": "2026-10-12",
+  "source_pdf": null,
+  "printed_pages": [
+    254,
+    284
+  ],
+  "pdf_page_rule": "PDF 페이지 = 책 인쇄 쪽수 - 253",
+  "artifacts": {
+    "summary": "ai-powered-search/ch10_summary.html",
+    "notes": "ai-powered-search/ch10_notes.html",
+    "site_index": "index.html",
+    "opensearch_guide": "ai-powered-search/ch10_opensearch_lab.html",
+    "opensearch_lab": "labs/ch10-opensearch-ltr",
+    "opensearch_lab_zip": "labs/ch10-opensearch-ltr.zip",
+    "large_scale_pagination": "ai-powered-search/ch10_large_scale_ltr_pagination.html"
+  },
+  "sections": [
+    {
+      "section": "10.1",
+      "title": "LTR이란 무엇인가?",
+      "printed_pages": [
+        255,
+        258
+      ],
+      "summary_anchor": "overview",
+      "focus": "정답표와 특징으로 새로운 검색어에 적용할 순위 규칙을 학습"
+    },
+    {
+      "section": "10.1.1",
+      "title": "수동 관련성 튜닝을 넘어",
+      "printed_pages": [
+        255,
+        256
+      ],
+      "summary_anchor": "sec-10-1-1",
+      "focus": "The Social Network와 가중치 10·20·0.01"
+    },
+    {
+      "section": "10.1.2",
+      "title": "실서비스에서 LTR 구현하기",
+      "printed_pages": [
+        256,
+        258
+      ],
+      "summary_anchor": "sec-10-1-2",
+      "focus": "학습 → 배포 → 검색 및 여섯 단계 생애주기"
+    },
+    {
+      "section": "10.2",
+      "title": "1단계 · 관련성 판정표",
+      "printed_pages": [
+        259,
+        260
+      ],
+      "summary_anchor": "judgments",
+      "focus": "social network·star wars의 9개 판정"
+    },
+    {
+      "section": "10.3",
+      "title": "2단계 · 특징 로깅과 설계",
+      "printed_pages": [
+        260,
+        264
+      ],
+      "summary_anchor": "features",
+      "focus": "제목 BM25·줄거리 BM25·개봉 연도"
+    },
+    {
+      "section": "10.3.1",
+      "title": "검색 엔진에 특징 정의 저장",
+      "printed_pages": [
+        261,
+        261
+      ],
+      "summary_anchor": "sec-10-3-1",
+      "focus": "feature store에는 이름과 계산 방법 저장"
+    },
+    {
+      "section": "10.3.2",
+      "title": "검색 엔진에서 특징값 로깅",
+      "printed_pages": [
+        261,
+        264
+      ],
+      "summary_anchor": "sec-10-3-2",
+      "focus": "판정된 문서에 실제 특징 벡터 채우기"
+    },
+    {
+      "section": "10.4",
+      "title": "3단계 · 순위를 일반적인 ML 문제로 변환",
+      "printed_pages": [
+        264,
+        274
+      ],
+      "summary_anchor": "pairwise",
+      "focus": "같은 검색어 안에서 누가 먼저인가?"
+    },
+    {
+      "section": "10.4.1",
+      "title": "SVMrank와 이진 분류",
+      "printed_pages": [
+        265,
+        267
+      ],
+      "summary_anchor": "normalize",
+      "focus": "SVM의 분리 경계와 특징 스케일"
+    },
+    {
+      "section": "10.4.2",
+      "title": "LTR 학습 데이터를 이진 분류로 변환",
+      "printed_pages": [
+        267,
+        274
+      ],
+      "summary_anchor": "pairwise",
+      "focus": "표준화 → 같은 qid의 특징 차이 → ±1 라벨"
+    },
+    {
+      "section": "10.5",
+      "title": "4단계 · 모델 학습과 평가",
+      "printed_pages": [
+        275,
+        279
+      ],
+      "summary_anchor": "scoring",
+      "focus": "학습된 계수로 점수화하고 새 검색어로 검증"
+    },
+    {
+      "section": "10.5.1",
+      "title": "분리 경계의 벡터를 점수 함수로",
+      "printed_pages": [
+        275,
+        276
+      ],
+      "summary_anchor": "sec-10-5-1",
+      "focus": "score = w·z"
+    },
+    {
+      "section": "10.5.2",
+      "title": "모델로 실제 점수 계산하기",
+      "printed_pages": [
+        276,
+        277
+      ],
+      "summary_anchor": "sec-10-5-2",
+      "focus": "wrath of khan: 1.702 vs −0.371"
+    },
+    {
+      "section": "10.5.3",
+      "title": "모델 검증하기",
+      "printed_pages": [
+        277,
+        279
+      ],
+      "summary_anchor": "evaluation",
+      "focus": "검색어 단위 분할과 평균 P@5 = 0.36"
+    },
+    {
+      "section": "10.6",
+      "title": "5·6단계 · 모델 업로드와 검색",
+      "printed_pages": [
+        279,
+        283
+      ],
+      "summary_anchor": "serving",
+      "focus": "특징·통계·가중치를 함께 옮기기"
+    },
+    {
+      "section": "10.6.1",
+      "title": "LTR 모델 배포와 사용",
+      "printed_pages": [
+        279,
+        281
+      ],
+      "summary_anchor": "serving",
+      "focus": "harry potter: 전체 평가 vs 500개 재정렬"
+    },
+    {
+      "section": "10.6.2",
+      "title": "LTR 성능의 절충",
+      "printed_pages": [
+        282,
+        283
+      ],
+      "summary_anchor": "tradeoffs",
+      "focus": "모델·후보 수·특징 계산·특징 수와 Cross-encoder"
+    },
+    {
+      "section": "10.7",
+      "title": "반복하며 개선하기",
+      "printed_pages": [
+        283,
+        283
+      ],
+      "summary_anchor": "iterate",
+      "focus": "Return of the Jedi, ipad / ipad cable 반례"
+    }
+  ],
+  "study_order": [
+    "overview",
+    "judgments",
+    "features",
+    "normalize",
+    "pairwise",
+    "scoring",
+    "evaluation",
+    "serving",
+    "tradeoffs",
+    "iterate",
+    "recap"
+  ],
+  "followup_answers": [
+    {
+      "id": "qa-001",
+      "date": "2026-10-12",
+      "question": "소셜커머스의 대량 데이터에 100개 검색어가 부족할 때 학습 규모·페이징 구조와 대책·사례는?",
+      "sections": [
+        "10.3",
+        "10.4",
+        "10.5",
+        "10.6",
+        "10.7"
+      ],
+      "notes_anchor": "qa-001",
+      "article": "ai-powered-search/ch10_large_scale_ltr_pagination.html"
+    }
+  ],
+  "maintenance": [
+    "후속 질문에 답변한 뒤 사용자가 누적 정리를 요청하면 ai-powered-search/ch10_notes.html의 #followup-answers에 정적 article을 추가한다. 첫 기록 추가 시 빈 상태 문구를 제거한다.",
+    "기록에는 고유 ID qa-001부터 순서대로, 질문 날짜, 원문 절, 질문, 쉬운 설명, 예제, 본문 링크와 원문/보충 구분을 남긴다. 실제 묻지 않은 질문을 사용자 질문으로 만들지 않는다.",
+    "추가 설명의 ID·질문·관련 절·notes_anchor를 이 JSON의 followup_answers에도 등록한다.",
+    "핵심 이해를 바꾸는 보충은 요약의 해당 절에도 링크한다. 원문 숫자나 판정 변경은 피하고 오류 정정·보충 예제를 표시한다.",
+    "브라우저 메모는 localStorage에만 있다. 파일에 자동 반영되지 않는다. 사용자가 내보낸 JSON이 주어지면 내용을 읽어 정리한다.",
+    "수정 후 절 링크, 원문 PDF 페이지, 예제 계산, 오프라인 브라우저와 모바일 표시를 확인한다.",
+    "HTML 추가·이동 시 저장소의 update-html-index 스킬로 루트 목차를 갱신한다."
+  ],
+  "opensearch_lab": {
+    "version": "3.3.2",
+    "guide_anchors": [
+      "quickstart",
+      "cluster",
+      "data",
+      "features",
+      "logging",
+      "training",
+      "deploy",
+      "search",
+      "results",
+      "repeat",
+      "troubleshoot",
+      "sources"
+    ],
+    "verified_storage": "compose.ram.yaml",
+    "followup_destination": "ai-powered-search/ch10_notes.html#followup-answers",
+    "update_note": "실습 코드를 바꾸면 설명·실측 결과 사본과 실행 키트 ZIP, HTML 내 ZIP 다운로드도 함께 갱신한다. 런타임 data/와 artifacts/는 커밋하지 않는다."
+  },
+  "source_note": "원문 인쇄 쪽수 254–284. 개인 소장 원본 PDF는 이 공개 저장소에 포함하지 않음."
+}

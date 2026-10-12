@@ -1,0 +1,711 @@
+{
+  "passed": true,
+  "storage_note": "Storage follows node startup: named volumes by default, disposable RAM with compose.ram.yaml.",
+  "queries": {
+    "social network": {
+      "query": "social network",
+      "model_name": "ch10_movie_svm_966dfda0c51d",
+      "window_size": 500,
+      "size": 5,
+      "matched_documents": {
+        "value": 879,
+        "relation": "eq"
+      },
+      "candidate_policy": "one primary shard; BM25 most_fields(title, overview), then top-window rescore",
+      "baseline": [
+        {
+          "doc_id": "37799",
+          "title": "The Social Network",
+          "score": 12.057963
+        },
+        {
+          "doc_id": "10774",
+          "title": "Network",
+          "score": 8.756067
+        },
+        {
+          "doc_id": "451184",
+          "title": "Wasp Network",
+          "score": 7.640266
+        },
+        {
+          "doc_id": "417268",
+          "title": "Social Suicide",
+          "score": 7.4423504
+        },
+        {
+          "doc_id": "679212",
+          "title": "The Social Ones",
+          "score": 7.365785
+        }
+      ],
+      "ltr": [
+        {
+          "doc_id": "37799",
+          "title": "The Social Network",
+          "release_year": 2010,
+          "features": [
+            8.243603,
+            3.8143613,
+            2010.0
+          ],
+          "opensearch_score": 2.4912667,
+          "python_score": 2.4912665089144657,
+          "absolute_error": 1.910855345066409e-07
+        },
+        {
+          "doc_id": "451184",
+          "title": "Wasp Network",
+          "release_year": 2020,
+          "features": [
+            5.025649,
+            2.6146169,
+            2020.0
+          ],
+          "opensearch_score": 1.6144516,
+          "python_score": 1.6144513923089132,
+          "absolute_error": 2.0769108677320958e-07
+        },
+        {
+          "doc_id": "417268",
+          "title": "Social Suicide",
+          "release_year": 2015,
+          "features": [
+            4.470932,
+            2.9714184,
+            2015.0
+          ],
+          "opensearch_score": 1.516699,
+          "python_score": 1.5166986183151763,
+          "absolute_error": 3.816848237470083e-07
+        },
+        {
+          "doc_id": "679212",
+          "title": "The Social Ones",
+          "release_year": 2019,
+          "features": [
+            3.8810372,
+            3.484748,
+            2019.0
+          ],
+          "opensearch_score": 1.5117812,
+          "python_score": 1.5117809026810838,
+          "absolute_error": 2.973189161536993e-07
+        },
+        {
+          "doc_id": "10774",
+          "title": "Network",
+          "release_year": 1976,
+          "features": [
+            5.9264307,
+            2.8296368,
+            1976.0
+          ],
+          "opensearch_score": 1.5110886,
+          "python_score": 1.5110883989533972,
+          "absolute_error": 2.0104660269915087e-07
+        }
+      ],
+      "score_parity": "passed",
+      "requests": {
+        "baseline": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "social network",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          }
+        },
+        "ltr": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "social network",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          },
+          "rescore": {
+            "window_size": 500,
+            "query": {
+              "rescore_query": {
+                "sltr": {
+                  "model": "ch10_movie_svm_966dfda0c51d",
+                  "params": {
+                    "keywords": "social network"
+                  }
+                }
+              },
+              "query_weight": 0.0,
+              "rescore_query_weight": 1.0,
+              "score_mode": "total"
+            }
+          }
+        }
+      }
+    },
+    "star wars": {
+      "query": "star wars",
+      "model_name": "ch10_movie_svm_966dfda0c51d",
+      "window_size": 500,
+      "size": 5,
+      "matched_documents": {
+        "value": 1805,
+        "relation": "eq"
+      },
+      "candidate_policy": "one primary shard; BM25 most_fields(title, overview), then top-window rescore",
+      "baseline": [
+        {
+          "doc_id": "12180",
+          "title": "Star Wars: The Clone Wars",
+          "score": 11.216843
+        },
+        {
+          "doc_id": "482287",
+          "title": "The Stars of Star Wars",
+          "score": 10.907456
+        },
+        {
+          "doc_id": "578870",
+          "title": "Star Wars Uncut: Director's Cut",
+          "score": 10.710783
+        },
+        {
+          "doc_id": "128295",
+          "title": "Star Wars: The Legacy Revealed",
+          "score": 10.651733
+        },
+        {
+          "doc_id": "358536",
+          "title": "When Star Wars Ruled the World",
+          "score": 10.466224
+        }
+      ],
+      "ltr": [
+        {
+          "doc_id": "12180",
+          "title": "Star Wars: The Clone Wars",
+          "release_year": 2008,
+          "features": [
+            5.813858,
+            5.4029846,
+            2008.0
+          ],
+          "opensearch_score": 2.2254126,
+          "python_score": 2.225412527477586,
+          "absolute_error": 7.252241385202751e-08
+        },
+        {
+          "doc_id": "578870",
+          "title": "Star Wars Uncut: Director's Cut",
+          "release_year": 2012,
+          "features": [
+            4.667889,
+            6.0428934,
+            2012.0
+          ],
+          "opensearch_score": 2.118453,
+          "python_score": 2.1184527045679866,
+          "absolute_error": 2.954320135195587e-07
+        },
+        {
+          "doc_id": "515773",
+          "title": "Star Wars Spoofs",
+          "release_year": 2011,
+          "features": [
+            5.8996506,
+            4.371416,
+            2011.0
+          ],
+          "opensearch_score": 2.0734968,
+          "python_score": 2.0734965159211214,
+          "absolute_error": 2.840788786429016e-07
+        },
+        {
+          "doc_id": "128295",
+          "title": "Star Wars: The Legacy Revealed",
+          "release_year": 2007,
+          "features": [
+            4.667889,
+            5.9838443,
+            2007.0
+          ],
+          "opensearch_score": 2.0677288,
+          "python_score": 2.0677285207957183,
+          "absolute_error": 2.7920428147254484e-07
+        },
+        {
+          "doc_id": "482287",
+          "title": "The Stars of Star Wars",
+          "release_year": 1999,
+          "features": [
+            4.667889,
+            6.2395678,
+            1999.0
+          ],
+          "opensearch_score": 2.0527992,
+          "python_score": 2.0527988684512244,
+          "absolute_error": 3.3154877554508744e-07
+        }
+      ],
+      "score_parity": "passed",
+      "requests": {
+        "baseline": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "star wars",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          }
+        },
+        "ltr": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "star wars",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          },
+          "rescore": {
+            "window_size": 500,
+            "query": {
+              "rescore_query": {
+                "sltr": {
+                  "model": "ch10_movie_svm_966dfda0c51d",
+                  "params": {
+                    "keywords": "star wars"
+                  }
+                }
+              },
+              "query_weight": 0.0,
+              "rescore_query_weight": 1.0,
+              "score_mode": "total"
+            }
+          }
+        }
+      }
+    },
+    "wrath of khan": {
+      "query": "wrath of khan",
+      "model_name": "ch10_movie_svm_966dfda0c51d",
+      "window_size": 500,
+      "size": 5,
+      "matched_documents": {
+        "value": 47317,
+        "relation": "eq"
+      },
+      "candidate_policy": "one primary shard; BM25 most_fields(title, overview), then top-window rescore",
+      "baseline": [
+        {
+          "doc_id": "154",
+          "title": "Star Trek II: The Wrath of Khan",
+          "score": 9.32321
+        },
+        {
+          "doc_id": "136976",
+          "title": "Genghis Khan",
+          "score": 8.850493
+        },
+        {
+          "doc_id": "4868",
+          "title": "Genghis Khan",
+          "score": 8.439173
+        },
+        {
+          "doc_id": "547903",
+          "title": "Team Khan",
+          "score": 8.321531
+        },
+        {
+          "doc_id": "12246",
+          "title": "Mongol: The Rise of Genghis Khan",
+          "score": 7.942235
+        }
+      ],
+      "ltr": [
+        {
+          "doc_id": "547903",
+          "title": "Team Khan",
+          "release_year": 2018,
+          "features": [
+            4.733033,
+            3.5884984,
+            2018.0
+          ],
+          "opensearch_score": 1.716513,
+          "python_score": 1.716512730211617,
+          "absolute_error": 2.6978838296720653e-07
+        },
+        {
+          "doc_id": "136976",
+          "title": "Genghis Khan",
+          "release_year": 2005,
+          "features": [
+            4.733033,
+            4.1174603,
+            2005.0
+          ],
+          "opensearch_score": 1.7137003,
+          "python_score": 1.7136999941470445,
+          "absolute_error": 3.0585295540674906e-07
+        },
+        {
+          "doc_id": "154",
+          "title": "Star Trek II: The Wrath of Khan",
+          "release_year": 1982,
+          "features": [
+            5.9217176,
+            3.401492,
+            1982.0
+          ],
+          "opensearch_score": 1.6656367,
+          "python_score": 1.6656363919637454,
+          "absolute_error": 3.0803625472586305e-07
+        },
+        {
+          "doc_id": "12246",
+          "title": "Mongol: The Rise of Genghis Khan",
+          "release_year": 2007,
+          "features": [
+            3.6787908,
+            4.2634444,
+            2007.0
+          ],
+          "opensearch_score": 1.5182894,
+          "python_score": 1.5182889708226421,
+          "absolute_error": 4.2917735787462163e-07
+        },
+        {
+          "doc_id": "143142",
+          "title": "Axe Giant - The Wrath of Paul Bunyan",
+          "release_year": 2013,
+          "features": [
+            3.2324488,
+            4.2780223,
+            2013.0
+          ],
+          "opensearch_score": 1.4673945,
+          "python_score": 1.4673941428708788,
+          "absolute_error": 3.5712912116458995e-07
+        }
+      ],
+      "score_parity": "passed",
+      "requests": {
+        "baseline": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "wrath of khan",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          }
+        },
+        "ltr": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "wrath of khan",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          },
+          "rescore": {
+            "window_size": 500,
+            "query": {
+              "rescore_query": {
+                "sltr": {
+                  "model": "ch10_movie_svm_966dfda0c51d",
+                  "params": {
+                    "keywords": "wrath of khan"
+                  }
+                }
+              },
+              "query_weight": 0.0,
+              "rescore_query_weight": 1.0,
+              "score_mode": "total"
+            }
+          }
+        }
+      }
+    },
+    "harry potter": {
+      "query": "harry potter",
+      "model_name": "ch10_movie_svm_966dfda0c51d",
+      "window_size": 500,
+      "size": 5,
+      "matched_documents": {
+        "value": 367,
+        "relation": "eq"
+      },
+      "candidate_policy": "one primary shard; BM25 most_fields(title, overview), then top-window rescore",
+      "baseline": [
+        {
+          "doc_id": "570724",
+          "title": "The Story of Harry Potter",
+          "score": 12.596516
+        },
+        {
+          "doc_id": "116972",
+          "title": "Discovering the Real World of Harry Potter",
+          "score": 12.375667
+        },
+        {
+          "doc_id": "672",
+          "title": "Harry Potter and the Chamber of Secrets",
+          "score": 11.118427
+        },
+        {
+          "doc_id": "54507",
+          "title": "A Very Potter Musical",
+          "score": 10.956009
+        },
+        {
+          "doc_id": "671",
+          "title": "Harry Potter and the Philosopher's Stone",
+          "score": 10.946974
+        }
+      ],
+      "ltr": [
+        {
+          "doc_id": "570724",
+          "title": "The Story of Harry Potter",
+          "release_year": 2018,
+          "features": [
+            5.506375,
+            7.0901413,
+            2018.0
+          ],
+          "opensearch_score": 2.5539348,
+          "python_score": 2.5539347565742827,
+          "absolute_error": 4.342571724436084e-08
+        },
+        {
+          "doc_id": "116972",
+          "title": "Discovering the Real World of Harry Potter",
+          "release_year": 2001,
+          "features": [
+            4.5552945,
+            7.820372,
+            2001.0
+          ],
+          "opensearch_score": 2.3420696,
+          "python_score": 2.3420694404037086,
+          "absolute_error": 1.5959629129369546e-07
+        },
+        {
+          "doc_id": "672",
+          "title": "Harry Potter and the Chamber of Secrets",
+          "release_year": 2002,
+          "features": [
+            4.5552945,
+            6.563133,
+            2002.0
+          ],
+          "opensearch_score": 2.1122162,
+          "python_score": 2.112216010991865,
+          "absolute_error": 1.8900813536504302e-07
+        },
+        {
+          "doc_id": "54507",
+          "title": "A Very Potter Musical",
+          "release_year": 2009,
+          "features": [
+            3.2577925,
+            7.698216,
+            2009.0
+          ],
+          "opensearch_score": 2.088306,
+          "python_score": 2.0883058119845086,
+          "absolute_error": 1.880154916200638e-07
+        },
+        {
+          "doc_id": "671",
+          "title": "Harry Potter and the Philosopher's Stone",
+          "release_year": 2001,
+          "features": [
+            4.9858837,
+            5.96109,
+            2001.0
+          ],
+          "opensearch_score": 2.0879998,
+          "python_score": 2.0879995747649907,
+          "absolute_error": 2.2523500931015406e-07
+        }
+      ],
+      "score_parity": "passed",
+      "requests": {
+        "baseline": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "harry potter",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          }
+        },
+        "ltr": {
+          "size": 5,
+          "track_total_hits": true,
+          "_source": [
+            "id",
+            "title",
+            "release_year"
+          ],
+          "query": {
+            "multi_match": {
+              "query": "harry potter",
+              "fields": [
+                "title",
+                "overview"
+              ],
+              "type": "most_fields"
+            }
+          },
+          "rescore": {
+            "window_size": 500,
+            "query": {
+              "rescore_query": {
+                "sltr": {
+                  "model": "ch10_movie_svm_966dfda0c51d",
+                  "params": {
+                    "keywords": "harry potter"
+                  }
+                }
+              },
+              "query_weight": 0.0,
+              "rescore_query_weight": 1.0,
+              "score_mode": "total"
+            }
+          }
+        }
+      }
+    }
+  },
+  "explicit_document_example": {
+    "query": "wrath of khan",
+    "documents": [
+      {
+        "id": "154",
+        "title": "Star Trek II: The Wrath of Khan",
+        "features": [
+          5.9217176,
+          3.401492,
+          1982.0
+        ],
+        "python_score": 1.6656363919637454,
+        "opensearch_score": 1.6656367
+      },
+      {
+        "id": "157",
+        "title": "Star Trek III: The Search for Spock",
+        "features": [
+          0.0,
+          0.0,
+          1984.0
+        ],
+        "python_score": -0.3034031528114308,
+        "opensearch_score": -0.3034028
+      }
+    ],
+    "request": {
+      "size": 2,
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "ids": {
+                "values": [
+                  "154",
+                  "157"
+                ]
+              }
+            }
+          ],
+          "must": [
+            {
+              "sltr": {
+                "model": "ch10_movie_svm_966dfda0c51d",
+                "params": {
+                  "keywords": "wrath of khan"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "max_search_score_error": 4.2917735787462163e-07,
+  "model_reuse": "passed",
+  "query_split_disjoint": true
+}

@@ -1,0 +1,62 @@
+name: ch10-opensearch-ltr
+
+x-opensearch: &opensearch
+  image: opensearchproject/opensearch:3.3.2
+  environment: &node-env
+    cluster.name: ch10-ltr-lab
+    discovery.seed_hosts: opensearch-node1,opensearch-node2
+    cluster.initial_cluster_manager_nodes: opensearch-node1,opensearch-node2
+    bootstrap.memory_lock: "true"
+    OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    DISABLE_INSTALL_DEMO_CONFIG: "true"
+    DISABLE_SECURITY_PLUGIN: "true"
+  ulimits:
+    memlock: {soft: -1, hard: -1}
+    nofile: {soft: 65536, hard: 65536}
+  mem_limit: 2g
+  healthcheck:
+    test: [CMD-SHELL, "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=3s' > /dev/null"]
+    interval: 10s
+    timeout: 5s
+    start_period: 60s
+    retries: 30
+  networks: [ltr-lab]
+
+services:
+  opensearch-node1:
+    <<: *opensearch
+    environment:
+      <<: *node-env
+      node.name: opensearch-node1
+    ports: ["127.0.0.1:${LTR_HTTP_PORT:-19200}:9200"]
+    volumes: [node1-data:/usr/share/opensearch/data]
+
+  opensearch-node2:
+    <<: *opensearch
+    environment:
+      <<: *node-env
+      node.name: opensearch-node2
+    volumes: [node2-data:/usr/share/opensearch/data]
+
+  trainer:
+    profiles: [tools]
+    build:
+      context: .
+      dockerfile: Dockerfile.trainer
+    working_dir: /work
+    environment:
+      OPENSEARCH_URL: http://opensearch-node1:9200
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+    volumes: [.:/work]
+    networks: [ltr-lab]
+    command: [python, lab.py, --help]
+
+networks:
+  ltr-lab:
+
+volumes:
+  node1-data:
+  node2-data:

@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="10장 LTR 학습을 위한 섹션별 질문, 답변, 추가 설명 기록장">
+  <title>10장 LTR · 질문과 추가 메모</title>
+  <style>
+    :root{--bg:#f5f2e9;--surface:#fffef9;--surface-2:#ece8dc;--border:#d9d3c4;--text:#263d3a;--dim:#606c64;--accent:#126453;--accent-soft:#e3eee4;--gold:#93611c;--red:#a44433;--sans:"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;--serif:"AppleMyungjo","Nanum Myeongjo",Georgia,serif}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.8 var(--sans);-webkit-font-smoothing:antialiased}main{max-width:1000px;margin:auto;padding:30px 28px 70px;min-width:0}a{color:var(--accent);text-underline-offset:4px}button,input,select,textarea{font:inherit}button{cursor:pointer}a,button,input,select,textarea{outline-offset:4px}:focus-visible{outline:3px solid var(--gold)}h1{font:700 clamp(32px,5vw,48px)/1.35 var(--serif);letter-spacing:-.04em;margin:18px 0}h2{font:700 27px/1.5 var(--serif);letter-spacing:-.025em;margin:8px 0 16px}h3{font-size:18px;line-height:1.65;margin:10px 0}p{margin:10px 0 18px;word-break:keep-all;overflow-wrap:anywhere}.kicker{font:700 11px/1.7 Menlo,Consolas,monospace;letter-spacing:.08em;color:var(--accent)}.lead{font-size:18px;color:var(--dim)}.topbar,.actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.topbar{justify-content:space-between;margin-bottom:38px}.button{display:inline-block;max-width:100%;border:1px solid var(--border);border-radius:5px;padding:8px 13px;background:var(--surface);color:var(--text);text-decoration:none;font-size:13px;min-height:42px;overflow-wrap:anywhere}.button:hover{background:var(--surface-2)}.primary{background:var(--accent);border-color:var(--accent);color:#fff}.primary:hover{background:#0d5143}.muted,.help{color:var(--dim);font-size:13px}.callout{padding:16px 20px;background:var(--accent-soft);border-left:3px solid var(--accent);margin:25px 0}.callout p{font-size:14px;margin:4px 0}.section-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 22px;margin:22px 0 0}.section-nav a{font-size:13px;line-height:1.65;padding:9px 0;border-bottom:1px solid var(--border);text-decoration:none;overflow-wrap:anywhere}section{margin-top:50px;scroll-margin-top:24px}.editor{padding:25px;background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-top:20px}.form-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;margin-bottom:20px}.field{min-width:0}label{display:block;font-size:14px;font-weight:700;margin-bottom:7px}input,select,textarea{display:block;width:100%;max-width:100%;min-width:0;border:1px solid #aaa99a;border-radius:4px;background:#fffefb;color:var(--text);padding:10px 11px;font-size:15px}select{min-height:47px}textarea{min-height:115px;resize:vertical;line-height:1.7;margin-bottom:7px}.field+.field{margin-top:22px}.form-row .field{margin:0}.form-row .button{margin-bottom:1px}.editor .actions{margin-top:24px}.help{margin:4px 0 14px}.status{font-size:14px;min-height:1.8em;margin:14px 0 0;overflow-wrap:anywhere}.status[data-error="true"]{color:var(--red)}.saved-heading{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;align-items:baseline}.saved-heading h2{margin-bottom:4px}.note{border-top:1px solid var(--border);padding:22px 0}.note .note-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12px;color:var(--dim)}.note h3,.note .body{overflow-wrap:anywhere;white-space:pre-wrap}.note .body{font-size:15px;margin:6px 0 18px}.note h4{font-size:12px;color:var(--dim);margin:18px 0 0}.note .actions{margin-top:18px}.empty{border-top:1px solid var(--border);padding-top:20px;color:var(--dim);font-size:14px}.import-export{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:21px 0 0}.file-label{font-size:13px;font-weight:400;margin:0}.file-label input{font-size:12px;padding:8px;max-width:300px;margin-top:5px}.static-answer{background:var(--surface);border-top:3px solid var(--accent);padding:20px;margin:20px 0}.static-answer h3{margin-top:0}footer{margin-top:45px;border-top:1px solid var(--border);padding-top:20px;font-size:12px;color:var(--dim)}.skip{position:fixed;top:-100px;left:10px;background:var(--surface);padding:10px;z-index:10}.skip:focus{top:10px}code{font-size:.87em;color:var(--gold);background:var(--surface-2);padding:2px 4px;overflow-wrap:anywhere}noscript p{border-left:3px solid var(--red);padding:12px;color:var(--red)}[hidden]{display:none!important}
+    @media(max-width:650px){main{padding:22px 18px 50px}.section-nav{grid-template-columns:repeat(2,minmax(0,1fr));gap:0 15px}.editor{padding:20px 16px}.form-row{grid-template-columns:1fr;gap:10px}.form-row .button{justify-self:start}.topbar{margin-bottom:28px}h2{font-size:25px}}
+    @media(max-width:360px){main{padding-left:14px;padding-right:14px}.section-nav{grid-template-columns:1fr}.editor{padding:18px 13px}.button{padding:8px 10px}.file-label input{max-width:100%}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+    @media print{body{background:#fff;font-size:10pt;color:#111}main{max-width:none;padding:0}.topbar,.skip,.section-nav,.editor,.import-export,.note .actions,.status,.no-print{display:none!important}h1{font-size:27pt}h2{font-size:19pt}section{margin-top:25pt}.note,.static-answer{break-inside:avoid}a{color:inherit;text-decoration:none}.callout{background:#f3f6ef}footer{font-size:9pt}@page{size:A4;margin:15mm}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 건너뛰기</a>
+  <main id="main">
+    <div class="topbar"><a class="button" href="ch10_summary.html">← 10장 학습 정리</a><div class="actions"><a class="button" href="ch10_opensearch_lab.html">OpenSearch 실습</a><a class="button" href="../index.html">학습 목록</a><button class="button" id="print" type="button">인쇄 / PDF</button></div></div>
+    <header>
+      <div class="kicker">CHAPTER 10 · STUDY NOTEBOOK</div>
+      <h1>질문을 남기고,<br>이해한 내용을 쌓아가기</h1>
+      <p class="lead">LTR을 공부하다 멈춘 지점, 다시 설명해 보고 싶은 개념,<br>원문 예제로 확인한 답을 섹션별로 기록합니다.</p>
+      <div class="callout"><p><strong>두 가지 방식으로 기록합니다.</strong> 직접 적는 메모는 아래의 <a href="#drafts">브라우저 메모</a>에 저장하세요. 대화로 질문해 정리한 설명은 <a href="#followup-answers">대화에서 정리한 추가 설명</a>에 HTML 파일 내용으로 추가할 수 있습니다.</p></div>
+    </header>
+    <nav aria-label="10장 학습 정리 바로가기" class="section-nav">
+      <a href="ch10_summary.html#overview">10.1 · LTR의 큰 그림</a>
+      <a href="ch10_summary.html#judgments">10.2 · 정답표 만들기</a>
+      <a href="ch10_summary.html#features">10.3 · 특징을 숫자로</a>
+      <a href="ch10_summary.html#normalize">10.4.1–10.4.2 · 표준화</a>
+      <a href="ch10_summary.html#pairwise">10.4 · 문서 쌍과 SVMrank</a>
+      <a href="ch10_summary.html#scoring">10.5.1–10.5.2 · 학습과 점수</a>
+      <a href="ch10_summary.html#evaluation">10.5.3 · 새 검색어로 평가</a>
+      <a href="ch10_summary.html#serving">10.6 · 검색 엔진에 적용</a>
+      <a href="ch10_summary.html#tradeoffs">10.6.2 · 품질과 응답 속도</a>
+      <a href="ch10_summary.html#iterate">10.7 · 어디를 개선할까</a>
+      <a href="ch10_summary.html#recap">복습 · 용어 · 원문 보완</a>
+    </nav>
+    <section id="drafts" aria-labelledby="drafts-title">
+      <div class="kicker">01 / MY BROWSER NOTES</div>
+      <h2 id="drafts-title">브라우저 메모</h2>
+      <p class="muted" id="storage-help"><strong>‘메모 저장’을 눌러야 저장됩니다.</strong> 메모는 현재 브라우저와 이 파일 경로에 저장되며, HTML 파일 자체에는 기록되지 않습니다. 브라우저 데이터 삭제 시 없어질 수 있습니다. 다른 기기·브라우저·경로로 옮기려면 JSON으로 내보낸 뒤 가져오세요.</p>
+      <noscript><p>브라우저 메모 기능은 JavaScript가 필요합니다. 요약 바로가기와 아래의 추가 설명은 그대로 읽을 수 있습니다.</p></noscript>
+      <form class="editor" id="note-form" aria-describedby="storage-help">
+        <div class="form-row">
+          <div class="field"><label for="note-section">공부한 섹션</label><select id="note-section" name="section">
+            <option value="overview">10.1 · LTR의 큰 그림</option>
+            <option value="judgments">10.2 · 정답표 만들기</option>
+            <option value="features">10.3 · 특징을 숫자로</option>
+            <option value="normalize">10.4.1–10.4.2 · 표준화</option>
+            <option value="pairwise">10.4 · 문서 쌍과 SVMrank</option>
+            <option value="scoring">10.5.1–10.5.2 · 학습과 점수</option>
+            <option value="evaluation">10.5.3 · 새 검색어로 평가</option>
+            <option value="serving">10.6 · 검색 엔진에 적용</option>
+            <option value="tradeoffs">10.6.2 · 품질과 응답 속도</option>
+            <option value="iterate">10.7 · 어디를 개선할까</option>
+            <option value="recap">복습 · 용어 · 원문 보완</option>
+          </select></div>
+          <a class="button" id="section-link" href="ch10_summary.html#overview">선택한 섹션 읽기 ↗</a>
+        </div>
+        <div class="field"><label for="note-question">질문 또는 메모 제목 <span class="muted">(필수)</span></label><textarea id="note-question" name="question" rows="2" maxlength="2000" required placeholder="이 섹션에서 궁금한 점을 적어 보세요."></textarea></div>
+        <div class="field"><label for="note-answer">답변 · 내가 이해한 내용</label><textarea id="note-answer" name="answer" rows="5" maxlength="20000" placeholder="아직 답을 몰라도 괜찮습니다. 나중에 수정해서 채울 수 있습니다."></textarea></div>
+        <div class="field"><label for="note-example">예제 · 다시 확인할 부분</label><textarea id="note-example" name="example" rows="3" maxlength="10000" placeholder="영화명, 수치, Listing 번호 등을 함께 기록해 보세요."></textarea></div>
+        <div class="actions"><button class="button primary" id="save-note" type="submit">메모 저장</button><button class="button" id="new-note" type="button">새 메모 작성</button><span class="muted" id="edit-state">새 메모 작성 중</span></div>
+      </form>
+      <p class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <div class="import-export no-print"><button class="button" id="export-notes" type="button">메모 JSON 내보내기</button><label class="file-label" for="import-notes">메모 JSON 가져오기<input id="import-notes" type="file" accept=".json,application/json"></label></div>
+      <p class="help no-print">가져오기는 기존 메모에 합칩니다. 내용이 같은 메모는 중복 추가하지 않고, 내용이 달라진 메모는 새 기록으로 남깁니다.</p>
+    </section>
+    <section id="saved-notes" aria-labelledby="saved-title"><div class="saved-heading"><h2 id="saved-title">저장한 메모</h2><span class="muted" id="note-count">0개</span></div><div id="notes-list"><p class="empty">아직 저장한 메모가 없습니다. 질문만 적어 두었다가 답을 덧붙여도 좋습니다.</p></div></section>
+    <section id="followup-answers" aria-labelledby="followup-title">
+      <div class="kicker">02 / FOLLOW-UP EXPLANATIONS</div>
+      <h2 id="followup-title">대화에서 정리한 추가 설명</h2>
+      <p>공부하며 질문할 때 <strong>“10.4 표준화에서 궁금한 점을 추가 메모로 정리해줘”</strong>처럼 원문 절이나 개념을 함께 말해 주세요. 질문과 답변, 필요한 원문 예제를 이곳에 섹션별로 추가할 수 있습니다.</p>
+      <p class="muted">이 영역은 대화 후 HTML 파일을 수정해 기록하는 곳입니다. 위의 브라우저 메모와 별도로 유지되며, 파일을 복사하거나 공유하면 함께 전달됩니다.</p>
+      <article class="static-answer" id="qa-001"><p class="kicker">2026-10-12 · 원문 10.3–10.7 · 대규모 커머스</p><h3>100개 검색어로는 부족한데, 대량 상품과 페이징은 어떻게 설계할까?</h3><p>학습 검색어 수, 판정 깊이, 전체 상품 수, 재정렬 후보 수, 페이지 크기는 다른 변수입니다. 대표성 있는 학습 표본과 다단계 랭킹을 구성하고, 확정한 결과 ID 목록을 세션 커서로 전달하는 설계를 설명했습니다.</p><p>OpenSearch 3.3.2의 native rescore·search_after 제약은 로컬 서버에서 확인했습니다. 공개 기업 사례와 이 질문에 대한 설계 제안은 구분했습니다.</p><a href="ch10_large_scale_ltr_pagination.html">대규모 LTR·페이지네이션 보충 HTML 열기 →</a></article>
+      <!--
+      후속 설명 추가 규칙: 첫 답변을 추가할 때 #followup-empty를 제거합니다.
+      브라우저 localStorage의 사용자 초안을 읽거나 변경하지 않습니다.
+      qa-001, qa-002 등 고유 ID를 사용하고 원문 근거와 보충 설명을 구분합니다.
+      summary/ch10_study_index.json의 후속 질문 인덱스도 함께 갱신합니다.
+      정적 질문 카드 템플릿 (실제 질문을 받은 뒤 내용과 링크를 채워 추가):
+      <article class="static-answer" id="qa-001">
+        <p class="kicker">원문 절: 10.x · 개념명</p>
+        <h3>질문: 사용자가 물어본 내용</h3>
+        <h4>답변</h4><p>섹션 내용과 연결한 설명</p>
+        <h4>예제</h4><p>원문의 데이터·수치를 이용한 예제</p>
+        <p class="muted">출처: 원문 페이지 / Listing 번호. 보충: 이해를 돕기 위해 추가한 설명을 구분해 적기.</p>
+        <a href="ch10_summary.html#normalize">관련 학습 섹션으로</a>
+      </article>
+      -->
+    </section>
+    <footer><p>10장 Learning to Rank · <a href="ch10_summary.html">학습 정리</a> · <a href="ch10_study_index.json">섹션·후속 질문 인덱스</a></p></footer>
+  </main>
+  <script>
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const select = $('note-section');
+    const sectionNames = new Map(Array.from(select.options, option => [option.value, option.textContent]));
+    const storageKey = 'ltr-ch10-notes:v1:' + location.pathname;
+    const MAX_NOTES = 1000;
+    const MAX_FILE_SIZE = 128 * 1024 * 1024;
+    let notes = [];
+    let editingId = null;
+    let dirty = false;
+    let storageReadable = true;
+
+    function status(message, isError = false) {
+      $('status').textContent = message;
+      $('status').dataset.error = String(isError);
+    }
+    function newId() {
+      return 'note-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+    }
+    function validate(payload) {
+      if (!payload || payload.format !== 'ltr-ch10-notes' || payload.version !== 1 || !Array.isArray(payload.notes)) {
+        throw new Error('이 페이지에서 내보낸 버전 1의 메모 JSON 파일을 선택해 주세요.');
+      }
+      if (payload.notes.length > MAX_NOTES) throw new Error('한 번에 불러올 수 있는 메모는 1,000개까지입니다.');
+      const ids = new Set();
+      return payload.notes.map((note, index) => {
+        const valid = note && typeof note === 'object' && !Array.isArray(note)
+          && typeof note.id === 'string' && note.id.length > 0 && note.id.length <= 128 && !ids.has(note.id)
+          && sectionNames.has(note.section)
+          && typeof note.question === 'string' && note.question.trim().length > 0 && note.question.length <= 2000
+          && typeof note.answer === 'string' && note.answer.length <= 20000
+          && typeof note.example === 'string' && note.example.length <= 10000
+          && typeof note.createdAt === 'string' && note.createdAt.length <= 40 && Number.isFinite(Date.parse(note.createdAt))
+          && typeof note.updatedAt === 'string' && note.updatedAt.length <= 40 && Number.isFinite(Date.parse(note.updatedAt));
+        if (!valid) throw new Error((index + 1) + '번째 메모의 형식, 길이, 날짜 또는 섹션이 올바르지 않습니다.');
+        ids.add(note.id);
+        return { id: note.id, section: note.section, question: note.question, answer: note.answer, example: note.example,
+          createdAt: new Date(note.createdAt).toISOString(), updatedAt: new Date(note.updatedAt).toISOString() };
+      });
+    }
+    function payload(items) {
+      return { format: 'ltr-ch10-notes', version: 1, notes: items };
+    }
+    function persist(next) {
+      if (!storageReadable) {
+        status('기존 브라우저 저장소를 읽을 수 없어 덮어쓰기를 중단했습니다. 입력 내용은 화면에 남아 있습니다. 브라우저의 저장소 설정을 확인해 주세요.', true);
+        return false;
+      }
+      if (next.length > MAX_NOTES) {
+        status('저장 가능한 메모는 1,000개까지입니다. 현재 메모를 JSON으로 내보내 보관해 주세요.', true);
+        return false;
+      }
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(payload(next)));
+        notes = next;
+        render();
+        return true;
+      } catch (_) {
+        status('브라우저에 저장하지 못했습니다. 저장 공간이나 브라우저 설정을 확인해 주세요. 입력 내용은 화면에 남아 있습니다. 내보내기에는 이전에 저장한 메모만 포함됩니다.', true);
+        return false;
+      }
+    }
+    function element(tag, text, className) {
+      const node = document.createElement(tag);
+      if (text !== undefined) node.textContent = text;
+      if (className) node.className = className;
+      return node;
+    }
+    function sectionLink() {
+      $('section-link').href = 'ch10_summary.html#' + select.value;
+    }
+    function canLeaveDraft() {
+      return !dirty || window.confirm('저장하지 않은 입력이 있습니다. 이 입력을 비우고 다른 메모를 작성할까요?');
+    }
+    function edit(note) {
+      if (!canLeaveDraft()) return;
+      editingId = note.id;
+      select.value = note.section;
+      $('note-question').value = note.question;
+      $('note-answer').value = note.answer;
+      $('note-example').value = note.example;
+      $('save-note').textContent = '수정 내용 저장';
+      $('edit-state').textContent = '저장한 메모 수정 중';
+      dirty = false;
+      sectionLink();
+      status('메모를 불러왔습니다. 수정 후 ‘수정 내용 저장’을 눌러 주세요.');
+      $('note-question').focus();
+    }
+    function render() {
+      const list = $('notes-list');
+      list.replaceChildren();
+      $('note-count').textContent = notes.length + '개';
+      if (!notes.length) {
+        list.append(element('p', '아직 저장한 메모가 없습니다. 질문만 적어 두었다가 답을 덧붙여도 좋습니다.', 'empty'));
+        return;
+      }
+      [...notes].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).forEach(note => {
+        const article = element('article', undefined, 'note');
+        const meta = element('div', undefined, 'note-meta');
+        const link = element('a', sectionNames.get(note.section));
+        link.href = 'ch10_summary.html#' + note.section;
+        const time = element('time', '수정: ' + new Date(note.updatedAt).toLocaleString('ko-KR'));
+        time.dateTime = note.updatedAt;
+        meta.append(link, time);
+        article.append(meta, element('h3', note.question));
+        article.append(element('h4', '답변 · 내가 이해한 내용'), element('p', note.answer || '아직 답변을 적지 않았습니다.', 'body'));
+        if (note.example) article.append(element('h4', '예제 · 다시 확인할 부분'), element('p', note.example, 'body'));
+        const actions = element('div', undefined, 'actions');
+        const button = element('button', '이 메모 수정', 'button');
+        button.type = 'button';
+        button.addEventListener('click', () => edit(note));
+        actions.append(button);
+        article.append(actions);
+        list.append(article);
+      });
+    }
+    function resetForm() {
+      editingId = null;
+      $('note-question').value = '';
+      $('note-answer').value = '';
+      $('note-example').value = '';
+      $('save-note').textContent = '메모 저장';
+      $('edit-state').textContent = '새 메모 작성 중';
+      dirty = false;
+    }
+    function selectHash() {
+      const section = location.hash.slice(1);
+      if (sectionNames.has(section)) select.value = section;
+      sectionLink();
+    }
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved !== null) notes = validate(JSON.parse(saved));
+    } catch (_) {
+      storageReadable = false;
+      status('기존 브라우저 메모를 읽지 못했습니다. 원래 저장 데이터는 변경하지 않았습니다. 브라우저의 저장소 설정 또는 보관한 JSON 파일을 확인해 주세요.', true);
+    }
+    render();
+    selectHash();
+    window.addEventListener('hashchange', () => {
+      if (editingId || dirty) return;
+      selectHash();
+    });
+    $('note-form').addEventListener('input', () => { dirty = true; });
+    select.addEventListener('change', () => { dirty = true; sectionLink(); });
+    $('note-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const question = $('note-question').value.trim();
+      if (!question) {
+        status('질문 또는 메모 제목을 입력해 주세요.', true);
+        $('note-question').focus();
+        return;
+      }
+      const now = new Date().toISOString();
+      const previous = notes.find(note => note.id === editingId);
+      const note = { id: previous ? previous.id : newId(), section: select.value, question,
+        answer: $('note-answer').value.trim(), example: $('note-example').value.trim(),
+        createdAt: previous ? previous.createdAt : now, updatedAt: now };
+      const next = previous ? notes.map(item => item.id === previous.id ? note : item) : [...notes, note];
+      if (persist(next)) {
+        resetForm();
+        status(previous ? '수정 내용을 브라우저에 저장했습니다.' : '메모를 브라우저에 저장했습니다.');
+      }
+    });
+    $('new-note').addEventListener('click', () => {
+      if (!canLeaveDraft()) return;
+      resetForm();
+      status('새 메모를 작성할 수 있습니다.');
+      $('note-question').focus();
+    });
+    $('export-notes').addEventListener('click', () => {
+      const json = JSON.stringify({ ...payload(notes), exportedAt: new Date().toISOString() }, null, 2);
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'ch10-ltr-notes-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      status('저장한 메모 ' + notes.length + '개의 JSON 내보내기를 요청했습니다.' + (dirty ? ' 작성 중인 입력은 포함되지 않으므로 먼저 저장해 주세요.' : ''));
+    });
+    function fingerprint(note) {
+      return JSON.stringify([note.section, note.question, note.answer, note.example]);
+    }
+    $('import-notes').addEventListener('change', async event => {
+      const input = event.target;
+      const file = input.files && input.files[0];
+      if (!file) return;
+      try {
+        if (file.size > MAX_FILE_SIZE) throw new Error('JSON 파일 크기는 128MB 이하여야 합니다.');
+        const imported = validate(JSON.parse(await file.text()));
+        const seen = new Set(notes.map(fingerprint));
+        const ids = new Set(notes.map(note => note.id));
+        const added = [];
+        imported.forEach(note => {
+          const signature = fingerprint(note);
+          if (seen.has(signature)) return;
+          seen.add(signature);
+          let id = note.id;
+          while (ids.has(id)) id = newId();
+          ids.add(id);
+          added.push({ ...note, id });
+        });
+        if (!added.length) status('새로 추가할 메모가 없습니다. 기존 메모와 내용이 같은 기록은 건너뛰었습니다.');
+        else if (persist([...notes, ...added])) status('메모 ' + added.length + '개를 추가했습니다. 기존 메모는 그대로 유지했습니다.');
+      } catch (error) {
+        const reason = error instanceof SyntaxError ? 'JSON 문법이 올바르지 않습니다.' : error.message;
+        status('가져오지 못했습니다. ' + reason + ' 기존 메모는 그대로 유지했습니다.', true);
+      } finally {
+        input.value = '';
+      }
+    });
+    window.addEventListener('beforeunload', event => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+    $('print').addEventListener('click', () => window.print());
+  })();
+  </script>
+</body>
+</html>

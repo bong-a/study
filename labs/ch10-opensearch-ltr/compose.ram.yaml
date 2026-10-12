@@ -1,0 +1,12 @@
+# Optional, disposable practice storage. Requires Docker Compose 2.24.4+ (!override).
+# Container recreation or removal loses all OpenSearch indexes and LTR models.
+# Host-side data/ and artifacts/ files remain available.
+services:
+  opensearch-node1:
+    volumes: !override []
+    tmpfs:
+      - /usr/share/opensearch/data:rw,uid=1000,gid=1000,size=536870912
+  opensearch-node2:
+    volumes: !override []
+    tmpfs:
+      - /usr/share/opensearch/data:rw,uid=1000,gid=1000,size=536870912
