@@ -1,7 +1,7 @@
 {
   "chapter": 10,
   "title": "Learning to rank for generalizable search relevance",
-  "updated": "2026-10-12",
+  "updated": "2026-10-14",
   "source_pdf": null,
   "printed_pages": [
     254,
@@ -226,6 +226,17 @@
       ],
       "notes_anchor": "qa-001",
       "article": "ai-powered-search/ch10_large_scale_ltr_pagination.html"
+    },
+    {
+      "id": "qa-002",
+      "date": "2026-10-14",
+      "question": "SVMrank 쪽을 좀 더 이해하기 쉽게 설명해줘. HTML에도 반영해줘.",
+      "sections": [
+        "10.4",
+        "10.5"
+      ],
+      "notes_anchor": "qa-002",
+      "article": "ai-powered-search/ch10_summary.html#svmrank-intuition"
     }
   ],
   "maintenance": [
