@@ -90,7 +90,7 @@
         <a href="ch10_summary.html#normalize">관련 학습 섹션으로</a>
       </article>
       -->
-    <article class="static-answer" id="qa-002"><p class="kicker">2026-10-14 · 원문 10.4–10.5 · SVMrank</p><h3>SVMrank는 무엇을 배우고, 왜 문서 쌍의 차이를 사용할까?</h3><p>같은 검색어에서 A를 B보다 먼저 보여 줘야 한다는 판정을 특징 차이 Δz와 비교 라벨 ±1로 바꿉니다. SVM은 많은 비교의 방향과 마진을 고려해 공통 가중치를 배우고, 검색에서는 각 문서의 w·z 점수로 정렬합니다.</p><p>The Social Network와 #chicagoGirl의 원문 특징을 이용해, 제목과 줄거리가 충돌할 때 가중치가 어떻게 순위를 바꾸는지 확인하는 실험을 추가했습니다. 분리선·마진·학습과 추론의 연결도 쉬운 설명과 접힌 수식으로 보강했습니다.</p><a href="ch10_summary.html#svmrank-intuition">SVMrank 쉬운 설명과 실험으로 이동 →</a></article></section>
+    <article class="static-answer" id="qa-002"><p class="kicker">2026-10-14 · 원문 10.4–10.5 · SVMrank</p><h3>SVMrank는 무엇을 배우고, 왜 문서 쌍의 차이를 사용할까?</h3><p>같은 검색어에서 A를 B보다 먼저 보여 줘야 한다는 판정을 특징 차이 Δz와 비교 라벨 ±1로 바꿉니다. SVM은 많은 비교의 방향과 마진을 고려해 공통 가중치를 배우고, 검색에서는 각 문서의 w·z 점수로 정렬합니다.</p><p>The Social Network와 #chicagoGirl의 원문 특징을 이용해, 제목과 줄거리가 충돌할 때 가중치가 어떻게 순위를 바꾸는지 확인하는 실험을 추가했습니다. 분리선·마진·학습과 추론의 연결도 쉬운 설명과 접힌 수식으로 보강했습니다.</p><a href="ch10_summary.html#svmrank-intuition">SVMrank 쉬운 설명과 실험으로 이동 →</a></article><article class="static-answer" id="qa-003"><p class="kicker">2026-10-14 · 원문 10.4–10.5 · SVMrank 입력과 정답</p><h3>feature_delta로 predictor_delta의 방향을 맞추는 가중치 w를 배운다는 뜻은?</h3><p>feature_delta는 두 문서의 특징 차이, predictor_delta는 어느 문서가 앞이어야 하는지 나타내는 정답입니다. SVM은 w·feature_delta의 부호가 이 정답과 맞도록 공통 가중치를 배웁니다. 이 가중합이 score(A)−score(B)이기 때문에 문서 순위 학습으로 이어집니다.</p><a href="ch10_summary.html#svmrank-delta-target">입력·정답·가중치의 연결과 계산 예제 →</a></article></section>
     <footer><p>10장 Learning to Rank · <a href="ch10_summary.html">학습 정리</a> · <a href="ch10_study_index.json">섹션·후속 질문 인덱스</a></p></footer>
   </main>
   <script>

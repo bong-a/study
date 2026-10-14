@@ -237,6 +237,17 @@
       ],
       "notes_anchor": "qa-002",
       "article": "ai-powered-search/ch10_summary.html#svmrank-intuition"
+    },
+    {
+      "id": "qa-003",
+      "date": "2026-10-14",
+      "question": "feature_delta와 predictor_delta를 구하는 이유와 그 방향을 맞추는 w를 배운다는 뜻을 HTML에도 반영해줘.",
+      "sections": [
+        "10.4",
+        "10.5"
+      ],
+      "notes_anchor": "qa-003",
+      "article": "ai-powered-search/ch10_summary.html#svmrank-delta-target"
     }
   ],
   "maintenance": [
