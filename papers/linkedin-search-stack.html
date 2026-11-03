@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="LinkedIn의 검색 스택 개편을 질의 이해, 후보 검색, 랭킹, 평가, 압축의 흐름으로 이해하는 한국어 시각화 노트.">
+  <meta name="color-scheme" content="light dark">
+  <title>LinkedIn은 검색을 어떻게 다시 만들었을까? — Search Notes</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%231d574c'/%3E%3Ccircle cx='17' cy='17' r='8' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Cpath d='m23 23 8 8' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E">
+  <style>
+    :root{--bg:#f7f6f1;--surface:#fffefa;--surface-2:#efeee6;--border:#d9ddd3;--text:#213b34;--text-dim:#5f6f65;--accent:#1d6756;--accent-soft:#e6eee4;--gold:#92611c;--gold-soft:#f7edd7;--blue:#345f8b;--blue-soft:#eaf0f7;--red:#a04438;--font-body:"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;--font-serif:"AppleMyungjo","Noto Serif KR",Georgia,serif;--font-mono:"SF Mono",Menlo,Consolas,monospace}
+    :root[data-theme="dark"]{--bg:#14211d;--surface:#1c2c25;--surface-2:#263a30;--border:#40564a;--text:#ebefe5;--text-dim:#b6c5b7;--accent:#a2d6b5;--accent-soft:#294838;--gold:#edc37d;--gold-soft:#423922;--blue:#a5c6eb;--blue-soft:#263c50;--red:#edae9b}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:35px}body{margin:0;background:var(--bg);color:var(--text);font:17px/1.85 var(--font-body);-webkit-font-smoothing:antialiased;overflow-wrap:break-word}a{color:var(--accent);text-underline-offset:4px}button,input{font:inherit}button{cursor:pointer}a,button,summary,input,[tabindex]{outline-offset:5px}:focus-visible{outline:3px solid var(--gold)}::selection{background:var(--gold-soft);color:var(--text)}[hidden]{display:none!important}.skip{position:fixed;top:-80px;left:16px;z-index:30;background:var(--surface);padding:12px}.skip:focus{top:10px}.progress{position:fixed;inset:0 auto auto 0;width:0;height:3px;background:var(--gold);z-index:25}
+    .layout{max-width:1280px;margin:auto;padding:0 38px;display:grid;grid-template-columns:184px minmax(0,880px);gap:56px}.layout>*{min-width:0}.toc{position:sticky;top:35px;align-self:start;max-height:calc(100dvh - 70px);overflow:auto;padding:17px 0;font-size:13px}.toc-title{font:600 11px/1.7 var(--font-mono);letter-spacing:.1em;margin:0 0 25px;color:var(--accent)}.toc a{display:block;text-decoration:none;color:var(--text-dim);padding:9px 12px;border-left:2px solid var(--border);line-height:1.6}.toc a.active{color:var(--accent);border-left-color:var(--accent);background:var(--accent-soft);font-weight:700}.toc a:hover{color:var(--accent)}.toc .toc-num{font:11px var(--font-mono);margin-right:9px}.toc-footer{margin-top:28px;color:var(--text-dim);font-size:12px}.toc-footer span{display:block}.toc-footer a{border:0;padding:5px 0;text-decoration:underline}main{min-width:0;padding-bottom:65px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:30px 0 33px;border-bottom:1px solid var(--border);font-size:12px}.topbar .brand{font-family:var(--font-mono);letter-spacing:.07em}.actions{display:flex;gap:6px}.utility{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:6px 11px;border:1px solid var(--border);border-radius:5px;color:var(--text-dim);background:var(--surface);text-decoration:none;font-size:12px;line-height:1.5}.utility:hover{background:var(--surface-2)}.eyebrow,.kicker,.mini-label{font:600 11px/1.7 var(--font-mono);letter-spacing:.08em;color:var(--accent)}.hero{padding:43px 0 36px}.eyebrow{display:flex;align-items:center;gap:10px}.eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}h1{font:700 clamp(34px,4.3vw,55px)/1.3 var(--font-serif);letter-spacing:-.055em;margin:22px 0 23px;text-wrap:balance}h1 em{font-style:normal;color:var(--accent)}h2{font:700 clamp(26px,3vw,32px)/1.45 var(--font-serif);letter-spacing:-.035em;margin:10px 0 21px;text-wrap:balance}h3{font-size:19px;line-height:1.6;letter-spacing:-.02em;margin:0 0 11px}p{margin:12px 0 20px;word-break:keep-all}strong{font-weight:750}.lead{max-width:700px;color:var(--text-dim);font-size:19px}.meta{display:flex;flex-wrap:wrap;gap:7px 17px;color:var(--text-dim);font-size:12px;margin:25px 0 31px}.hero-map{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;border-top:1px solid var(--border);border-bottom:1px solid var(--border);gap:17px;padding:25px 0}.hero-map strong{font-size:20px;display:block}.hero-map small{font-size:12px;color:var(--text-dim)}.hero-map .arrow{font-size:24px;color:var(--gold)}.reading-path{font-size:13px;color:var(--text-dim);margin-top:18px}.reading-path a{margin:0 4px}.article-section{padding:39px 0 43px;border-top:1px solid var(--border);scroll-margin-top:30px}.prose{max-width:750px}.note,.source-note{font-size:13px;color:var(--text-dim);line-height:1.75}.source-note{margin:20px 0 0}.source-note a{font-size:12px}.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:18px 22px;margin:24px 0}.callout p{margin:5px 0 0}.callout.gold{background:var(--gold-soft);border-color:var(--gold)}.source-ref{font-size:12px;white-space:nowrap}.quote-query{font:700 25px/1.65 var(--font-serif);letter-spacing:-.03em;margin:18px 0 21px}.lab{border:1px solid var(--border);border-radius:8px;padding:25px 28px;background:var(--surface);margin:24px 0}.lab-top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}.example-tag{font-size:11px;border:1px solid var(--border);padding:2px 8px;border-radius:3px;color:var(--text-dim)}.segments{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:18px}.segments button{border:1px solid var(--border);background:var(--surface);color:var(--text-dim);padding:9px 15px;font-size:13px;border-radius:5px;min-height:42px}.segments button[aria-pressed="true"]{color:var(--surface);background:var(--accent);border-color:var(--accent)}.tags{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.tag{color:var(--blue);background:var(--blue-soft);font-size:13px;padding:3px 9px;border-radius:4px}.example-result{margin-top:18px;padding:18px 0 0;border-top:1px solid var(--border)}.example-result strong{font-size:18px}.example-result p{font-size:15px;margin:8px 0}.example-result .answer{font-size:14px;color:var(--accent)}.routing-note{border-left:2px solid var(--gold);padding-left:17px;font-size:15px}
+    figure{margin:25px 0}figcaption{font-size:12px;color:var(--text-dim);line-height:1.7;margin:13px 0 0}.pipeline{padding:26px;background:var(--surface);border:1px solid var(--border);border-radius:8px}.lane-label{font:600 11px/1.8 var(--font-mono);color:var(--text-dim);letter-spacing:.05em;margin-bottom:17px}.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}.flow>*{min-width:0}.flow-step{position:relative;padding:16px 13px;border-top:3px solid var(--accent);background:var(--accent-soft);border-radius:3px;line-height:1.7}.flow-step:not(:last-child)::after{content:"→";position:absolute;right:-18px;top:40%;color:var(--text-dim)}.flow-step .step-number{font:11px var(--font-mono);color:var(--accent)}.flow-step h3{font-size:17px;margin:8px 0}.flow-step p{font-size:13px;margin:0}.flow-step small{display:block;color:var(--text-dim);font:10px/1.8 var(--font-mono);margin-top:12px}.flow-step.gold{border-color:var(--gold);background:var(--gold-soft)}.precompute{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:23px;padding-top:20px;border-top:1px dashed var(--border)}.precompute>*{min-width:0}.precompute p{font-size:14px;margin:6px 0}.precompute .mini-label{color:var(--blue)}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:25px;margin:26px 0}.two-col>*{min-width:0}.explain-block{padding-left:18px;border-left:2px solid var(--border)}.explain-block p{font-size:16px;margin:8px 0 0}.analogy{color:var(--text-dim);font-size:14px!important}.loop{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin:24px 0}.loop>*{min-width:0}.loop-step{position:relative;padding:0 0 17px;border-bottom:2px solid var(--border)}.loop-step:not(:last-child)::after{content:"→";position:absolute;right:-17px;top:4px;color:var(--gold)}.loop-step span{display:block;color:var(--gold);font:12px var(--font-mono);margin-bottom:12px}.loop-step strong{font-size:17px}.loop-step p{font-size:14px;color:var(--text-dim);margin:9px 0 0}.teacher{background:var(--surface-2);padding:21px 24px;border-radius:6px;margin-top:24px}.teacher p{margin:7px 0;font-size:15px}details{border-bottom:1px solid var(--border);padding:0 0 2px}summary{cursor:pointer;font-size:16px;font-weight:650;padding:17px 0;line-height:1.6}details p{font-size:15px;margin-top:0}details .detail-body{padding:0 0 14px 20px}.compact-list{padding-left:1.5em;font-size:15px}.compact-list li{padding:5px 0}.compression{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:28px;margin:24px 0}.compression-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:22px;padding:18px 0;border-bottom:1px solid var(--border)}.compression-row>*{min-width:0}.compression-row:first-child{padding-top:0}.compression-row:last-child{padding-bottom:0;border-bottom:0}.compression-row strong{font-size:16px}.compression-row p{font-size:14px;margin:5px 0 0}.token-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.token{font-size:12px;line-height:1.7;background:var(--surface-2);border:1px solid var(--border);padding:5px 9px;border-radius:3px}.token.embedding{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);font-weight:700}.token.query{background:var(--blue-soft);color:var(--blue)}.raw-tokens{display:flex;gap:4px;flex-wrap:wrap}.raw-tokens i{width:15px;height:24px;border:1px solid var(--border);background:var(--surface-2);border-radius:2px}.compression-caption{font-size:12px;color:var(--text-dim);margin-top:8px}.result-header{display:flex;gap:30px;align-items:baseline;flex-wrap:wrap;margin:27px 0 23px}.result-header .big-number{font:500 clamp(48px,7vw,70px)/1 var(--font-serif);color:var(--accent);letter-spacing:-.05em}.result-header p{font-size:14px;color:var(--text-dim);margin:0;max-width:440px}.bars{padding:23px 26px;border:1px solid var(--border);background:var(--surface);border-radius:7px}.bar-row{display:grid;grid-template-columns:138px minmax(0,1fr) 65px;gap:15px;align-items:center;margin:15px 0;font-size:13px}.bar-row>*{min-width:0}.bar-track{height:18px;background:var(--surface-2);border-radius:2px;overflow:hidden}.bar-fill{height:100%;background:var(--accent);min-width:2px}.bar-row:nth-child(2) .bar-fill{background:var(--gold)}.bar-row:nth-child(1) .bar-fill{background:var(--text-dim)}.bar-value{text-align:right;font:12px var(--font-mono)}.axis{display:flex;justify-content:space-between;margin-left:153px;margin-right:80px;font:10px var(--font-mono);color:var(--text-dim)}.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:7px;background:var(--surface);margin:25px 0 15px}table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.7}caption{text-align:left;padding:15px 17px;font-size:13px;font-weight:700;border-bottom:1px solid var(--border)}th,td{text-align:left;vertical-align:top;padding:14px 17px;border-bottom:1px solid var(--border)}thead th{font-size:12px;color:var(--text-dim);background:var(--surface-2)}tbody th{font-weight:600}tbody tr:last-child>*{border-bottom:0}.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.highlight{background:var(--accent-soft)}.table-wrap small{display:block;color:var(--text-dim);font-size:11px}.metric-comment{font-size:14px;color:var(--text-dim)}.terms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 30px;margin-top:10px}.terms>*{min-width:0}.term{border-top:1px solid var(--border);padding:18px 0}.term dt{font-weight:700;font-size:16px}.term dd{font-size:15px;margin:8px 0;color:var(--text-dim)}.takeaways{margin:25px 0;padding-left:1.6em}.takeaways li{margin:12px 0;padding-left:3px}.takeaways strong{color:var(--accent)}.sources{font-size:13px;color:var(--text-dim);padding-left:1.6em}.sources li{padding:7px 0;scroll-margin-top:80px}.sources a{overflow-wrap:anywhere}.footer{border-top:1px solid var(--border);padding-top:24px;font-size:12px;color:var(--text-dim);display:flex;gap:20px;justify-content:space-between}.noscript{padding:15px 20px;background:var(--gold-soft);font-size:14px}
+    h1,h2,h3{word-break:keep-all}
+    @media(max-width:1060px){.layout{grid-template-columns:155px minmax(0,1fr);gap:30px;padding:0 26px}.flow{grid-template-columns:1fr;gap:26px}.flow-step:not(:last-child)::after{content:"↓";top:auto;bottom:-27px;left:50%;right:auto;font-size:18px}.hero-map{gap:12px}.hero-map strong{font-size:18px}}
+    @media(max-width:780px){html{scroll-padding-top:80px}.layout{display:block;padding:0 21px}.toc{z-index:20;top:0;background:var(--bg);display:flex;gap:4px;max-height:none;padding:9px 0;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:thin}.toc-title,.toc-footer{display:none}.toc a{flex-shrink:0;white-space:nowrap;border-left:0;border-bottom:2px solid transparent;padding:7px 10px;font-size:12px}.toc a.active{border-bottom-color:var(--accent)}.toc .toc-num{display:none}.topbar{padding:22px 0}.hero{padding-top:32px}.hero h1{font-size:39px}.article-section{scroll-margin-top:76px}.loop{gap:17px}.loop-step strong{font-size:15px}.loop-step p{font-size:13px}.footer{flex-wrap:wrap}.lead{font-size:18px}}
+    @media(max-width:520px){body{font-size:16px}.layout{padding:0 18px}.topbar{align-items:flex-start;gap:8px}.topbar .brand{max-width:115px;font-size:10px;padding-top:8px}.utility{font-size:11px;padding:7px 9px}.hero h1{font-size:35px}.hero-map{gap:7px;padding:21px 0}.hero-map strong{font-size:16px}.hero-map small{font-size:11px}.hero-map .arrow{font-size:17px}.meta{gap:6px 12px}.article-section{padding:33px 0}.lab,.pipeline,.compression{padding:20px}.quote-query{font-size:21px}.flow{grid-template-columns:1fr;gap:26px}.flow-step{padding:15px 18px}.flow-step:not(:last-child)::after,.flow-step:nth-child(2)::after,.flow-step:nth-child(3)::after{content:"↓";top:auto;bottom:-27px;left:50%;right:auto;font-size:18px}.flow-step h3{margin:5px 0}.flow-step small{margin-top:6px}.precompute,.two-col,.terms{grid-template-columns:1fr}.two-col{gap:22px}.loop{grid-template-columns:1fr 1fr;gap:23px}.loop-step:nth-child(2)::after{display:none}.compression-row{grid-template-columns:1fr;gap:10px}.bar-row{grid-template-columns:87px minmax(0,1fr) 52px;gap:10px;font-size:11px}.bar-value{font-size:11px}.bars{padding:17px}.axis{margin-left:97px;margin-right:62px;font-size:9px}th,td{padding:11px;font-size:12px}.result-header{gap:12px}.callout{padding:17px 18px}.source-note{font-size:12px}.terms{gap:0}.takeaways{padding-left:1.3em}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+    @media print{html{scroll-behavior:auto}:root,:root[data-theme="dark"]{--bg:#fff;--surface:#fff;--surface-2:#f1f1ed;--border:#ccc;--text:#172b24;--text-dim:#485a50;--accent:#1d6756;--accent-soft:#e6eee4;--gold:#795014;--gold-soft:#f7edd7;--blue:#345f8b;--blue-soft:#eaf0f7}.layout{display:block;max-width:none;padding:0}.toc,.topbar,.progress,.skip,.segments,.reading-path,.print-hide{display:none!important}.hero{padding-top:0}h1{font-size:35px}.article-section{padding:22px 0}body{font-size:11pt}.flow{grid-template-columns:repeat(4,1fr)}.flow-step:not(:last-child)::after,.flow-step:nth-child(2)::after,.flow-step:nth-child(3)::after{content:"→";right:-18px;top:40%;bottom:auto;left:auto}figure,.lab,.callout,.table-wrap{break-inside:avoid}a{color:inherit}details>summary{display:none}details>.detail-body{display:block!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}@page{size:A4;margin:17mm}}
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">본문으로 바로가기</a>
+  <div class="progress" id="progress" aria-hidden="true"></div>
+  <div class="layout">
+    <nav class="toc" aria-label="문서 목차">
+      <div class="toc-title">SEARCH / FIELD NOTES<br>No. 01 — LINKEDIN</div>
+      <a href="#overview" class="active"><span class="toc-num">00</span>핵심 먼저</a>
+      <a href="#intent"><span class="toc-num">01</span>말에서 의도로</a>
+      <a href="#pipeline"><span class="toc-num">02</span>검색의 전체 흐름</a>
+      <a href="#evaluation"><span class="toc-num">03</span>좋은 결과의 기준</a>
+      <a href="#efficiency"><span class="toc-num">04</span>빠르게 만드는 법</a>
+      <a href="#results"><span class="toc-num">05</span>숫자로 보는 결과</a>
+      <a href="#experience"><span class="toc-num">06</span>사용자가 보는 설명</a>
+      <a href="#glossary"><span class="toc-num">07</span>용어와 핵심 정리</a>
+      <a href="#async"><span class="toc-num">08</span>GPU 없이: 비동기 캐시</a>
+      <div class="toc-footer"><span>LinkedIn Engineering</span><span>2026. 01. 21. 원문</span><a href="#sources">출처 및 보충 자료 ↗</a></div>
+    </nav>
+    <main id="main">
+      <div class="topbar"><a class="brand" href="../index.html">STUDY NOTES / SEARCH</a><div class="actions"><button class="utility" id="theme" type="button" aria-pressed="false">다크 모드</button><button class="utility" id="print" type="button">인쇄 / PDF</button></div></div>
+      <header class="hero" id="overview">
+        <div class="eyebrow">ENGINEERING EXPLAINED · 한국어 읽기 노트</div>
+        <h1>LinkedIn은 검색을<br><em>어떻게 다시 만들었을까?</em></h1>
+        <p class="lead" data-source="article">자연어의 의도를 이해하고, 후보를 넓게 찾고, 작은 언어모델로 순위를 매긴다. 여기에 평가와 압축을 결합해 대규모 서비스로 만든 이야기.</p>
+        <div class="meta"><span>원문 · 2026. 01. 21.</span><span>Fedor Borisyuk 외</span><span>기술 블로그 해설 + 개념 예시</span><a href="https://www.linkedin.com/blog/engineering/search/reimagining-linkedins-search-stack" target="_blank" rel="noopener noreferrer">원문 읽기 ↗</a></div>
+        <div class="hero-map" aria-label="검색의 핵심 세 단계"><div><strong>의도 이해</strong><small>무엇을 찾는가?</small></div><span class="arrow" aria-hidden="true">→</span><div><strong>후보 검색</strong><small>무엇이 관련 있는가?</small></div><span class="arrow" aria-hidden="true">→</span><div><strong>정교한 정렬</strong><small>무엇을 먼저 보여줄까?</small></div></div>
+        <p class="reading-path">빠르게 읽으려면 <a href="#pipeline">전체 흐름</a> → <a href="#efficiency">압축의 원리</a> → <a href="#results">결과 수치</a></p>
+      </header>
+      <noscript><p class="noscript">본문과 도표는 그대로 읽을 수 있습니다. 예시 전환과 테마 변경은 JavaScript가 켜져 있을 때 작동합니다.</p></noscript>
+
+      <section class="article-section" id="intent">
+        <div class="kicker">01 / QUERY UNDERSTANDING</div>
+        <h2>사용자가 쓴 단어 뒤의 조건을 읽는다</h2>
+        <p class="prose">검색창에 쓰는 말은 데이터베이스의 필드명과 다릅니다. “집에서 일하고 싶다”를 “원격근무”라는 조건으로 해석하면, 서로 다른 표현으로 적힌 공고도 찾을 수 있습니다.</p>
+        <div class="lab">
+          <div class="lab-top"><span class="mini-label">검색어를 바꿔 보세요</span><span class="example-tag">직접 만든 설명용 예시 · 모델 실행 아님</span></div>
+          <p class="quote-query" id="query-text">“집에서 일할 수 있는 데이터 분석 직무”</p>
+          <div class="segments" aria-label="설명용 검색어 선택"><button type="button" data-example="remote" aria-pressed="true">일하는 방식</button><button type="button" data-example="profile" aria-pressed="false">나의 경력</button><button type="button" data-example="name" aria-pressed="false">정확한 이름</button></div>
+          <div id="example-output" aria-live="polite" aria-atomic="true">
+            <div class="tags" id="query-tags"><span class="tag">직무: 데이터 분석</span><span class="tag">근무 방식: 원격</span></div>
+            <div class="example-result"><strong id="result-title">Data Analyst · Remote</strong><p id="result-description">공고에 “집에서”라는 표현이 없어도, 근무 형태와 직무가 맞으면 관련 후보가 될 수 있습니다.</p><p class="answer" id="result-lesson">핵심: 같은 단어가 있는지에 더해, 같은 뜻인지 살펴봅니다.</p></div>
+          </div>
+        </div>
+        <p class="prose" data-source="query-paper">LinkedIn은 흩어진 개체명 추출 모델들을 통합하고, 질의와 프로필 문맥을 함께 해석하는 LLM을 사용합니다. 의도 분류, 조건 추출, 질의 재작성을 연결해 검색에 쓸 구조화된 신호를 만듭니다. <a class="source-ref" href="#src-query">[2]</a></p>
+        <p class="routing-note" data-source="article">정확한 이름·개체 검색에는 키워드 경로를, 모호한 질의에는 의미 해석 경로를 사용하는 라우팅도 유지합니다. <a class="source-ref" href="#src-article">[1]</a></p>
+      </section>
+
+      <section class="article-section" id="pipeline">
+        <div class="kicker">02 / THE SEARCH PIPELINE</div>
+        <h2>넓게 찾고, 자세히 읽고, 순서를 정한다</h2>
+        <p class="prose">도서관에 비유하면 이해하기 쉽습니다. 먼저 서가에서 관련 책을 추리고, 그 책들의 내용을 자세히 비교해 읽을 순서를 정합니다.</p>
+        <figure class="pipeline" data-source="serving-paper">
+          <div class="lane-label">요청이 들어온 뒤 · ONLINE</div>
+          <div class="flow">
+            <div class="flow-step"><span class="step-number">01</span><h3>질의 이해</h3><p>자연어를 조건과<br>검색용 벡터로</p><small>QUERY UNDERSTANDING</small></div>
+            <div class="flow-step"><span class="step-number">02</span><h3>후보 검색</h3><p>GPU에서 벡터 비교<br>상위 후보 선택</p><small>RETRIEVAL / EBR</small></div>
+            <div class="flow-step"><span class="step-number">03</span><h3>SLM 랭킹</h3><p>질의·문서·회원 신호로<br>관련성 등을 평가</p><small>CROSS-ENCODER / SGLANG</small></div>
+            <div class="flow-step gold"><span class="step-number">04</span><h3>최종 조정</h3><p>예산·페이싱 등<br>사업 조건 반영</p><small>AUCTION LAYER</small></div>
+          </div>
+          <div class="precompute"><div><span class="mini-label">미리 계산 · OFFLINE / NEARLINE</span><p>Spark·Flyte: 대량 처리<br>Flink: 변경 사항을 빠르게 반영</p></div><div><span class="mini-label">검색·랭킹에 공급 ↑</span><p>저장된 문서 표현·요약·특징을 재사용<br>점수 캐시·랭킹 깊이·트래픽으로 부하 조절</p></div></div>
+          <figcaption>원문의 구조와 연결 논문을 바탕으로 단순화한 흐름. 키워드 라우팅 등 일부 경로는 생략했습니다. <a href="#src-serving">[3]</a></figcaption>
+        </figure>
+        <div class="two-col"><div class="explain-block"><h3>Retrieval · 후보를 찾는 일</h3><p>문서를 미리 숫자 벡터로 표현해 두면, 새 검색어의 벡터와 빠르게 비교할 수 있습니다.</p><p class="analogy">“관련 있을 법한 책을 서가에서 가져오기”</p></div><div class="explain-block"><h3>Ranking · 순위를 매기는 일</h3><p>추려진 문서와 검색어를 함께 읽어, 세부 조건까지 맞는지 더 비싼 계산으로 확인합니다.</p><p class="analogy">“가져온 책을 펼쳐 보고 읽을 순서 정하기”</p></div></div>
+        <details><summary>조금 더 깊게: 벡터 검색은 어떻게 학습할까?</summary><div class="detail-body"><p data-source="article">Bi-encoder는 질의와 문서를 따로 인코딩합니다. LLM 판정으로 찾은 어려운 정답·오답을 대조학습과 마진 손실에 활용합니다. 운영에서는 GPU 기반 전수 벡터 검색을 수행합니다. <a class="source-ref" href="#src-article">[1]</a></p><p>예컨대 표현이 달라 놓친 정답은 더 가깝게, 단어만 비슷한 오답은 더 멀게 학습시키는 식입니다. 전수 <em>벡터 비교</em>와 모든 문서를 언어모델로 <em>다시 읽는 것</em>은 계산량이 다릅니다.</p></div></details>
+      </section>
+
+      <section class="article-section" id="evaluation">
+        <div class="kicker">03 / QUALITY BEFORE MODELS</div>
+        <h2>먼저 “좋은 검색 결과”의 기준을 맞춘다</h2>
+        <p class="prose">모델을 바꾸기 전에 채점표가 필요합니다. 예를 들어 “원격근무”를 요청했는데 주 5일 출근 공고가 나왔다면, 직무가 정확하더라도 좋은 결과라고 볼 수 있을까요? 이런 판단을 일관되게 정의해야 합니다.</p>
+        <div data-source="article">
+          <div class="loop" aria-label="사람의 기준을 대규모 평가로 확장하는 과정"><div class="loop-step"><span>01 / 기준</span><strong>제품 정책</strong><p>관련성 0–4점 정의</p></div><div class="loop-step"><span>02 / 합의</span><strong>PM 기준 데이터</strong><p>사람 간 κ ≥ 0.8</p></div><div class="loop-step"><span>03 / 확장</span><strong>LLM 평가자</strong><p>8B 모델로 증류</p></div><div class="loop-step"><span>04 / 피드백</span><strong>지속 평가·학습</strong><p>하루 수천만 쌍 채점</p></div></div>
+          <p class="source-note">κ는 가중 Cohen’s kappa로, 사람들의 채점 일치도를 나타냅니다. 평가 결과는 검색 품질 측정과 학습 데이터 생성에 쓰입니다. <a href="#src-article">[1]</a></p>
+          <div class="teacher"><span class="mini-label">온라인 모델로 지식 전달</span><p>랭커는 관련성뿐 아니라 클릭·지원 등도 학습합니다. 여러 교사 모델의 예측을 작은 0.6B SLM으로 증류합니다.</p></div>
+        </div>
+        <div class="callout"><strong>평가자와 실시간 랭커는 역할이 다릅니다.</strong><p>평가자는 채점 기준을 대규모로 적용하는 역할, 랭커는 사용자의 요청에 빠르게 점수를 주는 역할입니다. 증류는 교사의 판단 패턴을 더 작은 학생에게 학습시키는 방법입니다.</p></div>
+        <details><summary>채점이 잘 맞는다는 것과 사용자 만족은 같을까?</summary><div class="detail-body"><p>자동 평가 점수는 채점 기준을 얼마나 잘 따르는지 보여줍니다. 실제 만족도를 확인하려면 온라인 실험과 사용자 행동도 함께 봐야 합니다. 클릭률만 높아도, 관련성 점수만 높아도 충분하다고 단정할 수 없습니다.</p><p class="note">이 문단은 결과를 읽기 위한 일반적인 해설입니다.</p></div></details>
+      </section>
+
+      <section class="article-section" id="efficiency">
+        <div class="kicker">04 / LESS WORK AT REQUEST TIME</div>
+        <h2>속도의 비밀은 “매번 읽는 양”을 줄이는 것</h2>
+        <p class="prose">후보가 많으면 같은 공고를 여러 검색 요청에서 반복해서 읽게 됩니다. 공고가 바뀌기 전까지 재사용할 수 있는 표현을 만들어 두면, 요청 시점의 일이 줄어듭니다.</p>
+        <div class="two-col" data-source="serving-paper"><div class="explain-block"><h3>모델 자체를 줄이기</h3><p>뉴런·어텐션 헤드·레이어를 구조적으로 제거하고 다시 학습합니다. GPU가 실제로 덜 계산하게 만드는 방식입니다.</p></div><div class="explain-block"><h3>입력을 짧게 만들기</h3><p>별도 모델이 공고를 미리 요약합니다. 요약 길이와 랭킹 판단의 보존을 함께 고려합니다.</p></div></div>
+        <p class="source-note">모델 가지치기와 텍스트 요약의 설명은 원문에 연결된 서빙 논문을 참고했습니다. <a href="#src-serving">[3]</a></p>
+        <figure class="compression" data-source="mix-paper">
+          <div class="compression-row"><div><strong>원문 텍스트</strong><p>매번 긴 설명을 읽음</p></div><div><div class="raw-tokens" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="compression-caption">업무·자격·기업 소개 등 긴 문서</div></div></div>
+          <div class="compression-row"><div><strong>텍스트 요약</strong><p>짧은 문장으로 보관</p></div><div class="token-line"><span class="token">핵심 업무</span><span class="token">자격 요건</span><span class="token">근무 조건</span></div></div>
+          <div class="compression-row"><div><strong>임베딩 압축</strong><p>학습한 벡터로 보관</p></div><div><div class="token-line"><span class="token query">검색어</span><span>+</span><span class="token">제목·회사 등</span><span>+</span><span class="token embedding">압축 임베딩</span><span>→ 랭커</span></div><div class="compression-caption">문서 인코더와 랭커를 함께 학습 · 문서 벡터는 미리 계산</div></div></div>
+          <figcaption>MixLM의 텍스트·임베딩 혼합 원리를 풀어 그린 개념도. 블록 개수는 실제 토큰 수나 압축률을 나타내지 않습니다. <a href="#src-mix">[4]</a></figcaption>
+        </figure>
+        <p class="prose" data-source="mix-paper">MixLM은 긴 문서의 표현을 임베딩 토큰으로 캐시에 저장하고, 검색할 때 질의와 필요한 원문 필드에 섞어 랭커에 넣습니다. 인코더와 랭커를 함께 학습해 압축 표현도 랭킹에 유용하도록 만듭니다. <a class="source-ref" href="#src-mix">[4]</a></p>
+        <div class="callout gold"><strong>“1개 임베딩 토큰”은 “단어 하나”가 아닙니다.</strong><p>긴 내용을 학습된 숫자 벡터로 표현해 입력 위치 하나에 넣는다는 뜻입니다. 정보를 완벽하게 보존하는 압축 파일처럼 이해하면 안 됩니다.</p><p class="note" data-source="article">블로그에서는 두 0.6B 모델과 단일 임베딩을 사용하는 구성을 설명합니다. <a href="#src-article">[1]</a></p></div>
+        <details><summary>후보 검색용 임베딩과 랭킹용 압축 임베딩의 차이</summary><div class="detail-body"><p><strong>검색용 벡터</strong>는 질의 벡터와 비교해 후보를 찾는 데 씁니다. <strong>랭킹용 압축 벡터</strong>는 랭커의 입력에 넣어 후보를 평가하는 데 씁니다. 모두 숫자 표현이지만 목적과 사용하는 위치가 다릅니다. 같은 벡터를 공유한다고 가정하면 안 됩니다.</p></div></details>
+      </section>
+
+      <section class="article-section" id="results">
+        <div class="kicker">05 / THE TRADE-OFF</div>
+        <h2>품질을 조금 양보하고, 처리량을 크게 늘렸다</h2>
+        <div class="result-header"><span class="big-number">75.9×</span><p>22,000 ÷ 290으로 계산한<br>원문 텍스트 랭커 대비 GPU당 처리량 비율</p></div>
+        <figure><div class="bars" aria-label="GPU당 초당 처리량. 원문 290, 가지치기와 요약 2200, 임베딩 압축 22000. 선형 축."><div class="bar-row"><span>원문 텍스트</span><div class="bar-track"><div class="bar-fill" style="width:1.31818%"></div></div><span class="bar-value">290</span></div><div class="bar-row"><span>가지치기 + 요약</span><div class="bar-track"><div class="bar-fill" style="width:10%"></div></div><span class="bar-value">2,200</span></div><div class="bar-row"><span>임베딩 압축</span><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="bar-value">22,000</span></div><div class="axis"><span>0</span><span>11,000</span><span>22,000</span></div></div><figcaption>선형 축 · 단위: items/sec/GPU · 검색 요청 수가 아닌 처리한 항목 수. <a href="#src-article">[1]</a></figcaption></figure>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="모델 품질과 GPU 처리량 비교"><table data-source="article"><caption>원문에 보고된 모델별 비교</caption><thead><tr><th scope="col">구성</th><th scope="col" class="num">NDCG@10 ↑</th><th scope="col" class="num">항목/초/GPU ↑</th></tr></thead><tbody><tr><th scope="row">원문 텍스트 SLM</th><td class="num">0.9432</td><td class="num">290</td></tr><tr><th scope="row">가지치기 + 요약</th><td class="num">0.9218</td><td class="num">2,200</td></tr><tr class="highlight"><th scope="row">임베딩 압축 SLM</th><td class="num">0.9239</td><td class="num">22,000</td></tr><tr><th scope="row">EBR 기준선<small>후보 검색 단계</small></th><td class="num">0.838</td><td class="num">&gt; 1.6B<small>전수 벡터 검색</small></td></tr></tbody></table></div>
+        <p class="metric-comment">NDCG@10은 상위 10개에 좋은 결과가 얼마나 앞쪽에 배치되는지 평가하는 점수입니다. <strong>0.9239를 “정확도 92.39%”로 읽으면 안 됩니다.</strong></p>
+        <div class="callout gold"><strong>수치를 이렇게 읽으면 정확합니다.</strong><p>원문 대비 NDCG@10은 <strong>0.0193 감소</strong>했고, 상대 감소율은 약 <strong>2.05%</strong>입니다. 임베딩 압축은 가지치기·요약 구성보다 처리량이 <strong>10배</strong>이며, NDCG@10도 소폭 높습니다.</p><p class="note">위 비율은 표에서 계산한 값입니다. 75.9배를 검색 전체의 응답 시간 개선이나 비용 절감률로 바꿔 말할 수 없습니다. EBR과 SLM도 서로 다른 일을 하므로 처리량만으로 우열을 비교하지 않습니다.</p></div>
+        <p class="source-note">수치 출처: 블로그의 “Overall modeling quality and throughput” 표. <a href="#src-article">[1]</a></p>
+      </section>
+
+      <section class="article-section" id="experience">
+        <div class="kicker">06 / MAKING RESULTS UNDERSTANDABLE</div>
+        <h2>검색 결과 옆에 “왜”를 보여준다</h2>
+        <div class="two-col" data-source="article"><div class="explain-block"><h3>왜 이 사람이 나왔을까?</h3><p>People Search는 질의와 프로필 문구의 의미 유사도로 관련 부분을 골라 스니펫과 강조 표시를 만듭니다.</p></div><div class="explain-block"><h3>검색어를 어떻게 이해했을까?</h3><p>질의의 의도와 조건을 짧게 설명하고, 해석 결과를 캐시해 재사용합니다.</p></div></div>
+        <p class="source-note">원문의 “Explainability in search”와 “Reasoning”을 요약했습니다. <a href="#src-article">[1]</a></p>
+        <p class="prose">사용자는 설명을 보고 원하는 조건이 반영됐는지 확인할 수 있습니다. 이때 보여주는 설명은 사용자용 해석 요약이므로, 모델 내부 계산을 그대로 공개한 기록으로 볼 필요는 없습니다.</p>
+      </section>
+
+      <section class="article-section" id="glossary">
+        <div class="kicker">07 / KEEP THESE IDEAS</div>
+        <h2>기억할 것은 모델 이름보다 역할의 분담</h2>
+        <ol class="takeaways"><li><strong>이해 → 검색 → 랭킹</strong>을 나누면, 단계마다 필요한 계산을 선택할 수 있습니다.</li><li><strong>평가 기준이 학습의 방향</strong>을 정합니다. 모델이 잘한다는 말을 하려면 무엇을 잘해야 하는지부터 정해야 합니다.</li><li><strong>미리 계산하고 재사용</strong>하면 요청 시점의 일이 줄어듭니다. 작은 모델과 짧은 입력은 서로 다른 비용 절감 수단입니다.</li></ol>
+        <dl class="terms"><div class="term"><dt>Embedding · 임베딩</dt><dd>텍스트 등의 정보를 모델이 다룰 수 있는 숫자 벡터로 표현한 것.</dd></div><div class="term"><dt>SLM · 작은 언어모델</dt><dd>상대적으로 적은 파라미터를 가진 언어모델. 여기서는 후보 평가에 사용됩니다.</dd></div><div class="term"><dt>Bi-encoder / Cross-encoder</dt><dd>질의와 문서를 따로 표현해 비교하는 방식 / 함께 입력해 상호 관계를 평가하는 방식.</dd></div><div class="term"><dt>Distillation · 증류</dt><dd>교사 모델의 출력이나 판단 패턴을 학생 모델이 배우도록 학습하는 방법.</dd></div><div class="term"><dt>Offline / Nearline / Online</dt><dd>미리 일괄 계산 / 변경 후 빠르게 갱신 / 사용자 요청 중 계산.</dd></div><div class="term"><dt>Precision / Recall / NDCG</dt><dd>찾은 것의 적합성 / 정답을 놓치지 않은 정도 / 좋은 결과를 앞에 놓은 정도.</dd></div></dl>
+        <details><summary>스스로 설명해 보기 · 이해 확인</summary><div class="detail-body"><ul class="compact-list"><li>문서 임베딩을 미리 계산할 수 있는 이유는 무엇일까요?</li><li>후보 검색을 거친 뒤에도 별도 랭커가 필요한 이유는 무엇일까요?</li><li>처리량 75.9배가 응답 시간 75.9배 개선을 뜻하지 않는 이유는 무엇일까요?</li></ul><p class="note">힌트: 문서의 재사용 가능성 / 세밀한 질의·문서 상호작용 / 서로 다른 지표와 전체 시스템의 여러 단계.</p></div></details>
+      </section>
+
+      <section class="article-section" id="async">
+        <div class="kicker">08 / IF NO GPU IS AVAILABLE</div>
+        <h2>첫 검색은 기본 정렬, 다음엔 캐시된 점수로</h2>
+        <p class="prose">GPU 없이도 시도할 수 있는 <strong>비동기 랭킹 제안</strong>입니다. 캐시에 점수가 없는 첫 요청은 검색 결과를 빠르게 보여주고, CPU 작업자가 뒤에서 SLM 점수를 계산해 저장합니다. 같은 검색을 다시 하면 아직 유효한 점수를 찾아 순위를 보정합니다.</p>
+        <p class="note"><span class="example-tag">설명용 제안 · LinkedIn의 실제 캐시 적재 흐름이라는 뜻은 아님</span></p>
+        <figure class="pipeline">
+          <div class="lane-label">첫 검색은 기다리지 않고 응답 · SEARCH 1</div>
+          <div class="flow">
+            <div class="flow-step gold"><span class="step-number">01 / MISS</span><h3>후보를 보여줌</h3><p>빠른 검색·기존 점수로<br>초기 순서를 정해 응답</p><small>사용자는 결과를 바로 봄</small></div>
+            <div class="flow-step"><span class="step-number">02 / QUEUE</span><h3>작업을 예약</h3><p>후보별 질의·공고 쌍을<br>제한된 작업 대기열에 넣음</p><small>요청 응답을 막지 않음</small></div>
+            <div class="flow-step"><span class="step-number">03 / WORKER</span><h3>CPU에서 채점</h3><p>백그라운드로 SLM 점수를<br>계산해 캐시에 저장</p><small>CPU 부하·대기열을 제한</small></div>
+            <div class="flow-step gold"><span class="step-number">04 / HIT</span><h3>다음 검색에 적용</h3><p>같은 질의·공고의 점수가<br>남아 있으면 순위 보정</p><small>새 후보는 다시 MISS일 수 있음</small></div>
+          </div>
+          <figcaption>흐름도는 캐시 미스 때 대기 없이 기본 결과를 보여주는 권장 예시입니다. 모델이 CPU에서 실제로 채점할 수는 있지만, 대량 요청을 감당할 처리량은 별도로 측정해야 합니다.</figcaption>
+        </figure>
+        <div class="table-wrap" tabindex="0" role="region" aria-label="랭킹 점수 캐시 키에 필요한 항목 예시"><table><caption>캐시된 점수를 안전하게 재사용하기 위한 키 예</caption><thead><tr><th scope="col">요소</th><th scope="col">왜 필요한가</th></tr></thead><tbody><tr><th scope="row">정규화한 질의</th><td>공백이나 표기만 다른 반복 검색을 같은 질의로 인식</td></tr><tr><th scope="row">공고 ID + 내용 버전</th><td>공고가 수정되면 옛 점수를 새 본문에 재사용하지 않도록 함</td></tr><tr><th scope="row">랭커 모델 버전</th><td>모델을 바꾸면 이전 모델의 점수를 새 점수와 섞지 않음</td></tr><tr><th scope="row">개인화 신호</th><td>개인화 점수도 캐시한다면 관련 문맥이 다른 요청과 섞이지 않도록 구분</td></tr></tbody></table></div>
+        <div class="callout gold"><strong>첫 검색의 SLM 순위까지 빨라지는 방법은 아닙니다.</strong><p>처음 본 질의에는 아직 점수가 없으니 기본 정렬로 응답합니다. 입력이 많은 요청이 CPU 대기열을 막지 않도록 작업 수와 우선순위를 제한해야 하고, 글의 점수 캐시·랭킹 깊이 제어와도 함께 생각할 수 있습니다. LinkedIn 원문은 이런 최적화 요소를 언급하지만, 위의 CPU 미스 처리 흐름을 공개된 실제 구현이라고 설명하지는 않습니다. <a class="source-ref" href="#src-article">[1]</a></p></div>
+      </section>
+
+      <section class="article-section" id="sources">
+        <div class="kicker">SOURCES / 더 읽기</div><h2>원문과 연결된 기술 자료</h2>
+        <p class="note">블로그의 핵심을 압축하고, 블로그가 인용한 논문으로 구조와 원리를 보충했습니다. 검색 예시·비유·개념도는 이해를 위해 새로 구성했습니다. 전체 번역은 아닙니다.</p>
+        <ol class="sources"><li id="src-article"><a href="https://www.linkedin.com/blog/engineering/search/reimagining-linkedins-search-stack" target="_blank" rel="noopener noreferrer">Reimagining LinkedIn’s search tech stack</a><br>LinkedIn Engineering · 2026-01-21 · 주요 구성, 평가 절차, 성능 수치의 출처.</li><li id="src-query"><a href="https://arxiv.org/abs/2509.09690" target="_blank" rel="noopener noreferrer">Powering Job Search at Scale</a><br>질의 이해: 조건 추출과 프로필 문맥을 통합하는 설계.</li><li id="src-serving"><a href="https://arxiv.org/abs/2510.22101" target="_blank" rel="noopener noreferrer">Scaling Up Efficient Small Language Models Serving and Deployment for Semantic Job Search</a><br>전체 파이프라인, 모델 가지치기, 요약, 서빙 효율화.</li><li id="src-mix"><a href="https://arxiv.org/abs/2512.07846" target="_blank" rel="noopener noreferrer">MixLM: High-Throughput and Effective LLM Ranking via Text-Embedding Mix-Interaction</a><br>문서 임베딩과 텍스트를 함께 입력하는 랭킹 구조.</li></ol>
+      </section>
+      <footer class="footer"><span>SEARCH NOTES · 한국어 기술 해설</span><span>본문·도표·인터랙션을 담은 단일 HTML</span><a href="#overview">처음으로 ↑</a></footer>
+    </main>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      const root = document.documentElement;
+      const themeButton = document.getElementById('theme');
+      const setTheme = value => {
+        root.dataset.theme = value;
+        themeButton.setAttribute('aria-pressed', String(value === 'dark'));
+        themeButton.textContent = value === 'dark' ? '라이트 모드' : '다크 모드';
+      };
+      let savedTheme;
+      try { savedTheme = localStorage.getItem('linkedin-search-theme'); } catch (_) { /* file:// storage may be restricted. */ }
+      setTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+      themeButton.addEventListener('click', () => {
+        const theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        setTheme(theme);
+        try { localStorage.setItem('linkedin-search-theme', theme); } catch (_) { /* Theme still works without persistence. */ }
+      });
+      const examples = {
+        remote: {query:'“집에서 일할 수 있는 데이터 분석 직무”', tags:['직무: 데이터 분석','근무 방식: 원격'],title:'Data Analyst · Remote',description:'공고에 “집에서”라는 표현이 없어도, 근무 형태와 직무가 맞으면 관련 후보가 될 수 있습니다.',lesson:'핵심: 같은 단어가 있는지에 더해, 같은 뜻인지 살펴봅니다.'},
+        profile: {query:'“내 경력에 맞는 엔지니어링 직무”',tags:['의도: 내 프로필 참조','가정한 경력: 데이터 파이프라인'],title:'Data Engineer · 데이터 파이프라인 구축',description:'이 예시에서는 프로필에 데이터 파이프라인 경력이 있다고 가정합니다. 그 문맥을 활용하면 모호한 “내 경력”을 검색 조건으로 구체화할 수 있습니다.',lesson:'핵심: 빠진 조건을 사용자 문맥으로 보완합니다. 실제 프로필을 조회하지 않습니다.'},
+        name: {query:'“민서 김 · 예시회사”',tags:['사람 이름: 민서 김','회사: 예시회사','정확한 개체 조회'],title:'이름과 회사가 일치하는 프로필 찾기',description:'정확한 사람이나 회사를 찾는 질의는 키워드 중심 경로가 적합할 수 있습니다. 이 이름과 회사는 설명을 위한 가상의 입력입니다.',lesson:'핵심: 질의의 유형에 따라 알맞은 검색 경로를 선택합니다.'}
+      };
+      document.querySelectorAll('[data-example]').forEach(button => {
+        button.addEventListener('click', () => {
+          const example = examples[button.dataset.example];
+          document.querySelectorAll('[data-example]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+          document.getElementById('query-text').textContent = example.query;
+          document.getElementById('query-tags').replaceChildren(...example.tags.map(text => {
+            const tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = text; return tag;
+          }));
+          document.getElementById('result-title').textContent = example.title;
+          document.getElementById('result-description').textContent = example.description;
+          document.getElementById('result-lesson').textContent = example.lesson;
+        });
+      });
+      const links = [...document.querySelectorAll('.toc > a')];
+      const sections = links.map(link => ({link, section: document.querySelector(link.getAttribute('href'))}));
+      const progress = document.getElementById('progress');
+      let scheduled = false;
+      function updateReading() {
+        const offset = innerWidth <= 780 ? 110 : 100;
+        let current = sections[0];
+        for (const item of sections) if (item.section.getBoundingClientRect().top <= offset) current = item;
+        for (const item of sections) {
+          const active = item === current;
+          item.link.classList.toggle('active', active);
+          if (active) item.link.setAttribute('aria-current', 'location'); else item.link.removeAttribute('aria-current');
+        }
+        const total = document.documentElement.scrollHeight - innerHeight;
+        progress.style.width = `${total > 0 ? Math.min(100, Math.max(0, scrollY / total * 100)) : 100}%`;
+        scheduled = false;
+      }
+      addEventListener('scroll', () => { if (!scheduled) { scheduled = true; requestAnimationFrame(updateReading); } }, {passive:true});
+      addEventListener('resize', updateReading);
+      updateReading();
+      let closedDetails = [];
+      addEventListener('beforeprint', () => {
+        closedDetails = [...document.querySelectorAll('details:not([open])')];
+        closedDetails.forEach(item => { item.open = true; });
+      });
+      addEventListener('afterprint', () => { closedDetails.forEach(item => { item.open = false; }); closedDetails = []; });
+      document.getElementById('print').addEventListener('click', () => window.print());
+    })();
+  </script>
+</body>
+</html>

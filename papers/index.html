@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Papers</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666666;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --card-bg: #f7f7f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151a;
+      --fg: #e8e8ea;
+      --muted: #9a9aa2;
+      --border: #2a2b32;
+      --accent: #6ea8fe;
+      --card-bg: #1c1d24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2.5rem 1.25rem 4rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin: 0 0 0.4rem;
+  }
+  p.subtitle {
+    color: var(--muted);
+    margin: 0 0 2.5rem;
+    font-size: 0.95rem;
+  }
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  li a {
+    display: block;
+    padding: 0.7rem 0.9rem;
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--fg);
+    text-decoration: none;
+    font-size: 0.92rem;
+    border: 1px solid var(--border);
+    transition: border-color 0.15s ease;
+  }
+  li a:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Papers</h1>
+  <p class="subtitle">논문·아티클 읽기 노트 목차</p>
+
+  <ul>
+    <li><a href="related-intent-generation.html">연관 의도 생성 — 우유 검색에서 다음 장바구니까지</a></li>
+    <li><a href="jev-search-reranking.html">Jev와 검색 리랭킹 — 비슷한 문서에서, 답이 되는 문서로</a></li>
+    <li><a href="linkedin-search-stack.html">LinkedIn은 검색을 어떻게 다시 만들었을까? — 검색 스택 개편 해설</a></li>
+    <li><a href="instacart-browsing-ordering.html">Instacart 상품 탐색·가격 계산·주문 흐름</a></li>
+    <li><a href="Batch-Prompting-Guide.html">Batch Prompting Guide</a></li>
+    <li><a href="Pynini-Paper-Guide.html">Pynini Paper Guide</a></li>
+    <li><a href="SEAL-Systematic-Error-Analysis.html">SEAL: Systematic Error Analysis for Value Alignment</a></li>
+    <li><a href="STORM-Paper-Guide.html">STORM Paper Guide</a></li>
+  </ul>
+</main>
+</body>
+</html>
