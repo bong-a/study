@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="RoBERTa를 문맥 읽기, 빈칸 학습, BERT와의 차이, 정답 구간 찾기로 이해하는 8장짜리 인터랙티브 HTML 슬라이드. AI-Powered Search 14장 보충 자료.">
+  <meta name="color-scheme" content="light">
+  <title>RoBERTa, 문맥을 읽는 힘 · 14장 보충</title>
+  <style>
+    /* Viewport base from frontend-slides. */
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+    .slide { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; display: flex; flex-direction: column; position: relative; }
+    .slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; padding: var(--slide-padding); }
+    :root { --title-size: clamp(1.5rem, 5vw, 4rem); --h2-size: clamp(1.25rem, 3.5vw, 2.5rem); --h3-size: clamp(1rem, 2.5vw, 1.75rem); --body-size: clamp(.75rem, 1.5vw, 1.125rem); --small-size: clamp(.65rem, 1vw, .875rem); --slide-padding: clamp(1rem, 4vw, 4rem); --content-gap: clamp(.5rem, 2vw, 2rem); --element-gap: clamp(.25rem, 1vw, 1rem); }
+    .card, .container, .content-box { max-width: min(90vw, 1000px); max-height: min(80vh, 700px); }
+    .feature-list, .bullet-list { gap: clamp(.4rem, 1vh, 1rem); }
+    .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.4; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: clamp(.5rem, 1.5vw, 1rem); }
+    img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+    @media (max-height: 700px) { :root { --slide-padding: clamp(.75rem, 3vw, 2rem); --content-gap: clamp(.4rem, 1.5vw, 1rem); --title-size: clamp(1.25rem, 4.5vw, 2.5rem); --h2-size: clamp(1rem, 3vw, 1.75rem); } }
+    @media (max-height: 600px) { :root { --slide-padding: clamp(.5rem, 2.5vw, 1.5rem); --content-gap: clamp(.3rem, 1vw, .75rem); --title-size: clamp(1.1rem, 4vw, 2rem); --body-size: clamp(.7rem, 1.2vw, .95rem); } .nav-dots, .keyboard-hint, .decorative { display: none; } }
+    @media (max-width: 600px) { :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); } .grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .2s !important; } html { scroll-behavior: auto; } }
+
+    /* Notebook Tabs: one warm paper palette, local font fallbacks, no network dependencies. */
+    :root {
+      --bg: #f5f0e8; --paper: #fffdf9; --ink: #252e2a; --muted: #62685f;
+      --accent: #285b49; --soft: #e4ece4; --line: #d8d7cc; --gold: #965b26;
+      --serif: 'Playfair Display', Georgia, 'AppleMyungjo', 'Noto Serif KR', serif;
+      --sans: 'Source Sans 3', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      --mono: 'SFMono-Regular', Consolas, monospace;
+      --body-size: clamp(.96rem, 1.5vw, 1.25rem); --small-size: clamp(.76rem, 1vw, .9rem);
+      --gap: clamp(.8rem, 2.2vh, 1.8rem); --page-pad: clamp(1.25rem, 6vw, 6.5rem);
+    }
+    * { box-sizing: border-box; }
+    html { overflow-x: clip; }
+    body { height: auto; min-height: 100%; overflow-x: clip; margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-underline-offset: .2em; }
+    button, select { font: inherit; }
+    button { cursor: pointer; }
+    button, a, select { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; }
+    p, h1, h2, h3, figure { margin: 0; }
+    p, h1, h2, h3 { word-break: keep-all; overflow-wrap: anywhere; }
+    p { font-size: var(--body-size); line-height: 1.65; }
+    h1 { font-size: clamp(2.6rem, 5.7vw, 5.8rem); line-height: 1.15; letter-spacing: -.06em; font-weight: 800; }
+    h1 .roman { font-family: var(--serif); font-weight: 500; letter-spacing: -.055em; }
+    h2 { font-size: clamp(1.7rem, 3.45vw, 3.15rem); line-height: 1.25; letter-spacing: -.045em; }
+    h3 { font-size: clamp(1.08rem, 1.8vw, 1.5rem); line-height: 1.4; }
+    em { font-style: normal; color: var(--accent); }
+    small, .small { font-size: var(--small-size); line-height: 1.6; }
+    code { font-family: var(--mono); font-size: .83em; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    .skip { position: fixed; top: -100px; left: 20px; z-index: 100; padding: clamp(.7rem, 1vw, 1rem); background: var(--paper); }
+    .skip:focus { top: 12px; }
+    .topbar, .bottom { position: fixed; left: 0; right: 0; z-index: 20; background: var(--bg); display: flex; align-items: center; justify-content: space-between; gap: clamp(.5rem, 1vw, 1rem); padding-inline: var(--page-pad); }
+    .topbar { top: 0; height: 66px; border-bottom: 1px solid var(--line); }
+    .brand { text-decoration: none; color: var(--ink); font-size: clamp(.8rem, 1vw, .95rem); font-weight: 700; letter-spacing: .04em; }
+    .brand span { color: var(--accent); margin-right: clamp(.4rem, 1vw, .8rem); }
+    .top-actions { display: flex; align-items: center; gap: clamp(.6rem, 1.8vw, 1.6rem); font-size: var(--small-size); }
+    .top-actions a { text-decoration: none; }
+    .text-button { border: 0; background: none; color: var(--ink); padding: clamp(.5rem, 1vw, .65rem); min-height: 44px; font-size: var(--small-size); }
+    .bottom { bottom: 0; height: 74px; border-top: 1px solid var(--line); }
+    .progress { position: absolute; top: -2px; left: 0; width: 12.5%; height: 2px; background: var(--accent); transition: width .3s ease; }
+    .nav-group { display: flex; gap: clamp(.4rem, .8vw, .75rem); align-items: center; }
+    .nav-button { width: 44px; height: 42px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 4px; font-size: clamp(1.2rem, 2vw, 1.5rem); }
+    .nav-button:disabled { opacity: .35; cursor: default; }
+    .page-select { background: transparent; border: none; color: var(--ink); font-size: var(--small-size); padding: clamp(.4rem, .6vw, .7rem); min-height: 44px; max-width: min(40vw, 240px); }
+    .keyboard-hint { color: var(--muted); font-size: var(--small-size); }
+    .slide::before { content: ''; position: absolute; left: 0; top: 24%; width: 6px; height: 18%; background: var(--accent); border-radius: 0 3px 3px 0; }
+    .slide-content { width: 100%; max-width: 1360px; margin-inline: auto; padding: clamp(5.4rem, 11vh, 7rem) var(--page-pad) clamp(5.7rem, 11vh, 7rem); overflow: visible; gap: var(--gap); flex-shrink: 0; }
+    .kicker { font-family: var(--mono); font-size: var(--small-size); letter-spacing: .1em; color: var(--accent); }
+    .heading { display: grid; gap: clamp(.55rem, 1.2vh, 1rem); }
+    .lede { color: var(--muted); max-width: 50em; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.4rem, 4vw, 4.5rem); align-items: center; }
+    .split > * { min-width: 0; }
+    .hero-copy { display: grid; gap: clamp(1rem, 2.7vh, 2.4rem); }
+    .hero-copy p { max-width: 25em; }
+    .paper { background: var(--paper); border: 1px solid var(--line); padding: clamp(1.1rem, 2.8vw, 2.7rem); position: relative; }
+    .hero-paper { box-shadow: 10px 10px 0 #e7e4da; }
+    .paper-label { display: block; color: var(--muted); font-family: var(--mono); font-size: var(--small-size); letter-spacing: .07em; margin-bottom: clamp(.6rem, 1.8vh, 1.4rem); }
+    .hero-paper .question { font-size: clamp(1rem, 1.6vw, 1.3rem); }
+    .hero-context { font-family: var(--serif); font-size: clamp(1.7rem, 3vw, 2.6rem); line-height: 1.55; margin-block: clamp(.8rem, 2.4vh, 2rem); }
+    mark { background: var(--soft); color: var(--accent); padding: 0 .12em; border-bottom: 2px solid var(--accent); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+    .paper-result { border-top: 1px solid var(--line); padding-top: clamp(.7rem, 1.7vh, 1.3rem); display: flex; justify-content: space-between; gap: clamp(.7rem, 1vw, 1rem); align-items: baseline; }
+    .paper-result strong { color: var(--accent); font-size: clamp(1.2rem, 2vw, 1.7rem); }
+    .takeaway { border-top: 1px solid var(--line); padding-top: clamp(.65rem, 1.5vh, 1.25rem); font-size: clamp(.9rem, 1.5vw, 1.2rem); line-height: 1.65; }
+    .footnote { color: var(--muted); font-size: var(--small-size); line-height: 1.65; }
+    .tabs { display: flex; gap: clamp(.4rem, .8vw, .8rem); flex-wrap: wrap; }
+    .pill { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 5px; padding: clamp(.55rem, 1vw, .8rem) clamp(.8rem, 1.5vw, 1.35rem); font-size: clamp(.85rem, 1.2vw, 1rem); min-height: 44px; }
+    .pill[aria-pressed="true"], .pill.primary { background: var(--accent); border-color: var(--accent); color: white; }
+    .demo { display: grid; gap: clamp(.8rem, 2vh, 1.5rem); }
+    .sentence { font-family: var(--serif); font-size: clamp(1.5rem, 3.5vw, 3.2rem); line-height: 1.5; }
+    .sentence .clue { text-decoration: underline; text-decoration-color: #b6c7b8; text-underline-offset: .18em; }
+    .context-reading { display: flex; align-items: center; gap: clamp(.8rem, 2vw, 1.8rem); border-top: 1px solid var(--line); padding-top: clamp(.65rem, 1.8vh, 1.3rem); }
+    .context-reading strong { font-size: clamp(1.3rem, 2.6vw, 2rem); color: var(--accent); white-space: nowrap; }
+    .context-reading span { font-size: var(--body-size); line-height: 1.6; color: var(--muted); }
+    .mask { display: inline-block; background: var(--soft); color: var(--accent); padding: 0 clamp(.25rem, .6vw, .5rem); border: 1px dashed var(--accent); min-width: 3.3em; text-align: center; font-family: var(--mono); font-size: .8em; }
+    .mask.revealed { border-style: solid; }
+    .demo-bottom { display: flex; justify-content: space-between; align-items: center; gap: clamp(.7rem, 2vw, 1.5rem); flex-wrap: wrap; }
+    .feedback { color: var(--accent); font-size: var(--small-size); line-height: 1.6; }
+    .change-list { border-top: 1px solid var(--ink); }
+    .change-row { display: grid; grid-template-columns: .65fr 1.1fr 1.5fr; gap: clamp(.7rem, 2vw, 2rem); padding-block: clamp(.7rem, 2vh, 1.4rem); align-items: baseline; border-bottom: 1px solid var(--line); }
+    .change-row > strong { color: var(--accent); font-size: var(--body-size); }
+    .change-row > span { font-size: var(--body-size); }
+    .change-row small { color: var(--muted); }
+    .journey { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: clamp(.7rem, 2.3vw, 2rem); }
+    .stage { border-top: 2px solid var(--line); padding-top: clamp(.7rem, 1.8vh, 1.4rem); display: grid; align-content: start; gap: clamp(.5rem, 1.1vh, .9rem); }
+    .stage:last-child { border-color: var(--accent); }
+    .stage-num { font-family: var(--serif); font-size: clamp(2.2rem, 4vw, 4rem); color: var(--accent); line-height: 1; }
+    .stage p { font-size: clamp(.9rem, 1.4vw, 1.15rem); }
+    .model-name { color: var(--muted); font-size: var(--small-size); line-height: 1.5; }
+    .qa-panel { display: grid; gap: clamp(.65rem, 1.5vh, 1.25rem); }
+    .qa-tokens { display: flex; flex-wrap: wrap; gap: clamp(.4rem, .8vw, .7rem); padding-block: clamp(.6rem, 1.6vh, 1.3rem); }
+    .qa-token { display: flex; flex-direction: column; align-items: center; gap: clamp(.3rem, .7vh, .6rem); padding: clamp(.5rem, 1vw, .8rem); background: var(--bg); border: 1px solid transparent; min-width: 2.5em; }
+    .qa-word { font-family: var(--serif); font-size: clamp(1.15rem, 2.5vw, 2.1rem); }
+    .qa-index { font-family: var(--mono); color: var(--muted); font-size: var(--small-size); }
+    .qa-token.selected { background: var(--soft); border-color: #a6beaa; }
+    .qa-token.start { border-left: 3px solid var(--accent); }
+    .qa-token.end { border-right: 3px solid var(--accent); }
+    .qa-answer { display: flex; gap: clamp(.6rem, 1.5vw, 1.3rem); flex-wrap: wrap; align-items: baseline; border-top: 1px solid var(--line); padding-top: clamp(.7rem, 1.7vh, 1.3rem); }
+    .qa-answer strong { font-size: clamp(1.2rem, 2.5vw, 2rem); color: var(--accent); }
+    .qa-answer span { font-size: var(--small-size); color: var(--muted); }
+    .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; gap: clamp(.5rem, 1.5vw, 1.3rem); }
+    .flow-step { padding: clamp(1rem, 2vw, 2rem); border: 1px solid var(--line); background: var(--paper); display: grid; align-content: start; gap: clamp(.5rem, 1.4vh, 1rem); }
+    .flow-step.active { background: var(--soft); border-color: #a6beaa; }
+    .flow-step p { font-size: clamp(.9rem, 1.4vw, 1.15rem); }
+    .flow-arrow { align-self: center; font-size: clamp(1.3rem, 2.2vw, 2rem); color: var(--accent); }
+    .glance { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(.8rem, 2vw, 2rem); }
+    .glance-item { padding-block: clamp(.7rem, 1.5vh, 1.2rem); border-top: 1px solid var(--line); display: grid; gap: clamp(.3rem, .8vh, .7rem); }
+    .glance-item p { font-size: clamp(.9rem, 1.4vw, 1.15rem); color: var(--muted); }
+    .sources { display: flex; flex-wrap: wrap; gap: clamp(.4rem, 1vw, .8rem) clamp(1rem, 2vw, 1.8rem); font-size: var(--small-size); line-height: 1.6; }
+    .print-only { display: none; }
+    .no-script { position: fixed; top: 66px; z-index: 30; padding: clamp(.5rem, 1vw, 1rem); background: var(--soft); font-size: var(--small-size); }
+    @media (min-width: 761px) and (max-height: 760px) {
+      :root { --gap: clamp(.7rem, 1.8vh, 1rem); }
+      .slide-content { padding-top: clamp(5rem, 11vh, 5.8rem); padding-bottom: clamp(5.4rem, 12vh, 6rem); }
+      h1 { font-size: clamp(2.8rem, 5vw, 4.5rem); }
+      h2 { font-size: clamp(1.7rem, 3vw, 2.7rem); }
+      .paper { padding: clamp(1rem, 2vw, 1.8rem); }
+    }
+    @media (max-width: 760px) {
+      :root { --page-pad: clamp(1.1rem, 5vw, 2rem); --gap: clamp(.75rem, 1.7vh, 1.2rem); --body-size: clamp(.93rem, 2.8vw, 1.1rem); --small-size: clamp(.75rem, 2.3vw, .85rem); }
+      .topbar { height: 56px; }
+      .bottom { height: 64px; }
+      .top-actions { gap: clamp(.25rem, 1vw, .6rem); }
+      .top-actions .home-link, .keyboard-hint { display: none; }
+      .slide-content { padding-top: clamp(4.4rem, 9vh, 6rem); padding-bottom: clamp(4.8rem, 10vh, 6rem); }
+      .split { grid-template-columns: 1fr; gap: clamp(1rem, 2.5vh, 1.8rem); }
+      h1 { font-size: clamp(2.4rem, 8vw, 3.8rem); }
+      h1 .hero-break { display: none; }
+      h2 { font-size: clamp(1.5rem, 5.5vw, 2.1rem); }
+      .hero-copy { gap: clamp(.65rem, 1.5vh, 1rem); }
+      .hero-paper { box-shadow: 5px 5px 0 #e7e4da; }
+      .hero-context { font-size: clamp(1.6rem, 5.8vw, 2.4rem); margin-block: clamp(.6rem, 1.5vh, 1rem); }
+      .paper { padding: clamp(.9rem, 3vw, 1.4rem); }
+      .sentence { font-size: clamp(1.6rem, 6vw, 2.5rem); }
+      .context-reading { align-items: flex-start; }
+      .context-reading strong { font-size: clamp(1.2rem, 4vw, 1.6rem); }
+      .context-reading span { font-size: clamp(.87rem, 2.8vw, 1rem); }
+      .change-row { grid-template-columns: .8fr 1.4fr; padding-block: clamp(.6rem, 1.6vh, 1rem); gap: clamp(.3rem, 1vw, .7rem); }
+      .change-row small { grid-column: 2; }
+      .journey { grid-template-columns: 1fr; gap: clamp(.65rem, 1.5vh, 1rem); }
+      .stage { grid-template-columns: 42px 1fr; gap: clamp(.25rem, 1vw, .6rem) clamp(.65rem, 2vw, 1rem); padding-top: clamp(.6rem, 1.5vh, 1rem); }
+      .stage-num { grid-row: 1 / 4; font-size: clamp(2rem, 7vw, 2.6rem); }
+      .stage p, .stage .model-name { grid-column: 2; }
+      .stage h3 { font-size: clamp(1rem, 3.5vw, 1.3rem); }
+      .stage p { font-size: clamp(.85rem, 2.7vw, 1rem); }
+      .model-name { font-size: clamp(.72rem, 2.2vw, .85rem); }
+      .qa-tokens { gap: clamp(.25rem, 1vw, .5rem); }
+      .qa-token { padding: clamp(.35rem, 1.5vw, .65rem); }
+      .qa-word { font-size: clamp(1.1rem, 4vw, 1.7rem); }
+      .flow { grid-template-columns: 1fr; gap: clamp(.4rem, 1vh, .8rem); }
+      .flow-step { padding: clamp(.7rem, 2vw, 1rem); grid-template-columns: 105px 1fr; align-items: center; }
+      .flow-step h3 { font-size: clamp(1rem, 3vw, 1.2rem); }
+      .flow-step .kicker { grid-column: 1; font-size: clamp(.65rem, 2vw, .75rem); }
+      .flow-step p { grid-column: 2; grid-row: 1 / 3; font-size: clamp(.85rem, 2.7vw, 1rem); }
+      .flow-arrow { display: none; }
+      .glance { gap: clamp(.5rem, 1.5vw, 1rem); }
+      .glance-item h3 { font-size: clamp(1rem, 3.2vw, 1.25rem); }
+      .glance-item p { font-size: clamp(.85rem, 2.7vw, 1rem); }
+    }
+    @media (max-width: 760px) and (max-height: 700px) {
+      :root { --gap: clamp(.5rem, 1.2vh, .8rem); --body-size: clamp(.88rem, 2.7vw, .98rem); --small-size: clamp(.7rem, 2.2vw, .78rem); }
+      .slide-content { padding-top: clamp(4rem, 10vh, 4.5rem); padding-bottom: clamp(4.4rem, 11vh, 4.8rem); }
+      h1 { font-size: clamp(2rem, 7.5vw, 2.8rem); }
+      h2 { font-size: clamp(1.4rem, 5vw, 1.8rem); }
+      .paper { padding: clamp(.7rem, 2.8vw, 1rem); }
+      .hero-context { margin-block: clamp(.4rem, 1vh, .65rem); }
+      .change-row { padding-block: clamp(.4rem, 1.1vh, .7rem); }
+      .stage { gap: clamp(.15rem, .7vh, .4rem) clamp(.6rem, 2vw, .9rem); padding-top: clamp(.4rem, 1vh, .6rem); }
+      .stage p { line-height: 1.45; }
+      .pill { padding: clamp(.45rem, 1.5vw, .6rem) clamp(.55rem, 2vw, .9rem); }
+      .qa-tokens { padding-block: clamp(.2rem, .7vh, .5rem); }
+    }
+    /* Small phones and short windows use a continuous reading view instead of clipped slides. */
+    @media (max-width: 360px), (max-height: 600px) {
+      html { scroll-snap-type: none; }
+      .slide { height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; }
+      .slide-content { max-height: none; justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+    @media print {
+      @page { size: A4 landscape; margin: 0; }
+      html, body { height: auto; overflow: visible; scroll-snap-type: none; background: var(--bg); }
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .topbar, .bottom, .skip, .no-script, .interactive-only { display: none !important; }
+      .slide { width: 297mm; height: 209mm; overflow: hidden; break-after: page; page-break-after: always; }
+      .slide:last-child { break-after: auto; page-break-after: auto; }
+      .slide-content { padding: 16mm 21mm; max-width: none; gap: 6mm; }
+      .print-only { display: block; }
+      h1 { font-size: 42pt; } h2 { font-size: 28pt; }
+      p { font-size: 13pt; } .footnote, .small, small, .sources { font-size: 10pt; }
+      .paper { padding: 8mm; }
+      .hero-context, .sentence { font-size: 28pt; }
+      .slide::after { content: attr(data-page) ' / 8'; position: absolute; right: 21mm; bottom: 10mm; font: 10pt var(--mono); color: var(--muted); }
+      .print-link { color: var(--muted); }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#overview">본문으로 이동</a>
+  <header class="topbar">
+    <a class="brand" href="ch14_summary.html"><span>14 /</span> STUDY NOTES</a>
+    <div class="top-actions"><a class="home-link" href="../index.html">전체 목차</a><a href="ch14_summary.html">14장으로 ↗</a><button class="text-button" type="button" id="print">인쇄 / PDF</button></div>
+  </header>
+  <noscript><div class="no-script">스크롤로 모든 슬라이드를 읽을 수 있습니다. 예시를 바꾸려면 JavaScript를 켜 주세요.</div></noscript>
+  <main>
+    <section class="slide" id="overview" data-page="1" aria-labelledby="title-1">
+      <div class="slide-content">
+        <div class="kicker">A SMALL GUIDE TO RoBERTa · 01 / 08</div>
+        <div class="split">
+          <div class="hero-copy">
+            <h1 id="title-1"><span class="roman">RoBERTa,</span><br>문맥을<br class="hero-break"> 읽는 힘.</h1>
+            <p>주변 말을 함께 읽어 <strong>단어의 의미와 관계</strong>를 학습한 언어 모델입니다. 14장에서는 이 독해 능력으로 <em>문서 안의 답 구간</em>을 찾습니다.</p>
+          </div>
+          <figure class="paper hero-paper">
+            <span class="paper-label">CH.14의 역할을 한눈에</span>
+            <p class="question">Q. Where does Mina live?</p>
+            <div class="hero-context" lang="en">Mina lives in<br><mark>New York</mark>.</div>
+            <div class="paper-result"><span class="small muted">RoBERTa + QA 출력층</span><strong lang="en">New York</strong></div>
+            <figcaption class="footnote">문서를 읽고, 답이 시작하고 끝나는 위치를 선택합니다. 위 문장은 이해를 위한 예시입니다.</figcaption>
+          </figure>
+        </div>
+        <p class="takeaway"><strong>읽는 본체</strong> RoBERTa &nbsp;+&nbsp; <strong>답 위치를 고르는 출력층</strong> QA head</p>
+      </div>
+    </section>
+
+    <section class="slide" id="context" data-page="2" aria-labelledby="title-2">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">02 / 08 · 문맥을 읽는다는 것</div><h2 id="title-2">같은 <em>bank</em>도, 주변 말이 바뀌면.</h2><p class="lede">RoBERTa는 각 토큰이 앞뒤의 다른 토큰을 참고하게 만듭니다.<br>이렇게 문맥을 함께 반영하는 방식이 <strong>양방향 인코더</strong>입니다.</p></div>
+        <div class="tabs interactive-only" role="group" aria-label="bank의 문맥 선택"><button class="pill" data-context="money" aria-pressed="true" type="button">돈 이야기</button><button class="pill" data-context="river" aria-pressed="false" type="button">강 이야기</button></div>
+        <div class="paper demo" aria-live="polite" aria-atomic="true">
+          <div class="sentence" id="context-sentence" lang="en">She deposited <span class="clue">money</span> at the <mark>bank</mark>.</div>
+          <div class="context-reading"><strong id="context-meaning">bank → 은행</strong><span id="context-clue">money, deposited가 의미를 이해하는 단서입니다.</span></div>
+        </div>
+        <p class="takeaway">단어를 <strong>항상 같은 뜻으로 저장</strong>하는 대신, 주변 말에 맞는 숫자 표현을 만듭니다.</p>
+        <p class="footnote">토큰 = 모델이 읽는 글 조각. 단어보다 작을 수도 있습니다. 강조 표시는 개념 설명이며 실제 attention 측정값이 아닙니다.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="pretraining" data-page="3" aria-labelledby="title-3">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">03 / 08 · 사전학습</div><h2 id="title-3">문장을 가리고, 원래 말을 맞힙니다.</h2><p class="lede">많은 문장의 일부 토큰을 가린 뒤, 주변 문맥으로 원래 토큰을 예측합니다.<br>이 <strong>빈칸 맞히기 학습(MLM)</strong>으로 언어의 패턴을 익힙니다.</p></div>
+        <div class="paper demo">
+          <span class="paper-label">원문: The cat sat on the mat.</span>
+          <div class="sentence" id="mask-sentence" lang="en" aria-live="polite" aria-atomic="true">The cat sat on the <span class="mask">&lt;mask&gt;</span>.</div>
+          <div class="demo-bottom"><div class="tabs interactive-only"><button class="pill primary" id="reveal-mask" type="button">원래 단어 보기</button><button class="pill" id="change-mask" type="button">가리는 위치 바꾸기 ↻</button></div><span class="feedback" id="mask-feedback" aria-live="polite">문맥을 보고 빈칸에 들어갈 말을 생각해 보세요.</span></div>
+        </div>
+        <p class="takeaway"><strong>동적 마스킹:</strong> 같은 문장도 학습 중 가리는 위치를 바꿔 다양한 문제로 활용합니다.</p>
+        <p class="footnote">원래 토큰과 예측의 차이가 줄어들도록 모델을 업데이트합니다. 화면은 한 단어만 가린 교육용 예시이며, 실제 모델 추론이나 전체 마스킹 규칙을 재현한 것은 아닙니다.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="bert" data-page="4" aria-labelledby="title-4">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">04 / 08 · BERT와의 관계</div><h2 id="title-4">BERT의 구조를 바탕으로,<br><em>학습 방법을 더 다듬었습니다.</em></h2><p class="lede">이름은 <strong>R</strong>obustly <strong>o</strong>ptimized <strong>BERT</strong> pretraining <strong>a</strong>pproach.<br>논문의 중심 질문은 “BERT를 더 충분히 학습하면 어떨까?”입니다.</p></div>
+        <div class="change-list" aria-label="RoBERTa 학습의 주요 변화">
+          <div class="change-row"><strong>더 충분히</strong><span>더 많은 데이터와 학습</span><small>다양한 문맥을 더 많이 접합니다.</small></div>
+          <div class="change-row"><strong>더 크게</strong><span>더 큰 배치</span><small>한 번의 업데이트에 더 많은 예시를 씁니다.</small></div>
+          <div class="change-row"><strong>더 다양하게</strong><span>가리는 위치를 바꿈</span><small>동적 마스킹으로 빈칸 문제를 바꿉니다.</small></div>
+          <div class="change-row"><strong>목표 정리</strong><span>다음 문장 예측 제거</span><small>두 문장이 이어지는지 맞히는 NSP 과제를 없앱니다.</small></div>
+        </div>
+        <p class="footnote">주요 학습 변화만 추렸습니다. 토크나이저 등 다른 차이도 있습니다. NSP 제거는 문장 쌍을 입력할 수 없다는 뜻이 아닙니다. <a href="https://arxiv.org/abs/1907.11692">원 논문 ↗</a></p>
+      </div>
+    </section>
+
+    <section class="slide" id="finetuning" data-page="5" aria-labelledby="title-5">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">05 / 08 · 14장 모델의 학습 이력</div><h2 id="title-5">언어 공부 → 독해 문제 → 분야 적응.</h2><p class="lede">14장 코드는 <strong>이미 질의응답을 배운 모델</strong>에서 출발합니다.</p></div>
+        <div class="journey">
+          <div class="stage"><div class="stage-num">01</div><h3>RoBERTa 사전학습</h3><p>빈칸을 맞히며 <strong>문맥을 읽는 표현</strong>을 학습합니다.</p><div class="model-name"><code>roberta-base</code></div></div>
+          <div class="stage"><div class="stage-num">02</div><h3>질의응답 학습</h3><p>QA 출력층을 붙이고 SQuAD2로 <strong>답 위치·답 없음</strong>을 학습합니다.</p><div class="model-name"><code>deepset/roberta-base-squad2</code></div></div>
+          <div class="stage"><div class="stage-num">03</div><h3>Outdoors 추가 학습</h3><p>검수한 야외활동 질문·정답으로 <strong>해당 분야의 독해</strong>를 더 익힙니다.</p><div class="model-name">14장이 수행하는 파인튜닝</div></div>
+        </div>
+        <p class="takeaway"><strong>파인튜닝</strong>은 예제를 주며 기존 모델의 가중치를 더 학습시키는 일입니다. 질문을 입력하는 추론과 구분하세요.</p>
+        <p class="footnote">QA head는 각 토큰에 시작·끝 점수를 매기는 출력층입니다. <a href="https://huggingface.co/deepset/roberta-base-squad2">모델 카드 ↗</a> · <a href="ch14_summary.html#finetuning">14장 학습 코드 ↗</a></p>
+      </div>
+    </section>
+
+    <section class="slide" id="qa" data-page="6" aria-labelledby="title-6">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">06 / 08 · 정답 구간 고르기</div><h2 id="title-6">질문이 바뀌면, 밑줄도 바뀝니다.</h2><p class="lede">질문과 문맥을 함께 읽고 각 위치에 <strong>시작 점수·끝 점수</strong>를 매깁니다.<br>그다음 유효한 시작 ≤ 끝 조합을 골라 그 사이를 답으로 꺼냅니다.</p></div>
+        <div class="tabs interactive-only" role="group" aria-label="정답 구간 예시 질문"><button class="pill" data-qa="where" aria-pressed="true" type="button">어디에 살까?</button><button class="pill" data-qa="who" aria-pressed="false" type="button">누가 살까?</button><button class="pill" data-qa="when" aria-pressed="false" type="button">언제 이사했을까?</button></div>
+        <div class="paper qa-panel" aria-live="polite" aria-atomic="true">
+          <p id="qa-question" lang="en">Q. Where does Mina live?</p>
+          <div class="qa-tokens" aria-label="설명용 단어 위치: 0 Mina, 1 lives, 2 in, 3 New, 4 York, 5 마침표">
+            <span class="qa-token" data-word="0"><span class="qa-word">Mina</span><span class="qa-index">0</span></span>
+            <span class="qa-token" data-word="1"><span class="qa-word">lives</span><span class="qa-index">1</span></span>
+            <span class="qa-token" data-word="2"><span class="qa-word">in</span><span class="qa-index">2</span></span>
+            <span class="qa-token selected start" data-word="3"><span class="qa-word">New</span><span class="qa-index">3 · 시작</span></span>
+            <span class="qa-token selected end" data-word="4"><span class="qa-word">York</span><span class="qa-index">4 · 끝</span></span>
+            <span class="qa-token" data-word="5"><span class="qa-word">.</span><span class="qa-index">5</span></span>
+          </div>
+          <div class="qa-answer"><strong id="qa-answer" lang="en">New York</strong><span id="qa-detail">시작 3 → 끝 4 · 양 끝을 포함한 구간</span></div>
+        </div>
+        <p class="footnote">고정된 정답으로 동작하는 개념 데모입니다. 숫자는 <strong>설명용 단어 위치</strong>이며 실제 RoBERTa 토큰 번호가 아닙니다. 실제 입력에는 질문·특수 토큰도 들어갑니다. “답 없음”은 모델 점수와 판단 기준이 필요하며, 항상 맞게 판단하지는 않습니다.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="search" data-page="7" aria-labelledby="title-7">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">07 / 08 · 검색 시스템 안에서</div><h2 id="title-7">Reader는 역할,<br>실제 모델은 <em>파인튜닝한 RoBERTa</em>.</h2><p class="lede">Reader는 시스템에서 “문서를 읽고 답을 찾는 역할”의 이름입니다.<br>14장에서는 <strong>Outdoors로 추가 파인튜닝한 RoBERTa QA 모델</strong>이 맡습니다.</p></div>
+        <div class="flow">
+          <div class="flow-step"><span class="kicker">01 · RETRIEVER</span><h3>문서 찾기</h3><p>검색 엔진이 답이 있을 법한<br><strong>문서 후보</strong>를 가져옵니다.</p></div>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <div class="flow-step active"><span class="kicker">02 · READER</span><h3>답 구간 읽기</h3><p><strong>RoBERTa + QA 출력층</strong>이<br>각 문서에서 답을 추출합니다.</p></div>
+          <span class="flow-arrow" aria-hidden="true">→</span>
+          <div class="flow-step"><span class="kicker">03 · RERANKER</span><h3>답 순서 정하기</h3><p>14장에서는 <strong>답의 점수</strong>로<br>후보를 다시 정렬합니다.</p></div>
+        </div>
+        <p class="takeaway">책에서는 이 사전학습 언어 모델을 <strong>LLM</strong>이라고 부릅니다. 여기서는 새 문장을 작성하는 생성형 챗봇이 아니라, <strong>문서 속 답 구간을 고르는 인코더 모델</strong>로 사용합니다.</p>
+        <p class="footnote">검색이 정답 문서를 놓치면 Reader도 그 답을 찾을 수 없습니다. 높은 점수가 사실의 정확성을 보장하지는 않습니다. <a href="ch14_summary.html#architecture">14장의 전체 구조 ↗</a></p>
+      </div>
+    </section>
+
+    <section class="slide" id="recap" data-page="8" aria-labelledby="title-8">
+      <div class="slide-content">
+        <div class="heading"><div class="kicker">08 / 08 · 한 장으로 다시 보기</div><h2 id="title-8">RoBERTa는 읽고,<br>출력층은 할 일을 정합니다.</h2></div>
+        <div class="glance">
+          <div class="glance-item"><h3>무엇인가?</h3><p>BERT의 학습 방법을 다듬은<br><strong>양방향 Transformer 인코더</strong>.</p></div>
+          <div class="glance-item"><h3>어떻게 배우나?</h3><p>문장 일부를 가리고 원래 말을 맞히며<br><strong>문맥에 맞는 표현</strong>을 학습.</p></div>
+          <div class="glance-item"><h3>14장에서는?</h3><p>QA 출력층으로 <strong>답의 시작·끝</strong>을 예측.<br>이미 QA를 배운 모델을 분야에 맞게 추가 학습.</p></div>
+          <div class="glance-item"><h3>어디까지 가능한가?</h3><p>출력층·학습에 따라 분류 등에도 활용.<br>이 장의 체크포인트는 <strong>영어 QA 모델</strong>.</p></div>
+        </div>
+        <p class="takeaway"><strong>“글을 읽는 본체 + 문제에 맞는 출력층”</strong>으로 기억하면 코드의 구조가 보입니다.</p>
+        <nav class="sources" aria-label="근거 자료"><a href="https://arxiv.org/abs/1907.11692">① RoBERTa 원 논문</a><a href="https://huggingface.co/docs/transformers/model_doc/roberta">② 모델·QA 출력 문서</a><a href="https://huggingface.co/deepset/roberta-base-squad2">③ 사용 모델 카드</a><a href="ch14_summary.html#finetuning">14장 코드로 돌아가기 ↗</a></nav>
+        <p class="footnote">예시는 개념 설명용이며 브라우저에서 모델을 실행하지 않습니다. 한국어 설명을 읽을 수 있다는 것과 이 영어 체크포인트가 한국어 QA에 적합하다는 것은 별개입니다.</p>
+      </div>
+    </section>
+  </main>
+  <footer class="bottom" aria-label="슬라이드 탐색">
+    <div class="progress" id="progress" aria-hidden="true"></div>
+    <div class="nav-group"><label for="page-select" class="sr-only">슬라이드 선택</label><select class="page-select" id="page-select"><option value="0">01 — 한눈에 보기</option><option value="1">02 — 문맥 읽기</option><option value="2">03 — 빈칸 학습</option><option value="3">04 — BERT와의 차이</option><option value="4">05 — 학습 이력</option><option value="5">06 — 답 구간 찾기</option><option value="6">07 — 검색과 Reader</option><option value="7">08 — 한 장 요약</option></select><span class="small muted" id="page-count" aria-live="polite">1 / 8</span></div>
+    <span class="keyboard-hint">스크롤 또는 ← → 키로 넘기기</span>
+    <div class="nav-group"><button class="nav-button" id="previous" type="button" aria-label="이전 슬라이드" disabled>←</button><button class="nav-button" id="next" type="button" aria-label="다음 슬라이드">→</button></div>
+  </footer>
+  <script>
+    'use strict';
+    const slides = [...document.querySelectorAll('.slide')];
+    const pageSelect = document.getElementById('page-select');
+    const previous = document.getElementById('previous');
+    const next = document.getElementById('next');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let current = 0;
+
+    function syncNavigation(index) {
+      current = index;
+      pageSelect.value = String(index);
+      document.getElementById('page-count').textContent = `${index + 1} / ${slides.length}`;
+      document.getElementById('progress').style.width = `${(index + 1) / slides.length * 100}%`;
+      previous.disabled = index === 0;
+      next.disabled = index === slides.length - 1;
+    }
+
+    function goTo(index) {
+      index = Math.max(0, Math.min(slides.length - 1, index));
+      syncNavigation(index);
+      slides[index].scrollIntoView({ behavior: reducedMotion.matches ? 'instant' : 'smooth', block: 'start' });
+      // Hash links remain shareable, including when this standalone file is opened with file://.
+      try { history.replaceState(null, '', `#${slides[index].id}`); } catch { /* Navigation still works without URL updates. */ }
+    }
+
+    // Track the reading position even when a small-screen section is taller than the viewport.
+    let navigationFrame = 0;
+    function trackReadingPosition() {
+      if (navigationFrame) return;
+      navigationFrame = requestAnimationFrame(() => {
+        const index = slides.findIndex(slide => {
+          const rect = slide.getBoundingClientRect();
+          return rect.top <= innerHeight * .4 && rect.bottom > innerHeight * .4;
+        });
+        if (index !== -1) syncNavigation(index);
+        navigationFrame = 0;
+      });
+    }
+    window.addEventListener('scroll', trackReadingPosition, { passive: true });
+    window.addEventListener('resize', trackReadingPosition);
+    trackReadingPosition();
+    previous.addEventListener('click', () => goTo(current - 1));
+    next.addEventListener('click', () => goTo(current + 1));
+    pageSelect.addEventListener('change', () => goTo(Number(pageSelect.value)));
+    document.getElementById('print').addEventListener('click', () => window.print());
+    document.addEventListener('keydown', event => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.target.closest('select, input, textarea, [contenteditable]')) return;
+      const readingView = window.matchMedia('(max-width: 360px), (max-height: 600px)').matches;
+      if (readingView && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End'].includes(event.key)) return;
+      const target = { ArrowRight: current + 1, ArrowDown: current + 1, PageDown: current + 1, ArrowLeft: current - 1, ArrowUp: current - 1, PageUp: current - 1, Home: 0, End: slides.length - 1 }[event.key];
+      if (target !== undefined) { event.preventDefault(); goTo(target); }
+    });
+
+    const contextExamples = {
+      money: { html: 'She deposited <span class="clue">money</span> at the <mark>bank</mark>.', meaning: 'bank → 은행', clue: 'money, deposited가 의미를 이해하는 단서입니다.' },
+      river: { html: 'He sat on the <mark>bank</mark> of the <span class="clue">river</span>.', meaning: 'bank → 강둑', clue: 'bank 뒤의 river까지 함께 읽으면 다른 뜻이 됩니다.' }
+    };
+    document.querySelectorAll('[data-context]').forEach(button => button.addEventListener('click', () => {
+      const example = contextExamples[button.dataset.context];
+      document.getElementById('context-sentence').innerHTML = example.html;
+      document.getElementById('context-meaning').textContent = example.meaning;
+      document.getElementById('context-clue').textContent = example.clue;
+      document.querySelectorAll('[data-context]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+
+    const words = ['The', 'cat', 'sat', 'on', 'the', 'mat'];
+    const maskPositions = [5, 1, 2];
+    let maskStep = 0;
+    let revealed = false;
+    function renderMask() {
+      const position = maskPositions[maskStep];
+      document.getElementById('mask-sentence').innerHTML = words.map((word, index) => index === position ? `<span class="mask${revealed ? ' revealed' : ''}">${revealed ? word : '&lt;mask&gt;'}</span>` : word).join(' ') + '.';
+      document.getElementById('reveal-mask').textContent = revealed ? '다시 가리기' : '원래 단어 보기';
+      document.getElementById('mask-feedback').textContent = revealed ? `원래 토큰 “${words[position]}”을 정답으로 삼아 학습합니다.` : '문맥을 보고 빈칸에 들어갈 말을 생각해 보세요.';
+    }
+    document.getElementById('reveal-mask').addEventListener('click', () => { revealed = !revealed; renderMask(); });
+    document.getElementById('change-mask').addEventListener('click', () => { maskStep = (maskStep + 1) % maskPositions.length; revealed = false; renderMask(); });
+
+    const qaExamples = {
+      where: { question: 'Where does Mina live?', start: 3, end: 4, answer: 'New York', detail: '시작 3 → 끝 4 · 양 끝을 포함한 구간' },
+      who: { question: 'Who lives in New York?', start: 0, end: 0, answer: 'Mina', detail: '시작 0 → 끝 0 · 한 단어도 정답 구간입니다.' },
+      when: { question: 'When did Mina move?', start: null, end: null, answer: '문맥에 답이 없음', detail: '이사한 시점은 적혀 있지 않습니다. 이것이 이 예시의 올바른 판단입니다.' }
+    };
+    document.querySelectorAll('[data-qa]').forEach(button => button.addEventListener('click', () => {
+      const example = qaExamples[button.dataset.qa];
+      document.getElementById('qa-question').textContent = `Q. ${example.question}`;
+      document.getElementById('qa-answer').textContent = example.answer;
+      document.getElementById('qa-answer').lang = example.start === null ? 'ko' : 'en';
+      document.getElementById('qa-detail').textContent = example.detail;
+      document.querySelectorAll('[data-word]').forEach(token => {
+        const index = Number(token.dataset.word);
+        const isStart = index === example.start;
+        const isEnd = index === example.end;
+        token.classList.toggle('selected', example.start !== null && index >= example.start && index <= example.end);
+        token.classList.toggle('start', isStart);
+        token.classList.toggle('end', isEnd);
+        token.querySelector('.qa-index').textContent = `${index}${isStart && isEnd ? ' · 시작·끝' : isStart ? ' · 시작' : isEnd ? ' · 끝' : ''}`;
+      });
+      document.querySelectorAll('[data-qa]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+    }));
+  </script>
+</body>
+</html>
